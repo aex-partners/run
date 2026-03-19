@@ -117,6 +117,9 @@ export function SetupPage() {
         smtpPass: data.smtpPass || undefined,
         smtpFrom: data.smtpFrom || undefined,
         smtpSecure: data.smtpSecure,
+        aiProvider: data.aiProvider,
+        aiApiKey: data.aiApiKey || undefined,
+        aiOllamaModel: data.aiOllamaModel,
       });
 
       window.location.href = "/";

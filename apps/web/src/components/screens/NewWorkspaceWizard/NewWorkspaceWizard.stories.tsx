@@ -123,8 +123,8 @@ export const Step7_Routines: Story = {
   },
 }
 
-export const Step8_Plugins: Story = {
-  name: '8. Plugins',
+export const Step8_Email: Story = {
+  name: '8. Email',
   args: {
     initialStep: 7,
     initialData: {
@@ -139,6 +139,70 @@ export const Step8_Plugins: Story = {
       timezone: 'America/Sao_Paulo',
       onboardingPath: 'default',
       selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
+    },
+  },
+}
+
+export const Step9_AI_OpenAI: Story = {
+  name: '9. AI (OpenAI)',
+  args: {
+    initialStep: 8,
+    initialData: {
+      name: 'John Doe',
+      email: 'john@acme.com',
+      password: 'Str0ng!Pass',
+      confirmPassword: 'Str0ng!Pass',
+      orgName: 'Acme Corp',
+      niche: 'retail',
+      country: 'BR',
+      language: 'pt-BR',
+      timezone: 'America/Sao_Paulo',
+      onboardingPath: 'default',
+      selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
+      aiProvider: 'openai',
+    },
+  },
+}
+
+export const Step9_AI_Ollama: Story = {
+  name: '9. AI (Ollama)',
+  args: {
+    initialStep: 8,
+    initialData: {
+      name: 'John Doe',
+      email: 'john@acme.com',
+      password: 'Str0ng!Pass',
+      confirmPassword: 'Str0ng!Pass',
+      orgName: 'Acme Corp',
+      niche: 'retail',
+      country: 'BR',
+      language: 'pt-BR',
+      timezone: 'America/Sao_Paulo',
+      onboardingPath: 'default',
+      selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
+      aiProvider: 'ollama',
+      aiOllamaModel: 'qwen3:14b',
+    },
+  },
+}
+
+export const Step10_Plugins: Story = {
+  name: '10. Plugins',
+  args: {
+    initialStep: 9,
+    initialData: {
+      name: 'John Doe',
+      email: 'john@acme.com',
+      password: 'Str0ng!Pass',
+      confirmPassword: 'Str0ng!Pass',
+      orgName: 'Acme Corp',
+      niche: 'retail',
+      country: 'BR',
+      language: 'pt-BR',
+      timezone: 'America/Sao_Paulo',
+      onboardingPath: 'default',
+      selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
+      aiProvider: 'openai',
     },
   },
 }

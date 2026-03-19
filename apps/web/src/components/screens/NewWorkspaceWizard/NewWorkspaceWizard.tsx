@@ -38,6 +38,7 @@ const STEPS = [
   { label: t.setup.steps.path },
   { label: t.setup.steps.routines },
   { label: t.setup.steps.email },
+  { label: t.setup.steps.ai },
   { label: t.setup.steps.plugins },
 ]
 
@@ -74,6 +75,10 @@ export interface NewWorkspaceWizardData {
   smtpPass: string
   smtpFrom: string
   smtpSecure: boolean
+  // AI
+  aiProvider: AIProvider
+  aiApiKey: string
+  aiOllamaModel: OllamaModel
 }
 
 export interface NewWorkspaceWizardProps {
@@ -202,11 +207,14 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
     smtpPass: '',
     smtpFrom: source?.smtpFrom ?? '',
     smtpSecure: source?.smtpSecure ?? true,
+    aiProvider: source?.aiProvider ?? null,
+    aiApiKey: '',
+    aiOllamaModel: source?.aiOllamaModel ?? null,
   })
 
   // Persist wizard state to localStorage (excluding passwords)
   useEffect(() => {
-    const { password, confirmPassword, smtpPass, ...safe } = data
+    const { password, confirmPassword, smtpPass, aiApiKey, ...safe } = data
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data: safe }))
   }, [step, data])
 
@@ -277,6 +285,11 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
         break
       case 5:
         if (!data.onboardingPath) errs.onboardingPath = t.setup.validation.pathRequired
+        break
+      case 8:
+        if (!data.aiProvider) errs.aiProvider = t.setup.ai.providerRequired
+        if (data.aiProvider === 'openai' && !data.aiApiKey.trim()) errs.aiApiKey = t.setup.ai.apiKeyRequired
+        if (data.aiProvider === 'ollama' && !data.aiOllamaModel) errs.aiOllamaModel = t.setup.ai.modelRequired
         break
     }
     setErrors(errs)
@@ -392,6 +405,8 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
       case 7:
         return <EmailPreviewPanel provider={data.emailProvider} />
       case 8:
+        return <AIPreviewPanel provider={data.aiProvider} ollamaModel={data.aiOllamaModel} />
+      case 9:
         return <PluginsPreviewPanel />
       default:
         return <WelcomePanel />
@@ -418,6 +433,8 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
       case 7:
         return { title: t.setup.email.title, description: t.setup.email.description }
       case 8:
+        return { title: t.setup.ai.title, description: t.setup.ai.description }
+      case 9:
         return { title: t.setup.plugins.title, description: t.setup.plugins.description }
       default:
         return { title: '', description: '' }
@@ -881,8 +898,110 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
         </div>
       )}
 
-      {/* Step 8: Plugins */}
+      {/* Step 8: AI Provider */}
       {step === 8 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+          {/* Provider selection */}
+          <div style={{ display: 'flex', gap: 16 }}>
+            <OnboardingPathCard
+              title={t.setup.ai.openai.title}
+              description={t.setup.ai.openai.description}
+              icon="Cloud"
+              selected={data.aiProvider === 'openai'}
+              onClick={() => update('aiProvider', data.aiProvider === 'openai' ? null : 'openai')}
+            />
+            <OnboardingPathCard
+              title={t.setup.ai.ollama.title}
+              description={t.setup.ai.ollama.description}
+              icon="Server"
+              selected={data.aiProvider === 'ollama'}
+              onClick={() => update('aiProvider', data.aiProvider === 'ollama' ? null : 'ollama')}
+            />
+          </div>
+          {errors.aiProvider && (
+            <span style={{ fontSize: 12, color: 'var(--danger)' }}>{errors.aiProvider}</span>
+          )}
+
+          {/* OpenAI: API Key input */}
+          {data.aiProvider === 'openai' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+                  {t.setup.ai.apiKey}
+                </label>
+                <Input
+                  placeholder={t.setup.ai.apiKeyPlaceholder}
+                  value={data.aiApiKey}
+                  onChange={(e) => update('aiApiKey', e.target.value)}
+                  type="password"
+                  error={errors.aiApiKey}
+                />
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.4 }}>
+                  {t.setup.ai.apiKeyHint}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Ollama: Model selection */}
+          {data.aiProvider === 'ollama' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                {t.setup.ai.selectModel}
+              </label>
+              {([
+                { id: 'qwen3:72b' as OllamaModel, name: 'Qwen 3 72B', size: '~42 GB', badge: t.setup.showcase.ai.bestQuality, badgeColor: '#00c875' },
+                { id: 'qwen3:14b' as OllamaModel, name: 'Qwen 3 14B', size: '~9 GB', badge: t.setup.showcase.ai.recommended, badgeColor: 'var(--accent)' },
+                { id: 'qwen3:8b' as OllamaModel, name: 'Qwen 3 8B', size: '~5 GB', badge: t.setup.showcase.ai.budgetFriendly, badgeColor: '#fdab3d' },
+                { id: 'llama3.1:8b' as OllamaModel, name: 'Llama 3.1 8B', size: '~4.7 GB', badge: t.setup.showcase.ai.minimalSetup, badgeColor: '#fdab3d' },
+              ]).map((model) => (
+                <button
+                  key={model.id}
+                  type="button"
+                  onClick={() => update('aiOllamaModel', data.aiOllamaModel === model.id ? null : model.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '14px 16px',
+                    borderRadius: 10,
+                    border: data.aiOllamaModel === model.id ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    background: data.aiOllamaModel === model.id ? 'var(--accent-light)' : '#fff',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{model.name}</span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: '#fff', background: model.badgeColor, padding: '2px 8px', borderRadius: 10 }}>{model.badge}</span>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>{t.setup.showcase.ai.downloadSize(model.size)}</span>
+                  </div>
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: '50%',
+                      border: data.aiOllamaModel === model.id ? '6px solid var(--accent)' : '2px solid var(--border)',
+                      flexShrink: 0,
+                      transition: 'border 0.15s ease',
+                    }}
+                  />
+                </button>
+              ))}
+              {errors.aiOllamaModel && (
+                <span style={{ fontSize: 12, color: 'var(--danger)' }}>{errors.aiOllamaModel}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 9: Plugins */}
+      {step === 9 && (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
           {t.setup.plugins.placeholder}
         </div>

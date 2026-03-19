@@ -42,6 +42,9 @@ export const settingsRouter = router({
         smtpPass: z.string().optional(),
         smtpFrom: z.string().optional(),
         smtpSecure: z.boolean().optional(),
+        aiProvider: z.enum(['openai', 'ollama']).nullable().optional(),
+        aiApiKey: z.string().optional(),
+        aiOllamaModel: z.string().nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -84,6 +87,11 @@ export const settingsRouter = router({
       if (input.smtpPass) await upsert("mail.smtp.pass", input.smtpPass);
       if (input.smtpFrom) await upsert("mail.smtp.from", input.smtpFrom);
       if (input.smtpSecure !== undefined) await upsert("mail.smtp.secure", input.smtpSecure);
+
+      // AI settings
+      if (input.aiProvider !== undefined) await upsert("ai.provider", input.aiProvider);
+      if (input.aiApiKey) await upsert("ai.apiKey", input.aiApiKey);
+      if (input.aiOllamaModel !== undefined) await upsert("ai.ollamaModel", input.aiOllamaModel);
 
       // Mark setup as complete
       await upsert("system.setupComplete", "true");

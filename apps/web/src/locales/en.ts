@@ -1,8 +1,8 @@
-// RUN UI — English strings
-// All UI text lives here for i18n readiness.
-// To add a new language, create es.ts / pt-BR.ts with the same keys.
+// RUN UI — English strings (i18next format)
+// Interpolation: {{variable}}
+// Plurals: key_one / key_other
 
-export const t = {
+const en = {
   // Common actions
   confirm: 'Confirm',
   cancel: 'Cancel',
@@ -48,7 +48,7 @@ export const t = {
     channels: 'Groups',
     searchPlaceholder: 'Search...',
     messagePlaceholder: 'Message...',
-    messageTo: (name: string) => `Message ${name}...`,
+    messageTo: 'Message {{name}}...',
     now: 'now',
     filterAll: 'All',
     filterUnread: 'Unread',
@@ -69,7 +69,7 @@ export const t = {
         label: 'Forward',
         title: 'Forward messages to',
         search: 'Search name or group...',
-        selected: (n: number) => `${n} selected`,
+        selected: '{{count}} selected',
         action: 'Forward',
         noResults: 'No conversations found.',
       },
@@ -80,7 +80,7 @@ export const t = {
       delete: {
         label: 'Delete',
         title: 'Delete message?',
-        selected: (n: number) => `${n} selected`,
+        selected: '{{count}} selected',
         forEveryone: 'Delete for everyone',
         forMe: 'Delete for me',
         deletedMessage: 'You deleted this message',
@@ -131,8 +131,9 @@ export const t = {
     aiDraft: 'AI Draft',
     aiPlaceholder: 'Ask AI about emails...',
     aiDraftPlaceholder: 'Describe what you want to write...',
-    selected: (n: number) => `${n} selected`,
-    messagesInThread: (n: number) => `${n} message${n !== 1 ? 's' : ''} in thread`,
+    selected: '{{count}} selected',
+    messagesInThread_one: '{{count}} message in thread',
+    messagesInThread_other: '{{count}} messages in thread',
   },
 
   // Files
@@ -164,9 +165,10 @@ export const t = {
     aiIndexedOff: 'AI cannot access this file',
     aiIndexedFolderOn: 'AI can read all files in this folder',
     aiIndexedFolderOff: 'AI cannot access files in this folder',
-    selected: (n: number) => `${n} selected`,
-    items: (n: number) => `${n} item${n !== 1 ? 's' : ''}`,
-    share: {
+    selected: '{{count}} selected',
+    items_one: '{{count}} item',
+    items_other: '{{count}} items',
+    shareDialog: {
       title: 'Share',
       invitePeople: 'Invite people',
       emailPlaceholder: 'Enter email address',
@@ -237,7 +239,7 @@ export const t = {
       addNew: 'Add new status',
     },
     bulkActions: {
-      selected: (n: number) => `${n} selected`,
+      selected: '{{count}} selected',
       delete: 'Delete',
       duplicate: 'Duplicate',
       changeStatus: 'Change status',
@@ -404,7 +406,7 @@ export const t = {
     entityDelete: {
       title: 'Delete entity',
       warning: 'This action cannot be undone.',
-      rowCount: (n: number) => `This entity contains ${n} records that will be permanently deleted.`,
+      rowCount: 'This entity contains {{count}} records that will be permanently deleted.',
       confirmLabel: 'Type entity name to confirm',
     },
     iconPicker: {
@@ -433,7 +435,7 @@ export const t = {
     completedToday: 'Completed Today',
     byAgent: 'By Agent',
     filter: 'Filter',
-    runningNow: (count: number) => `${count} running now`,
+    runningNow: '{{count}} running now',
   },
 
   // Workflows
@@ -521,7 +523,7 @@ export const t = {
   // Chain of Thought
   chainOfThought: {
     title: 'Reasoning Steps',
-    steps: (complete: number, total: number) => `${complete}/${total}`,
+    steps: '{{complete}}/{{total}}',
   },
 
   // Confirmation
@@ -540,7 +542,7 @@ export const t = {
 
   // Plan
   plan: {
-    progress: (complete: number, total: number) => `${complete} of ${total} complete`,
+    progress: '{{complete}} of {{total}} complete',
     loading: 'Planning...',
   },
 
@@ -557,12 +559,12 @@ export const t = {
   // Sources
   sources: {
     title: 'Sources',
-    count: (n: number) => `${n} sources`,
+    count: '{{count}} sources',
   },
 
   // Inline Task
   inlineTask: {
-    progress: (current: number, total: number) => `${current}/${total}`,
+    progress: '{{current}}/{{total}}',
   },
 
   // Tool
@@ -662,14 +664,14 @@ export const t = {
     title: 'Plugins',
     installed: 'Installed',
     marketplace: 'Marketplace',
-    installedCount: (n: number) => `${n} plugins installed`,
+    installedCount: '{{count}} plugins installed',
     marketplaceDescription: 'Discover new plugins to expand RUN capabilities',
     noPlugins: 'No plugins available.',
     noConfig: 'This plugin has no configuration options.',
     syncRegistry: 'Sync Registry',
     syncing: 'Syncing...',
-    synced: (n: number) => `${n} plugins synced`,
-    toolCount: (n: number) => `${n} tools`,
+    synced: '{{count}} plugins synced',
+    toolCount: '{{count}} tools',
     enabled: 'Enabled',
     disabled: 'Disabled',
   },
@@ -796,7 +798,7 @@ export const t = {
         description: 'Manual server configuration.',
       },
       oauthNote: 'Click the button below to sign in with your email provider. A popup will open for authentication.',
-      connectButton: (provider: string) => `Connect ${provider}`,
+      connectButton: 'Connect {{provider}}',
       connecting: 'Connecting...',
       connected: 'Connected as',
       hint: 'This step is optional. You can configure email later in Settings.',
@@ -871,7 +873,7 @@ export const t = {
         navSettings: 'Settings',
       },
       niche: {
-        suggestedFor: (niche: string) => `Suggested for ${niche}`,
+        suggestedFor: 'Suggested for {{niche}}',
         routines: 'Recommended Routines',
         noRoutines: 'Select a niche to see suggested routines.',
       },
@@ -936,6 +938,11 @@ export const t = {
         budgetFriendly: 'Budget-friendly',
         minimalSetup: 'Minimal setup',
         heavyHardware: 'Heavy hardware',
+        cloudHosted: 'Cloud-hosted, no GPU required',
+        fullToolCalling: 'GPT-4.1 with full tool calling support',
+        payPerUse: 'Pay-per-use ($2-8 / 1M tokens)',
+        selectModelHint: 'Select a model to see hardware requirements. Larger models produce better results but need more powerful hardware.',
+        downloadSize: (size: string) => `Download size: ${size}`,
       },
       plugins: {
         title: 'Integrations',
@@ -961,7 +968,7 @@ export const t = {
       title: 'Select Routines',
       description: 'Choose the business routines you want to activate. You can always add more later.',
       searchPlaceholder: 'Search routines...',
-      selected: (count: number) => `${count} selected`,
+      selected: '{{count}} selected',
       allCategories: 'All',
     },
     plugins: {
@@ -1018,3 +1025,5 @@ export const t = {
     finish: 'Get Started',
   },
 } as const
+
+export default en
