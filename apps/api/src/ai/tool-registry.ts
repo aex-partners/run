@@ -4,6 +4,9 @@ import { jsonSchemaToZod } from "./json-schema-to-zod.js";
 import { createTools, type ToolContext } from "./tools.js";
 import { customTools, skills, agents, plugins } from "../db/schema/index.js";
 import type { Database } from "../db/index.js";
+import { loadPiece } from "../plugins/piece-loader.js";
+import { pieceActionsToTools } from "../plugins/piece-to-tool.js";
+import { getCredentialForPlugin } from "../credentials/credential-service.js";
 
 // Use `any` for tool types to avoid AI SDK generic constraints
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,6 +150,46 @@ export async function getToolsForSkill(
 }
 
 /**
+ * Load tools from installed piece-based plugins.
+ * Dynamically imports each piece package and converts its actions to AI SDK tools.
+ */
+export async function loadPieceTools(
+  db: Database,
+  serverUrl: string,
+): Promise<Record<string, AiTool>> {
+  const result: Record<string, AiTool> = {};
+
+  // Find all installed plugins that are piece-based
+  const installedPieces = await db
+    .select()
+    .from(plugins)
+    .where(eq(plugins.status, "installed"));
+
+  for (const plugin of installedPieces) {
+    if (!plugin.pieceName) continue;
+
+    try {
+      const piece = await loadPiece(plugin.pieceName);
+      if (!piece) continue;
+
+      const credValue = await getCredentialForPlugin(db, plugin.pieceName);
+      const tools = pieceActionsToTools({
+        db,
+        piece,
+        serverUrl,
+        credentialValue: credValue,
+      });
+
+      Object.assign(result, tools);
+    } catch (err) {
+      console.error(`Failed to load piece tools for "${plugin.pieceName}":`, err);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Get the full tool set for an agent: system tools + skills' tools + agent's direct tools.
  * Also returns the merged system prompt and model override.
  */
@@ -168,12 +211,6 @@ export async function getToolsForAgent(
 
   const systemTools = createTools(ctx) as unknown as Record<string, AiTool>;
   const mergedTools: Record<string, AiTool> = { ...systemTools };
-
-  // Remove web tools if agent doesn't have internet access
-  if (!agent.internetAccess) {
-    delete mergedTools.web_search;
-    delete mergedTools.fetch_url;
-  }
 
   const promptFragments: string[] = [agent.systemPrompt];
 
@@ -197,6 +234,15 @@ export async function getToolsForAgent(
   if (directToolIds.length > 0) {
     const directTools = await loadCustomTools(db, ctx, directToolIds);
     Object.assign(mergedTools, directTools);
+  }
+
+  // Piece-based plugin tools
+  try {
+    const serverUrl = process.env.API_URL || "http://localhost:3001";
+    const pieceTools = await loadPieceTools(db, serverUrl);
+    Object.assign(mergedTools, pieceTools);
+  } catch (err) {
+    console.error("Failed to load piece tools:", err);
   }
 
   return {

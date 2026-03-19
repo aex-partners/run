@@ -51,12 +51,11 @@ export const EditMode: Story = {
       modelId: 'gpt-4o',
       skillIds: ['s1', 's2'],
       toolIds: ['t1', 't2', 't3'],
-      internetAccess: false,
     },
   },
 }
 
-/** Eric (default agent) with internet access enabled. */
+/** Eric (default agent). */
 export const EricDefault: Story = {
   args: {
     initialData: {
@@ -66,7 +65,6 @@ export const EricDefault: Story = {
       modelId: '',
       skillIds: ['s1'],
       toolIds: ['t1', 't2'],
-      internetAccess: true,
     },
   },
 }

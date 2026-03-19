@@ -34,9 +34,9 @@ const mockCompanyInfo = {
 }
 
 const mockAgents = [
-  { id: 'a0', name: 'Eric', description: 'Your AI-powered ERP assistant. Eric helps manage tasks, query data, create entities, and automate workflows.', systemPrompt: 'You are Eric, the default AI assistant for RUN ERP.', modelId: '', skillIds: ['sk1', 'sk2'], toolIds: ['ct1', 'ct2'], internetAccess: true, skillCount: 2, toolCount: 2 },
-  { id: 'a1', name: 'Agente de Vendas', description: 'Gerencia pedidos, clientes e propostas comerciais', systemPrompt: 'Voce e um assistente especializado em vendas.', modelId: 'gpt-4o', skillIds: ['sk1'], toolIds: ['ct1', 'ct2', 'ct3'], internetAccess: false, skillCount: 1, toolCount: 3 },
-  { id: 'a2', name: 'Agente Financeiro', description: 'Contas a pagar, receber e conciliacao bancaria', systemPrompt: 'Voce e um assistente financeiro.', modelId: '', skillIds: ['sk2'], toolIds: ['ct3'], internetAccess: false, skillCount: 1, toolCount: 1 },
+  { id: 'a0', name: 'Eric', description: 'Your AI-powered ERP assistant. Eric helps manage tasks, query data, create entities, and automate workflows.', systemPrompt: 'You are Eric, the default AI assistant for RUN ERP.', modelId: '', skillIds: ['sk1', 'sk2'], toolIds: ['ct1', 'ct2'], skillCount: 2, toolCount: 2 },
+  { id: 'a1', name: 'Agente de Vendas', description: 'Gerencia pedidos, clientes e propostas comerciais', systemPrompt: 'Voce e um assistente especializado em vendas.', modelId: 'gpt-4o', skillIds: ['sk1'], toolIds: ['ct1', 'ct2', 'ct3'], skillCount: 1, toolCount: 3 },
+  { id: 'a2', name: 'Agente Financeiro', description: 'Contas a pagar, receber e conciliacao bancaria', systemPrompt: 'Voce e um assistente financeiro.', modelId: '', skillIds: ['sk2'], toolIds: ['ct3'], skillCount: 1, toolCount: 1 },
 ]
 
 const mockSkills = [

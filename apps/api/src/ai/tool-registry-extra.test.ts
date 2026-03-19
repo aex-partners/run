@@ -51,7 +51,7 @@ describe("tool-registry extra coverage", () => {
       name: "Skill Agent",
       slug: "skill-agent",
       systemPrompt: "Base prompt",
-      internetAccess: false,
+
       skillIds: JSON.stringify([skillId]),
       toolIds: "[]",
       createdBy: TEST_USER_ID,
@@ -66,8 +66,9 @@ describe("tool-registry extra coverage", () => {
     expect(result.systemPromptFragments).toContain("You can query records");
     expect(result.agentName).toBe("Skill Agent");
 
-    // No web tools (internetAccess: false)
-    expect(result.tools).not.toHaveProperty("web_search");
+    // Web tools are always available
+    expect(result.tools).toHaveProperty("web_search");
+    expect(result.tools).toHaveProperty("fetch_url");
   });
 
   it("isCustomToolReadOnly returns false for nonexistent tool", async () => {
@@ -126,7 +127,7 @@ describe("tool-registry extra coverage", () => {
       name: "Plugin Agent",
       slug: "plugin-agent",
       systemPrompt: "test",
-      internetAccess: false,
+
       skillIds: "[]",
       toolIds: JSON.stringify(["ct-disabled-001"]),
       createdBy: TEST_USER_ID,

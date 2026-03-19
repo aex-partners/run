@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Users, Puzzle, Shield, Building2, ChevronRight, Bot, Sparkles, Wrench, Plug, Plus } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import { Users, Puzzle, Shield, Building2, ChevronRight, Bot, Sparkles, Wrench, Plug, Plus, Search } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
@@ -40,7 +40,6 @@ export interface AgentData {
   modelId?: string
   skillIds?: string[]
   toolIds?: string[]
-  internetAccess?: boolean
   skillCount?: number
   toolCount?: number
 }
@@ -61,6 +60,15 @@ export interface CustomToolData {
   description?: string
   type: 'http' | 'query' | 'code' | 'composite'
   integrationName?: string
+}
+
+// Piece tool data (actions from installed piece plugins)
+export interface PieceToolData {
+  name: string
+  displayName: string
+  description: string
+  pluginName: string
+  pluginLogoUrl?: string
 }
 
 // Integration data from server
@@ -112,8 +120,9 @@ export interface SettingsScreenProps {
   onUpdateSkill?: (id: string, data: SkillFormData) => void
   onDeleteSkill?: (id: string) => void
 
-  // Custom Tools
+  // Tools
   customTools?: CustomToolData[]
+  pieceTools?: PieceToolData[]
   integrationOptions?: { value: string; label: string }[]
   onCreateTool?: (data: CustomToolFormData) => void
   onUpdateTool?: (id: string, data: CustomToolFormData) => void
@@ -187,7 +196,7 @@ const navItems: { id: SettingsSection; label: string; icon: React.ReactNode }[] 
   { id: 'users', label: 'Users', icon: <Users size={15} /> },
   { id: 'agents', label: 'Agents', icon: <Bot size={15} /> },
   { id: 'skills', label: 'Skills', icon: <Sparkles size={15} /> },
-  { id: 'tools', label: 'Custom Tools', icon: <Wrench size={15} /> },
+  { id: 'tools', label: 'Tools', icon: <Wrench size={15} /> },
   { id: 'plugins', label: 'Plugins', icon: <Puzzle size={15} /> },
   { id: 'integrations', label: 'Integrations', icon: <Plug size={15} /> },
   { id: 'permissions', label: 'Permissions', icon: <Shield size={15} /> },
@@ -246,7 +255,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
     onSaveCompany,
     agents = [], skillOptions = [], toolOptions = [], onCreateAgent, onUpdateAgent, onDeleteAgent,
     skills = [], systemToolOptions = [], onCreateSkill, onUpdateSkill, onDeleteSkill,
-    customTools = [], integrationOptions = [], onCreateTool, onUpdateTool, onDeleteTool, onTestTool, testResult,
+    customTools = [], pieceTools = [], integrationOptions = [], onCreateTool, onUpdateTool, onDeleteTool, onTestTool, testResult,
     integrations = [], onCreateIntegration, onUpdateIntegration, onDeleteIntegration, onToggleIntegration, onOAuthConnect,
     formLoading = false,
   } = props
@@ -264,6 +273,70 @@ export function SettingsScreen(props: SettingsScreenProps) {
 
   React.useEffect(() => { setLocalInstalled(installedPlugins) }, [installedPlugins])
   React.useEffect(() => { setLocalMarketplace(marketplacePlugins) }, [marketplacePlugins])
+
+  // Marketplace search and filter
+  const [pluginSearch, setPluginSearch] = useState('')
+  const [pluginCategory, setPluginCategory] = useState<string>('all')
+  const PLUGIN_CATEGORIES = [
+    { value: 'all', label: 'All' },
+    { value: 'ARTIFICIAL_INTELLIGENCE', label: 'AI' },
+    { value: 'COMMUNICATION', label: 'Communication' },
+    { value: 'PRODUCTIVITY', label: 'Productivity' },
+    { value: 'DEVELOPER_TOOLS', label: 'Dev Tools' },
+    { value: 'SALES_AND_CRM', label: 'Sales & CRM' },
+    { value: 'COMMERCE', label: 'Commerce' },
+    { value: 'PAYMENT_PROCESSING', label: 'Payments' },
+    { value: 'MARKETING', label: 'Marketing' },
+    { value: 'CONTENT_AND_FILES', label: 'Content & Files' },
+    { value: 'CUSTOMER_SUPPORT', label: 'Support' },
+    { value: 'FORMS_AND_SURVEYS', label: 'Forms' },
+    { value: 'BUSINESS_INTELLIGENCE', label: 'Analytics' },
+    { value: 'ACCOUNTING', label: 'Accounting' },
+    { value: 'HUMAN_RESOURCES', label: 'HR' },
+  ]
+
+  const filteredMarketplace = useMemo(() => {
+    let result = localMarketplace
+    if (pluginSearch) {
+      const q = pluginSearch.toLowerCase()
+      result = result.filter((p) =>
+        p.name.toLowerCase().includes(q) || (p.description ?? '').toLowerCase().includes(q)
+      )
+    }
+    if (pluginCategory !== 'all') {
+      result = result.filter((p) => p.category === pluginCategory)
+    }
+    return result
+  }, [localMarketplace, pluginSearch, pluginCategory])
+
+  const MARKETPLACE_PAGE_SIZE = 50
+  const [marketplacePage, setMarketplacePage] = useState(1)
+  const visibleMarketplace = filteredMarketplace.slice(0, marketplacePage * MARKETPLACE_PAGE_SIZE)
+  const hasMoreMarketplace = visibleMarketplace.length < filteredMarketplace.length
+
+  // Reset page when filter changes
+  React.useEffect(() => { setMarketplacePage(1) }, [pluginSearch, pluginCategory])
+
+  // Tools filter
+  const [toolFilter, setToolFilter] = useState<string>('all')
+  const [toolSearch, setToolSearch] = useState('')
+
+  const pieceToolPlugins = useMemo(() => {
+    const names = new Set(pieceTools.map((t) => t.pluginName))
+    return Array.from(names).sort()
+  }, [pieceTools])
+
+  const filteredPieceTools = useMemo(() => {
+    let result = pieceTools
+    if (toolFilter !== 'all') {
+      result = result.filter((t) => t.pluginName === toolFilter)
+    }
+    if (toolSearch) {
+      const q = toolSearch.toLowerCase()
+      result = result.filter((t) => t.displayName.toLowerCase().includes(q) || t.description.toLowerCase().includes(q))
+    }
+    return result
+  }, [pieceTools, toolFilter, toolSearch])
 
   const handleInstall = (name: string) => {
     const plugin = localMarketplace.find((p) => p.name === name)
@@ -405,12 +478,75 @@ export function SettingsScreen(props: SettingsScreenProps) {
             {localMarketplace.length > 0 && (
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Marketplace</h3>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>Discover new plugins to expand RUN capabilities</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  {filteredMarketplace.length} plugins available
+                  {pluginSearch || pluginCategory !== 'all' ? ` (filtered from ${localMarketplace.length})` : ''}
+                </p>
+
+                {/* Search */}
+                <div style={{ position: 'relative', marginBottom: 12 }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search plugins..."
+                    value={pluginSearch}
+                    onChange={(e) => setPluginSearch(e.target.value)}
+                    style={{
+                      width: '100%', padding: '8px 12px 8px 30px', borderRadius: 8,
+                      border: '1px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+                      outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                {/* Category tabs */}
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {PLUGIN_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setPluginCategory(cat.value)}
+                      style={{
+                        padding: '4px 10px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit',
+                        border: '1px solid ' + (pluginCategory === cat.value ? 'var(--accent)' : 'var(--border)'),
+                        background: pluginCategory === cat.value ? 'var(--accent-light)' : 'transparent',
+                        color: pluginCategory === cat.value ? 'var(--accent)' : 'var(--text-muted)',
+                        cursor: 'pointer', fontWeight: pluginCategory === cat.value ? 600 : 400,
+                      }}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Plugin grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  {localMarketplace.map((plugin) => (
+                  {visibleMarketplace.map((plugin) => (
                     <PluginCard key={plugin.name} {...plugin} onInstall={() => handleInstall(plugin.name)} />
                   ))}
                 </div>
+
+                {/* Load more */}
+                {hasMoreMarketplace && (
+                  <div style={{ textAlign: 'center', marginTop: 16 }}>
+                    <button
+                      onClick={() => setMarketplacePage((p) => p + 1)}
+                      style={{
+                        padding: '8px 24px', borderRadius: 8, fontSize: 13, fontFamily: 'inherit',
+                        border: '1px solid var(--border)', background: 'var(--surface)',
+                        color: 'var(--text)', cursor: 'pointer',
+                      }}
+                    >
+                      Load more ({filteredMarketplace.length - visibleMarketplace.length} remaining)
+                    </button>
+                  </div>
+                )}
+
+                {filteredMarketplace.length === 0 && (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                    No plugins match your search.
+                  </div>
+                )}
               </div>
             )}
             {localInstalled.length === 0 && localMarketplace.length === 0 && (
@@ -475,24 +611,115 @@ export function SettingsScreen(props: SettingsScreenProps) {
       case 'tools':
         return (
           <div style={{ padding: '24px' }}>
-            <SectionHeader title="Custom Tools" subtitle="Create tools that agents can use to interact with external systems." onNew={onCreateTool ? () => openCreate('tool') : undefined} />
-            {customTools.length === 0 ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No custom tools created yet.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {customTools.map((t) => (
-                  <CustomToolCard
-                    key={t.id}
-                    id={t.id}
-                    name={t.name}
-                    description={t.description}
-                    type={t.type}
-                    integrationName={t.integrationName}
-                    onEdit={onUpdateTool ? (id) => openEdit('tool', id) : undefined}
-                    onDelete={onDeleteTool}
-                    onTest={onTestTool ? () => openEdit('tool', t.id) : undefined}
-                  />
-                ))}
+            <SectionHeader title="Tools" subtitle="Tools that agents can use to interact with external systems." onNew={onCreateTool ? () => openCreate('tool') : undefined} />
+
+            {/* Custom tools */}
+            {customTools.length > 0 && (
+              <div style={{ marginBottom: 28 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Custom Tools</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {customTools.map((t) => (
+                    <CustomToolCard
+                      key={t.id}
+                      id={t.id}
+                      name={t.name}
+                      description={t.description}
+                      type={t.type}
+                      integrationName={t.integrationName}
+                      onEdit={onUpdateTool ? (id) => openEdit('tool', id) : undefined}
+                      onDelete={onDeleteTool}
+                      onTest={onTestTool ? () => openEdit('tool', t.id) : undefined}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Piece plugin tools */}
+            {pieceTools.length > 0 && (
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Plugin Tools</h3>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+                  {/* Search */}
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      placeholder="Search tools..."
+                      value={toolSearch}
+                      onChange={(e) => setToolSearch(e.target.value)}
+                      style={{
+                        width: '100%', padding: '7px 12px 7px 30px', borderRadius: 8,
+                        border: '1px solid var(--border)', background: 'var(--surface)',
+                        color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+                        outline: 'none', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                  {/* Plugin filter */}
+                  <select
+                    value={toolFilter}
+                    onChange={(e) => setToolFilter(e.target.value)}
+                    style={{
+                      padding: '7px 12px', borderRadius: 8,
+                      border: '1px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+                      outline: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    <option value="all">All plugins</option>
+                    {pieceToolPlugins.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  {filteredPieceTools.length} tools{toolFilter !== 'all' || toolSearch ? ' (filtered)' : ''}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {filteredPieceTools.map((t) => (
+                    <div
+                      key={t.name}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 14px', borderRadius: 8,
+                        border: '1px solid var(--border)', background: 'var(--surface)',
+                      }}
+                    >
+                      {t.pluginLogoUrl ? (
+                        <img
+                          src={t.pluginLogoUrl}
+                          alt={t.pluginName}
+                          style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'contain', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                          background: 'var(--surface-2)', border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'var(--accent)', fontSize: 12, fontWeight: 700,
+                        }}>
+                          {t.pluginName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t.displayName}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.description}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {filteredPieceTools.length === 0 && (
+                  <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                    No tools match your search.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {customTools.length === 0 && pieceTools.length === 0 && (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                No tools available. Install plugins to add tools, or create custom tools.
               </div>
             )}
           </div>
@@ -674,7 +901,6 @@ export function SettingsScreen(props: SettingsScreenProps) {
               modelId: a.modelId ?? '',
               skillIds: a.skillIds ?? [],
               toolIds: a.toolIds ?? [],
-              internetAccess: a.internetAccess ?? false,
             } : undefined
           })() : undefined}
           skillOptions={skillOptions}

@@ -11,7 +11,6 @@ export interface AgentFormData {
   modelId: string
   skillIds: string[]
   toolIds: string[]
-  internetAccess: boolean
 }
 
 export interface AgentFormProps {
@@ -46,7 +45,6 @@ export function AgentForm({
     modelId: initialData?.modelId ?? '',
     skillIds: initialData?.skillIds ?? [],
     toolIds: initialData?.toolIds ?? [],
-    internetAccess: initialData?.internetAccess ?? false,
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -113,50 +111,6 @@ export function AgentForm({
           onChange={(toolIds) => setForm((f) => ({ ...f, toolIds }))}
           placeholder="Select tools..."
         />
-      </div>
-
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 14px',
-        background: 'var(--surface-2)',
-        borderRadius: 8,
-        border: '1px solid var(--border)',
-      }}>
-        <div>
-          <label style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>Internet Access</label>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>Allow this agent to search the web and fetch URLs.</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={form.internetAccess}
-          onClick={() => setForm((f) => ({ ...f, internetAccess: !f.internetAccess }))}
-          style={{
-            width: 40,
-            height: 22,
-            borderRadius: 11,
-            border: 'none',
-            background: form.internetAccess ? 'var(--accent)' : 'var(--border)',
-            cursor: 'pointer',
-            position: 'relative',
-            transition: 'background 0.2s',
-            flexShrink: 0,
-          }}
-        >
-          <span style={{
-            position: 'absolute',
-            top: 2,
-            left: form.internetAccess ? 20 : 2,
-            width: 18,
-            height: 18,
-            borderRadius: '50%',
-            background: '#fff',
-            transition: 'left 0.2s',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-          }} />
-        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>

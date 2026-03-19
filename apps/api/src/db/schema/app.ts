@@ -177,7 +177,6 @@ export const agents = pgTable("agents", {
   modelId: text("model_id"),
   skillIds: text("skill_ids").notNull().default("[]"),
   toolIds: text("tool_ids").notNull().default("[]"),
-  internetAccess: boolean("internet_access").notNull().default(false),
   isSystem: boolean("is_system").notNull().default(false),
   createdBy: text("created_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -206,13 +205,38 @@ export const plugins = pgTable("plugins", {
   author: text("author"),
   icon: text("icon"),
   category: text("category"),
-  manifest: text("manifest").notNull(),
-  source: text("source", { enum: ["registry", "local", "git"] }).notNull().default("registry"),
+  manifest: text("manifest"),
+  pieceName: text("piece_name"),
+  authType: text("auth_type"),
+  source: text("source", { enum: ["registry", "local", "git", "piece"] }).notNull().default("registry"),
   sourceUrl: text("source_url"),
-  status: text("status", { enum: ["available", "installed", "disabled"] }).notNull().default("available"),
+  status: text("status", { enum: ["available", "installed", "disabled", "installing", "error"] }).notNull().default("available"),
   config: text("config").notNull().default("{}"),
   installedAt: timestamp("installed_at"),
   installedBy: text("installed_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const credentials = pgTable("credentials", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  pluginName: text("plugin_name").notNull(),
+  type: text("type", { enum: ["oauth2", "secret_text", "basic_auth", "custom_auth"] }).notNull(),
+  status: text("status", { enum: ["active", "error", "missing"] }).notNull().default("active"),
+  value: text("value").notNull().default("{}"),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const pluginStore = pgTable("plugin_store", {
+  id: text("id").primaryKey(),
+  pluginName: text("plugin_name").notNull(),
+  scope: text("scope", { enum: ["project", "flow"] }).notNull().default("project"),
+  scopeId: text("scope_id"),
+  key: text("key").notNull(),
+  value: text("value").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

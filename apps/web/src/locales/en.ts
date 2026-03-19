@@ -624,8 +624,6 @@ const en = {
     tools: 'tools',
     defaultAgent: 'Default (Eric)',
     selectAgent: 'Select agent',
-    internetAccess: 'Internet Access',
-    internetAccessDescription: 'Allow this agent to search the web and fetch URLs.',
     form: {
       name: 'Name',
       description: 'Description',
@@ -942,7 +940,7 @@ const en = {
         fullToolCalling: 'GPT-4.1 with full tool calling support',
         payPerUse: 'Pay-per-use ($2-8 / 1M tokens)',
         selectModelHint: 'Select a model to see hardware requirements. Larger models produce better results but need more powerful hardware.',
-        downloadSize: (size: string) => `Download size: ${size}`,
+        downloadSize: 'Download size: {{size}}',
       },
       plugins: {
         title: 'Integrations',
@@ -974,6 +972,8 @@ const en = {
     plugins: {
       title: 'Select Plugins',
       description: 'Choose integrations to connect with your existing tools.',
+      searchPlaceholder: 'Search plugins...',
+      placeholder: 'Select plugins to install',
     },
     complete: 'Complete Setup',
     completing: 'Completing...',
@@ -1023,6 +1023,275 @@ const en = {
     back: 'Back',
     skip: 'Skip',
     finish: 'Get Started',
+  },
+
+  // Business niches & sub-niches
+  niches: {
+    retail: {
+      label: 'Retail',
+      subNiches: {
+        clothing: 'Clothing & Apparel',
+        electronics: 'Electronics',
+        grocery: 'Grocery & Supermarket',
+        furniture: 'Furniture & Home Decor',
+        pharmacy: 'Pharmacy & Drugstore',
+        pet: 'Pet Shop',
+        sports: 'Sports & Outdoors',
+        beauty: 'Beauty & Cosmetics',
+        bookstore: 'Bookstore & Stationery',
+        jewelry: 'Jewelry & Accessories',
+        autoparts: 'Auto Parts',
+        convenience: 'Convenience Store',
+        ecommerce: 'E-commerce',
+      },
+    },
+    foodAndBeverage: {
+      label: 'Food & Beverage',
+      subNiches: {
+        restaurant: 'Restaurant',
+        cafe: 'Cafe & Coffee Shop',
+        bakery: 'Bakery & Confectionery',
+        bar: 'Bar & Pub',
+        fastFood: 'Fast Food',
+        foodTruck: 'Food Truck',
+        catering: 'Catering',
+        brewery: 'Brewery & Winery',
+        mealPrep: 'Meal Prep & Delivery',
+        iceCream: 'Ice Cream & Desserts',
+      },
+    },
+    professionalServices: {
+      label: 'Professional Services',
+      subNiches: {
+        accounting: 'Accounting & Bookkeeping',
+        legal: 'Legal & Law Firm',
+        consulting: 'Consulting',
+        marketing: 'Marketing & Advertising',
+        recruitment: 'Recruitment & Staffing',
+        insurance: 'Insurance',
+        realEstate: 'Real Estate',
+        architecture: 'Architecture & Design',
+        financial: 'Financial Advisory',
+        translation: 'Translation & Localization',
+      },
+    },
+    healthcare: {
+      label: 'Healthcare',
+      subNiches: {
+        clinic: 'Medical Clinic',
+        dental: 'Dental Practice',
+        veterinary: 'Veterinary Clinic',
+        psychology: 'Psychology & Therapy',
+        physiotherapy: 'Physiotherapy & Rehabilitation',
+        laboratory: 'Laboratory & Diagnostics',
+        homecare: 'Home Care',
+        nutrition: 'Nutrition & Dietetics',
+        optometry: 'Optometry & Eye Care',
+        alternativeMedicine: 'Alternative & Integrative Medicine',
+      },
+    },
+    education: {
+      label: 'Education',
+      subNiches: {
+        school: 'School (K-12)',
+        university: 'University & College',
+        languageSchool: 'Language School',
+        onlineCourses: 'Online Courses & E-learning',
+        tutoring: 'Tutoring & Test Prep',
+        vocational: 'Vocational & Technical Training',
+        earlyChildhood: 'Early Childhood & Daycare',
+        musicArts: 'Music & Arts School',
+        corporate: 'Corporate Training',
+        driving: 'Driving School',
+      },
+    },
+    manufacturing: {
+      label: 'Manufacturing',
+      subNiches: {
+        foodProcessing: 'Food Processing',
+        textile: 'Textile & Garment',
+        metalwork: 'Metalwork & Machining',
+        plastics: 'Plastics & Packaging',
+        woodwork: 'Woodwork & Furniture',
+        chemical: 'Chemical & Pharmaceutical',
+        electronics: 'Electronics Assembly',
+        automotive: 'Automotive Parts',
+        printing: 'Printing & Publishing',
+        construction: 'Construction Materials',
+      },
+    },
+    construction: {
+      label: 'Construction',
+      subNiches: {
+        residential: 'Residential Construction',
+        commercial: 'Commercial Construction',
+        renovation: 'Renovation & Remodeling',
+        electrical: 'Electrical Services',
+        plumbing: 'Plumbing & HVAC',
+        painting: 'Painting & Finishing',
+        roofing: 'Roofing & Waterproofing',
+        landscaping: 'Landscaping',
+        demolition: 'Demolition & Earthwork',
+        solarInstall: 'Solar Panel Installation',
+      },
+    },
+    logistics: {
+      label: 'Logistics & Transportation',
+      subNiches: {
+        freight: 'Freight & Cargo',
+        lastMile: 'Last Mile Delivery',
+        warehouse: 'Warehousing & Storage',
+        moving: 'Moving & Relocation',
+        courier: 'Courier & Express',
+        fleet: 'Fleet Management',
+        customs: 'Customs Brokerage',
+        coldChain: 'Cold Chain & Refrigerated',
+        rideshare: 'Ride-share & Taxi',
+        maritime: 'Maritime & Shipping',
+      },
+    },
+    technology: {
+      label: 'Technology',
+      subNiches: {
+        saas: 'SaaS',
+        webDev: 'Web Development',
+        mobileDev: 'Mobile App Development',
+        itServices: 'IT Services & Support',
+        cybersecurity: 'Cybersecurity',
+        dataAnalytics: 'Data & Analytics',
+        aiMl: 'AI & Machine Learning',
+        iot: 'IoT & Hardware',
+        gamedev: 'Game Development',
+        cloudHosting: 'Cloud & Hosting',
+      },
+    },
+    hospitality: {
+      label: 'Hospitality & Tourism',
+      subNiches: {
+        hotel: 'Hotel & Resort',
+        hostel: 'Hostel & Guesthouse',
+        travelAgency: 'Travel Agency',
+        tourOperator: 'Tour Operator',
+        eventVenue: 'Event Venue',
+        camping: 'Camping & Glamping',
+        spa: 'Spa & Wellness Center',
+        themepark: 'Theme Park & Attractions',
+        vacation: 'Vacation Rental',
+        ecotourism: 'Ecotourism',
+      },
+    },
+    agriculture: {
+      label: 'Agriculture',
+      subNiches: {
+        cropFarming: 'Crop Farming',
+        livestock: 'Livestock & Ranching',
+        dairy: 'Dairy Farming',
+        poultry: 'Poultry',
+        aquaculture: 'Aquaculture & Fisheries',
+        organic: 'Organic Farming',
+        agribusiness: 'Agribusiness & Trading',
+        irrigation: 'Irrigation & Equipment',
+        forestry: 'Forestry & Timber',
+        horticulture: 'Horticulture & Nursery',
+      },
+    },
+  },
+
+  // Routine categories & routines
+  routineCategories: {
+    all: 'All',
+    sales: 'Sales',
+    finance: 'Finance',
+    inventory: 'Inventory',
+    hr: 'HR',
+    operations: 'Operations',
+  },
+
+  routines: {
+    leadCapture: {
+      name: 'Lead Capture',
+      description: 'Track and qualify incoming leads from multiple channels',
+    },
+    salesPipeline: {
+      name: 'Sales Pipeline',
+      description: 'Manage deals through customizable sales stages',
+    },
+    quotationManagement: {
+      name: 'Quotation Management',
+      description: 'Create, send, and track quotes and proposals',
+    },
+    customerCrm: {
+      name: 'Customer CRM',
+      description: 'Centralized customer database with interaction history',
+    },
+    orderProcessing: {
+      name: 'Order Processing',
+      description: 'Handle orders from creation to fulfillment',
+    },
+    commissionTracking: {
+      name: 'Commission Tracking',
+      description: 'Calculate and track sales commissions automatically',
+    },
+    accountsReceivable: {
+      name: 'Accounts Receivable',
+      description: 'Track invoices, payments, and outstanding balances',
+    },
+    accountsPayable: {
+      name: 'Accounts Payable',
+      description: 'Manage bills, vendor payments, and due dates',
+    },
+    cashFlow: {
+      name: 'Cash Flow',
+      description: 'Monitor daily cash flow and bank reconciliation',
+    },
+    expenseTracking: {
+      name: 'Expense Tracking',
+      description: 'Record and categorize business expenses',
+    },
+    taxManagement: {
+      name: 'Tax Management',
+      description: 'Track tax obligations and prepare filing data',
+    },
+    budgetPlanning: {
+      name: 'Budget Planning',
+      description: 'Create and monitor departmental budgets',
+    },
+    stockControl: {
+      name: 'Stock Control',
+      description: 'Track inventory levels with alerts for low stock',
+    },
+    purchaseOrders: {
+      name: 'Purchase Orders',
+      description: 'Create and manage supplier purchase orders',
+    },
+    supplierManagement: {
+      name: 'Supplier Management',
+      description: 'Maintain supplier database with pricing and terms',
+    },
+    productCatalog: {
+      name: 'Product Catalog',
+      description: 'Organize products with categories, images, and pricing',
+    },
+    warehouseManagement: {
+      name: 'Warehouse Management',
+      description: 'Manage storage locations and bin assignments',
+    },
+    inventoryAudit: {
+      name: 'Inventory Audit',
+      description: 'Schedule and track physical inventory counts',
+    },
+    employeeRegistry: {
+      name: 'Employee Registry',
+      description: 'Maintain employee records and documentation',
+    },
+    timeAttendance: {
+      name: 'Time & Attendance',
+      description: 'Track work hours, shifts, and attendance',
+    },
+    payroll: {
+      name: 'Payroll',
+      description: 'Process salary calculations and payment records',
+    },
   },
 } as const
 

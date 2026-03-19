@@ -13,7 +13,6 @@ const agentInput = z.object({
   modelId: z.string().nullable().optional(),
   skillIds: z.array(z.string()).default([]),
   toolIds: z.array(z.string()).default([]),
-  internetAccess: z.boolean().default(false),
 });
 
 export const agentsRouter = router({
@@ -50,7 +49,6 @@ export const agentsRouter = router({
           modelId: input.modelId ?? null,
           skillIds: JSON.stringify(input.skillIds),
           toolIds: JSON.stringify(input.toolIds),
-          internetAccess: input.internetAccess,
           createdBy: ctx.session.user.id,
         })
         .returning();
@@ -74,8 +72,6 @@ export const agentsRouter = router({
       if (updates.modelId !== undefined) setValues.modelId = updates.modelId;
       if (updates.skillIds !== undefined) setValues.skillIds = JSON.stringify(updates.skillIds);
       if (updates.toolIds !== undefined) setValues.toolIds = JSON.stringify(updates.toolIds);
-      if (updates.internetAccess !== undefined) setValues.internetAccess = updates.internetAccess;
-
       const [updated] = await ctx.db
         .update(agents)
         .set(setValues)

@@ -105,7 +105,6 @@ export function SettingsPage() {
       modelId: (raw.modelId as string) ?? '',
       skillIds,
       toolIds,
-      internetAccess: (raw.internetAccess as boolean) ?? (a.name === 'Eric'),
       skillCount: skillIds.length,
       toolCount: toolIds.length,
     };
@@ -129,8 +128,9 @@ export function SettingsPage() {
 
   const skillOptions = serverSkills.map((s) => ({ value: s.id, label: s.name }));
 
-  // ─── Custom Tools ───────────────────────────────────────────
+  // ─── Tools ─────────────────────────────────────────────────
   const { data: serverTools = [] } = trpc.customTools.list.useQuery();
+  const { data: serverPieceTools = [] } = trpc.plugins.listPieceTools.useQuery();
   const createTool = trpc.customTools.create.useMutation({ onSuccess: () => utils.customTools.list.invalidate() });
   const updateTool = trpc.customTools.update.useMutation({ onSuccess: () => utils.customTools.list.invalidate() });
   const deleteTool = trpc.customTools.delete.useMutation({ onSuccess: () => utils.customTools.list.invalidate() });
@@ -173,26 +173,64 @@ export function SettingsPage() {
   const togglePlugin = trpc.plugins.setEnabled.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
   const syncPluginRegistry = trpc.plugins.syncRegistry.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
 
+  // Auto-sync piece catalog on first load if no plugins exist
+  const [didAutoSync, setDidAutoSync] = React.useState(false);
+  React.useEffect(() => {
+    if (!didAutoSync && serverPlugins.length === 0 && !syncPluginRegistry.isPending) {
+      setDidAutoSync(true);
+      syncPluginRegistry.mutate();
+    }
+  }, [serverPlugins.length, didAutoSync, syncPluginRegistry]);
+
   const PLUGIN_ICONS: Record<string, React.ReactNode> = {
     "cloud-sun": <CloudSun size={18} />,
     "coins": <Coins size={18} />,
     "bell": <Bell size={18} />,
   };
 
+  const getPluginIcon = (p: { icon?: string | null; name: string }) => {
+    if (p.icon && PLUGIN_ICONS[p.icon]) return PLUGIN_ICONS[p.icon];
+    return <Coins size={18} />;
+  };
+
+  const getLogoUrl = (p: { icon?: string | null }) => {
+    // If icon is a URL (starts with http), it's a piece logo
+    if (p.icon && p.icon.startsWith("http")) return p.icon;
+    return undefined;
+  };
+
+  // Auto-refetch while any plugin is installing
+  const hasInstallingPlugins = serverPlugins.some((p) => p.status === "installing");
+  React.useEffect(() => {
+    if (!hasInstallingPlugins) return;
+    const interval = setInterval(() => {
+      utils.plugins.list.invalidate();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [hasInstallingPlugins, utils.plugins.list]);
+
   const installedPlugins = serverPlugins
-    .filter((p) => p.status === "installed" || p.status === "disabled")
+    .filter((p) => p.status === "installed" || p.status === "disabled" || p.status === "installing" || p.status === "error")
     .map((p) => {
-      const manifest = JSON.parse(p.manifest);
+      let toolCount = 0;
+      if (p.manifest) {
+        try {
+          const manifest = JSON.parse(p.manifest);
+          toolCount = manifest.tools?.length ?? 0;
+        } catch { /* ignore */ }
+      }
       return {
         id: p.id,
         name: p.name,
         description: p.description ?? "",
-        icon: PLUGIN_ICONS[p.icon ?? ""] ?? <Coins size={18} />,
+        icon: getPluginIcon(p),
+        logoUrl: getLogoUrl(p),
         installed: true as const,
         enabled: p.status === "installed",
+        installing: p.status === "installing",
         version: p.version,
         category: p.category ?? undefined,
-        toolCount: manifest.tools?.length ?? 0,
+        toolCount,
       };
     });
 
@@ -202,7 +240,8 @@ export function SettingsPage() {
       id: p.id,
       name: p.name,
       description: p.description ?? "",
-      icon: PLUGIN_ICONS[p.icon ?? ""] ?? <Coins size={18} />,
+      icon: getPluginIcon(p),
+      logoUrl: getLogoUrl(p),
       installed: false as const,
       version: p.version,
       category: p.category ?? undefined,
@@ -261,7 +300,6 @@ export function SettingsPage() {
       modelId: data.modelId || undefined,
       skillIds: data.skillIds,
       toolIds: data.toolIds,
-      internetAccess: data.internetAccess,
     });
   };
 
@@ -274,7 +312,6 @@ export function SettingsPage() {
       modelId: data.modelId || undefined,
       skillIds: data.skillIds,
       toolIds: data.toolIds,
-      internetAccess: data.internetAccess,
     });
   };
 
@@ -412,6 +449,7 @@ export function SettingsPage() {
         onUpdateSkill={handleUpdateSkill}
         onDeleteSkill={(id) => deleteSkill.mutate({ id })}
         customTools={customTools}
+        pieceTools={serverPieceTools}
         integrationOptions={integrationOptions}
         onCreateTool={handleCreateTool}
         onUpdateTool={handleUpdateTool}

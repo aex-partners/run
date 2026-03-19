@@ -16,6 +16,7 @@ import {
   files,
   emails,
   emailAccounts,
+  plugins,
 } from "../db/schema/index.js";
 import {
   slugify,
@@ -49,6 +50,8 @@ export const READ_ONLY_TOOLS = new Set([
   "search_emails",
   "summarize_email",
   "draft_email_reply",
+  "list_plugins",
+  "list_plugin_tools",
 ]);
 
 export const WORKER_BLOCKED_TOOLS = new Set([
@@ -1334,7 +1337,7 @@ export function createTools(ctx: ToolContext) {
       },
     }),
 
-    // --- Web tools (gated by internetAccess) ---
+    // --- Web tools ---
 
     web_search: tool({
       description:
@@ -1386,6 +1389,23 @@ export function createTools(ctx: ToolContext) {
             return { error: "Only http and https URLs are supported" };
           }
 
+          // SSRF protection: block requests to private/internal networks
+          const hostname = parsed.hostname;
+          if (
+            hostname === "localhost" ||
+            hostname === "127.0.0.1" ||
+            hostname === "0.0.0.0" ||
+            hostname === "[::1]" ||
+            hostname.endsWith(".local") ||
+            hostname.endsWith(".internal") ||
+            /^10\./.test(hostname) ||
+            /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+            /^192\.168\./.test(hostname) ||
+            /^169\.254\./.test(hostname)
+          ) {
+            return { error: "Access to internal/private network addresses is not allowed" };
+          }
+
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 10_000);
 
@@ -1423,6 +1443,134 @@ export function createTools(ctx: ToolContext) {
           const msg = (err as Error).name === "AbortError" ? "Request timed out (10s)" : (err as Error).message;
           return { error: `Fetch failed: ${msg}` };
         }
+      },
+    }),
+
+    // ---- Plugin Management Tools ----
+
+    list_plugins: tool({
+      description:
+        "Search and list available plugins (integrations) that can be installed. " +
+        "Use this when the user asks about connecting to external services like Slack, Google Sheets, Stripe, etc. " +
+        "Returns plugin name, description, category, and install status.",
+      inputSchema: z.object({
+        query: z.string().optional().describe("Search query to filter plugins by name or description"),
+        category: z.string().optional().describe("Filter by category: ARTIFICIAL_INTELLIGENCE, COMMUNICATION, PRODUCTIVITY, DEVELOPER_TOOLS, SALES_AND_CRM, COMMERCE, PAYMENT_PROCESSING, MARKETING, CONTENT_AND_FILES, CUSTOMER_SUPPORT"),
+        status: z.enum(["available", "installed", "all"]).optional().describe("Filter by status. Default: all"),
+        limit: z.number().optional().describe("Max results to return. Default: 20"),
+      }),
+      execute: async ({ query, category, status, limit }) => {
+        let rows = await ctx.db.select().from(plugins);
+
+        if (status && status !== "all") {
+          rows = rows.filter((p) => p.status === status);
+        }
+        if (category) {
+          rows = rows.filter((p) => p.category === category);
+        }
+        if (query) {
+          const q = query.toLowerCase();
+          rows = rows.filter(
+            (p) =>
+              p.name.toLowerCase().includes(q) ||
+              (p.description ?? "").toLowerCase().includes(q),
+          );
+        }
+
+        const max = limit ?? 20;
+        const results = rows.slice(0, max).map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          category: p.category,
+          version: p.version,
+          status: p.status,
+          source: p.source,
+        }));
+
+        return {
+          total: rows.length,
+          showing: results.length,
+          plugins: results,
+        };
+      },
+    }),
+
+    install_plugin: tool({
+      description:
+        "Install a plugin by its ID. The plugin must be in 'available' status. " +
+        "Installation happens in the background (npm install). " +
+        "After calling this, the plugin's tools will become available for use once installation completes.",
+      inputSchema: z.object({
+        plugin_id: z.string().describe("The plugin ID to install (e.g. 'piece-slack', 'piece-openai')"),
+      }),
+      execute: async ({ plugin_id }) => {
+        const { installPlugin } = await import("../plugins/plugin-service.js");
+        try {
+          await installPlugin(ctx.db, plugin_id, ctx.userId);
+          return {
+            success: true,
+            message: `Plugin "${plugin_id}" installation started. It will be available shortly.`,
+          };
+        } catch (err) {
+          return {
+            success: false,
+            error: err instanceof Error ? err.message : "Installation failed",
+          };
+        }
+      },
+    }),
+
+    list_plugin_tools: tool({
+      description:
+        "List the tools (actions) available from an installed plugin. " +
+        "Use this to understand what capabilities a plugin provides. " +
+        "Can also list tools from all installed plugins at once.",
+      inputSchema: z.object({
+        plugin_id: z.string().optional().describe("Plugin ID to list tools for. If omitted, lists tools from all installed plugins."),
+      }),
+      execute: async ({ plugin_id }) => {
+        const { loadPiece } = await import("../plugins/piece-loader.js");
+
+        let installedPieces = await ctx.db.select().from(plugins);
+        installedPieces = installedPieces.filter((p) => p.status === "installed" && p.pieceName);
+
+        if (plugin_id) {
+          installedPieces = installedPieces.filter((p) => p.id === plugin_id);
+        }
+
+        const result: Array<{
+          pluginName: string;
+          toolName: string;
+          displayName: string;
+          description: string;
+        }> = [];
+
+        for (const plugin of installedPieces) {
+          if (!plugin.pieceName) continue;
+          try {
+            const piece = await loadPiece(plugin.pieceName);
+            if (!piece) continue;
+
+            const actions = piece.actions();
+            for (const [actionName, action] of Object.entries(actions)) {
+              const a = action as { displayName?: string; description?: string };
+              result.push({
+                pluginName: plugin.name,
+                toolName: actionName,
+                displayName: a.displayName ?? actionName,
+                description: a.description ?? "",
+              });
+            }
+          } catch {
+            // Piece not loadable
+          }
+        }
+
+        return {
+          total: result.length,
+          tools: result,
+        };
       },
     }),
   };

@@ -205,13 +205,7 @@ async function streamAIResponse(
   let started = false;
 
   const ctx: ToolContext = { db, userId, conversationId };
-  const fallbackTools = resolvedTools ?? (() => {
-    const tools = createTools(ctx) as Record<string, unknown>;
-    // Default (no agent): strip web tools for safety
-    delete tools.web_search;
-    delete tools.fetch_url;
-    return tools;
-  })();
+  const fallbackTools = resolvedTools ?? (createTools(ctx) as Record<string, unknown>);
   const allTools = fallbackTools;
 
   // Collect pending actions created by intercepted mutating tools
