@@ -3,7 +3,7 @@ import { Search } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { Input } from '../../atoms/Input/Input'
 import { RoutineCard } from '../../molecules/RoutineCard/RoutineCard'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 import { ROUTINE_CATEGORIES, type RoutineTemplate, type RoutineCategory } from '../../../data/routine-templates'
 
 export interface RoutineSelectorProps {
@@ -17,6 +17,7 @@ export function RoutineSelector({
   selectedIds,
   onToggle,
 }: RoutineSelectorProps) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<RoutineCategory | 'all'>('all')
 
@@ -40,7 +41,7 @@ export function RoutineSelector({
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <Input
-            placeholder={t.onboarding.routines.searchPlaceholder}
+            placeholder={t('onboarding.routines.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onClear={search ? () => setSearch('') : undefined}
@@ -56,7 +57,7 @@ export function RoutineSelector({
           }}
           aria-live="polite"
         >
-          {t.onboarding.routines.selected(selectedIds.length)}
+          {t('onboarding.routines.selected', { count: selectedIds.length })}
         </span>
       </div>
 
@@ -80,7 +81,7 @@ export function RoutineSelector({
             color: activeCategory === 'all' ? '#fff' : 'var(--text-muted)',
           }}
         >
-          {t.onboarding.routines.allCategories}
+          {t('onboarding.routines.allCategories')}
         </button>
         {ROUTINE_CATEGORIES.map((cat) => (
           <button

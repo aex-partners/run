@@ -3,7 +3,7 @@ import { ListTodo, X } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { TaskCard } from '../../molecules/TaskCard/TaskCard'
 import type { Task } from '../TaskList/TaskList'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export type TaskScope = 'all' | 'this-chat'
 
@@ -40,6 +40,7 @@ export function TaskBar({
   onViewLogs,
   onTaskClick,
 }: TaskBarProps) {
+  const { t } = useTranslation()
   const [internalScope, setInternalScope] = useState<TaskScope>('all')
   const scope = scopeProp ?? internalScope
 
@@ -87,7 +88,7 @@ export function TaskBar({
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ListTodo size={16} style={{ color: 'var(--text-muted)' }} />
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                {t.taskBar.title}
+                {t('taskBar.title')}
               </span>
             </div>
             <button
@@ -138,7 +139,7 @@ export function TaskBar({
                       transition: 'all 0.1s',
                     }}
                   >
-                    {s === 'all' ? t.taskBar.scopeAll : t.taskBar.scopeThisChat}
+                    {s === 'all' ? t('taskBar.scopeAll') : t('taskBar.scopeThisChat')}
                   </button>
                 )
               })}
@@ -162,7 +163,7 @@ export function TaskBar({
               <div>
                 <ListTodo size={32} style={{ color: 'var(--border)', marginBottom: 12 }} />
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                  {t.taskBar.empty}
+                  {t('taskBar.empty')}
                 </div>
               </div>
             </div>

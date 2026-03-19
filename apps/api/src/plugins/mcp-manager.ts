@@ -56,6 +56,7 @@ class McpManager {
 
     if (!plugin) return;
 
+    if (!plugin.manifest) return;
     const manifest: PluginManifest = JSON.parse(plugin.manifest);
     const config: Record<string, unknown> = JSON.parse(plugin.config);
 
@@ -170,6 +171,7 @@ class McpManager {
 
     if (!plugin) return;
 
+    if (!plugin.manifest) return;
     const manifest: PluginManifest = JSON.parse(plugin.manifest);
     const mcpTools = manifest.tools?.filter((t) => t.type === "mcp") ?? [];
 
@@ -236,7 +238,8 @@ class McpManager {
       .where(eq(plugins.status, "installed"));
 
     for (const plugin of installedPlugins) {
-      const manifest: PluginManifest = JSON.parse(plugin.manifest);
+      if (!plugin.manifest) return;
+    const manifest: PluginManifest = JSON.parse(plugin.manifest);
       if (manifest.mcpServers && manifest.mcpServers.length > 0) {
         await this.startPlugin(db, plugin.id, plugin.installedBy ?? "system");
       }

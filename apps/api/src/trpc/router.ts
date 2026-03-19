@@ -16,6 +16,7 @@ import { formsRouter } from "./routers/forms.js";
 import { pluginsRouter } from "./routers/plugins.js";
 import { filesRouter } from "./routers/files.js";
 import { emailsRouter } from "./routers/emails.js";
+import { credentialsRouter } from "./routers/credentials.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -35,6 +36,7 @@ export const appRouter = router({
   plugins: pluginsRouter,
   files: filesRouter,
   emails: emailsRouter,
+  credentials: credentialsRouter,
 });
 
 export type AppRouter = typeof appRouter;

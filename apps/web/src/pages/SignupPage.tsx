@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link, Navigate } from "react-router-dom";
-import { t } from "../locales/en";
+import { useTranslation } from "react-i18next";
 import { trpc } from "../lib/trpc";
 import { AexLogo } from "../components/atoms/AexLogo/AexLogo";
 
 export function SignupPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,13 +34,13 @@ export function SignupPage() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.user) {
-        setError(data?.message ?? t.auth.signUpFailed);
+        setError(data?.message ?? t('auth.signUpFailed'));
         return;
       }
 
       navigate("/");
     } catch {
-      setError(t.auth.networkError);
+      setError(t('auth.networkError'));
     } finally {
       setLoading(false);
     }
@@ -78,16 +79,16 @@ export function SignupPage() {
         </div>
 
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
-          {t.auth.signUp}
+          {t('auth.signUp')}
         </h1>
         <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 24 }}>
-          {t.auth.signUpDescription}
+          {t('auth.signUpDescription')}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", display: "block", marginBottom: 6 }}>
-              {t.auth.name}
+              {t('auth.name')}
             </label>
             <input
               type="text"
@@ -112,7 +113,7 @@ export function SignupPage() {
 
           <div>
             <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", display: "block", marginBottom: 6 }}>
-              {t.auth.email}
+              {t('auth.email')}
             </label>
             <input
               type="email"
@@ -136,7 +137,7 @@ export function SignupPage() {
 
           <div>
             <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", display: "block", marginBottom: 6 }}>
-              {t.auth.password}
+              {t('auth.password')}
             </label>
             <input
               type="password"
@@ -181,14 +182,14 @@ export function SignupPage() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? t.auth.creatingAccount : t.auth.signUp}
+            {loading ? t('auth.creatingAccount') : t('auth.signUp')}
           </button>
         </form>
 
         <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 20, textAlign: "center" }}>
-          {t.auth.hasAccount}{" "}
+          {t('auth.hasAccount')}{" "}
           <Link to="/login" style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>
-            {t.auth.signIn}
+            {t('auth.signIn')}
           </Link>
         </p>
       </div>

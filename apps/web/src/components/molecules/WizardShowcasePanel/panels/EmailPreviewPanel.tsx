@@ -1,44 +1,47 @@
+import { useMemo } from 'react'
 import { Mail, Shield, Send, Server, RefreshCw } from 'lucide-react'
-import { t } from '../../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface EmailPreviewPanelProps {
   provider: 'gmail' | 'outlook' | 'smtp' | null
 }
 
-const PROVIDER_CONFIG = {
-  gmail: {
-    color: '#EA4335',
-    title: 'Gmail',
-    description: t.setup.showcase.email.gmailDesc,
-    features: [
-      { icon: <Mail size={16} />, label: t.setup.showcase.email.oauthSync },
-      { icon: <Send size={16} />, label: t.setup.showcase.email.sendReceive },
-      { icon: <RefreshCw size={16} />, label: t.setup.showcase.email.autoRefresh },
-    ],
-  },
-  outlook: {
-    color: '#0078D4',
-    title: 'Outlook',
-    description: t.setup.showcase.email.outlookDesc,
-    features: [
-      { icon: <Mail size={16} />, label: t.setup.showcase.email.oauthSync },
-      { icon: <Send size={16} />, label: t.setup.showcase.email.sendReceive },
-      { icon: <RefreshCw size={16} />, label: t.setup.showcase.email.autoRefresh },
-    ],
-  },
-  smtp: {
-    color: 'var(--accent)',
-    title: 'SMTP',
-    description: t.setup.showcase.email.smtpDesc,
-    features: [
-      { icon: <Send size={16} />, label: t.setup.showcase.email.smtpSend },
-      { icon: <Shield size={16} />, label: t.setup.showcase.email.tlsEncryption },
-      { icon: <Server size={16} />, label: t.setup.showcase.email.anyProvider },
-    ],
-  },
-}
-
 export function EmailPreviewPanel({ provider }: EmailPreviewPanelProps) {
+  const { t } = useTranslation()
+
+  const PROVIDER_CONFIG = useMemo(() => ({
+    gmail: {
+      color: '#EA4335',
+      title: 'Gmail',
+      description: t('setup.showcase.email.gmailDesc'),
+      features: [
+        { icon: <Mail size={16} />, label: t('setup.showcase.email.oauthSync') },
+        { icon: <Send size={16} />, label: t('setup.showcase.email.sendReceive') },
+        { icon: <RefreshCw size={16} />, label: t('setup.showcase.email.autoRefresh') },
+      ],
+    },
+    outlook: {
+      color: '#0078D4',
+      title: 'Outlook',
+      description: t('setup.showcase.email.outlookDesc'),
+      features: [
+        { icon: <Mail size={16} />, label: t('setup.showcase.email.oauthSync') },
+        { icon: <Send size={16} />, label: t('setup.showcase.email.sendReceive') },
+        { icon: <RefreshCw size={16} />, label: t('setup.showcase.email.autoRefresh') },
+      ],
+    },
+    smtp: {
+      color: 'var(--accent)',
+      title: 'SMTP',
+      description: t('setup.showcase.email.smtpDesc'),
+      features: [
+        { icon: <Send size={16} />, label: t('setup.showcase.email.smtpSend') },
+        { icon: <Shield size={16} />, label: t('setup.showcase.email.tlsEncryption') },
+        { icon: <Server size={16} />, label: t('setup.showcase.email.anyProvider') },
+      ],
+    },
+  }), [t])
+
   const config = provider ? PROVIDER_CONFIG[provider] : null
 
   return (
@@ -61,8 +64,8 @@ export function EmailPreviewPanel({ provider }: EmailPreviewPanelProps) {
 
         {!config ? (
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{t.setup.showcase.email.title}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{t.setup.showcase.email.description}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{t('setup.showcase.email.title')}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{t('setup.showcase.email.description')}</div>
           </div>
         ) : (
           <>

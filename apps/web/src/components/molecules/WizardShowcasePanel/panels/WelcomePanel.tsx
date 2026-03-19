@@ -4,7 +4,7 @@ import {
   MessageSquare, Database, Zap, BarChart3, Users, ShieldCheck,
   Bell, CheckCircle2, TrendingUp, Package, FileText, Bot,
 } from 'lucide-react'
-import { t } from '../../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 interface NotificationItem {
   id: number
@@ -31,6 +31,7 @@ const NOTIFICATIONS: Omit<NotificationItem, 'id'>[] = [
 ]
 
 export function WelcomePanel() {
+  const { t } = useTranslation()
   const MAX_ITEMS = 5
   const [items, setItems] = useState<NotificationItem[]>(() =>
     NOTIFICATIONS.slice(0, 2).map((n, i) => ({ ...n, id: i }))
@@ -77,7 +78,7 @@ export function WelcomePanel() {
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 400, margin: '0 auto', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ marginBottom: 40, textAlign: 'center' }}>
           <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#fff', lineHeight: 1.25 }}>
-            {t.setup.showcase.welcome.tagline.split(',').map((part, i) => (
+            {t('setup.showcase.welcome.tagline').split(',').map((part, i) => (
               <React.Fragment key={i}>
                 {i > 0 && <><br /></>}
                 {part}{i === 0 ? ',' : ''}
@@ -85,7 +86,7 @@ export function WelcomePanel() {
             ))}
           </h2>
           <p style={{ margin: '14px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>
-            {t.setup.showcase.welcome.subtitle}
+            {t('setup.showcase.welcome.subtitle')}
           </p>
         </div>
 
@@ -99,7 +100,7 @@ export function WelcomePanel() {
           }}
         >
           <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.45)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-            {t.setup.showcase.welcome.liveActivity}
+            {t('setup.showcase.welcome.liveActivity')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden' }}>
             {items.map((item, index) => (

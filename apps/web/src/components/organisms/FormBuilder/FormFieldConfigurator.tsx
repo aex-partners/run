@@ -1,5 +1,5 @@
 import type { FormFieldItem } from './SortableFieldItem'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 interface FormFieldConfiguratorProps {
   field: FormFieldItem
@@ -20,6 +20,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 export function FormFieldConfigurator({ field, onChange }: FormFieldConfiguratorProps) {
+  const { t } = useTranslation()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 10 }}>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
@@ -29,12 +30,12 @@ export function FormFieldConfigurator({ field, onChange }: FormFieldConfigurator
           onChange={(e) => onChange({ ...field, required: e.target.checked })}
           style={{ accentColor: 'var(--accent)' }}
         />
-        <span style={{ color: 'var(--text)' }}>{t.database.forms.builder.required}</span>
+        <span style={{ color: 'var(--text)' }}>{t('database.forms.builder.required')}</span>
       </label>
 
       <div>
         <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-          {t.database.forms.builder.placeholder}
+          {t('database.forms.builder.placeholder')}
         </label>
         <input
           type="text"
@@ -47,7 +48,7 @@ export function FormFieldConfigurator({ field, onChange }: FormFieldConfigurator
 
       <div>
         <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-          {t.database.forms.builder.helpText}
+          {t('database.forms.builder.helpText')}
         </label>
         <input
           type="text"

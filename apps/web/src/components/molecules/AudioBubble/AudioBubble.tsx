@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { FileText, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react'
 import * as Collapsible from '@radix-ui/react-collapsible'
 import { AudioPlayer } from '../../atoms/AudioPlayer/AudioPlayer'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface AudioBubbleProps {
   url: string
@@ -23,6 +23,7 @@ export function AudioBubble({
   isOwner,
   onTranscriptionEdit,
 }: AudioBubbleProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(transcription ?? '')
@@ -60,9 +61,9 @@ export function AudioBubble({
                 }}
               >
                 <FileText size={13} />
-                <span>{t.audio.transcription}</span>
+                <span>{t('audio.transcription')}</span>
                 {transcriptionEdited && (
-                  <span style={{ fontStyle: 'italic', fontSize: 11 }}>{t.audio.edited}</span>
+                  <span style={{ fontStyle: 'italic', fontSize: 11 }}>{t('audio.edited')}</span>
                 )}
                 {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
@@ -71,7 +72,7 @@ export function AudioBubble({
             {isOwner && !editing && open && (
               <button
                 onClick={() => { setEditText(transcription); setEditing(true) }}
-                aria-label={t.audio.editTranscription}
+                aria-label={t('audio.editTranscription')}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -112,7 +113,7 @@ export function AudioBubble({
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
                     <button
                       onClick={handleSave}
-                      aria-label={t.audio.saveEdit}
+                      aria-label={t('audio.saveEdit')}
                       style={{
                         width: 28,
                         height: 28,
@@ -130,7 +131,7 @@ export function AudioBubble({
                     </button>
                     <button
                       onClick={handleCancel}
-                      aria-label={t.audio.cancelEdit}
+                      aria-label={t('audio.cancelEdit')}
                       style={{
                         width: 28,
                         height: 28,

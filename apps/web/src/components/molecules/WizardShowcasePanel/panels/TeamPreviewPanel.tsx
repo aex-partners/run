@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '../../../atoms/Avatar/Avatar'
-import { t } from '../../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface TeamPreviewPanelProps {
   adminName?: string
@@ -10,6 +10,7 @@ export interface TeamPreviewPanelProps {
 }
 
 export function TeamPreviewPanel({ adminName, adminEmail, invites = [] }: TeamPreviewPanelProps) {
+  const { t } = useTranslation()
   const validInvites = invites.filter((e) => e.trim().length > 0)
   const maxSlots = 5
   const emptySlots = Math.max(0, maxSlots - validInvites.length)
@@ -40,14 +41,14 @@ export function TeamPreviewPanel({ adminName, adminEmail, invites = [] }: TeamPr
             </div>
           </div>
           <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', background: 'var(--accent-light)', padding: '2px 8px', borderRadius: 10, border: '1px solid var(--accent-border)' }}>
-            {t.setup.showcase.team.admin}
+            {t('setup.showcase.team.admin')}
           </span>
         </div>
 
         {/* Invited members */}
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 10 }}>
-            {t.setup.showcase.team.invitedMembers}
+            {t('setup.showcase.team.invitedMembers')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <AnimatePresence mode="popLayout">
@@ -72,7 +73,7 @@ export function TeamPreviewPanel({ adminName, adminEmail, invites = [] }: TeamPr
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1.5px dashed var(--border)' }}
               >
                 <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface-2)' }} />
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.setup.showcase.team.emptySlot}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('setup.showcase.team.emptySlot')}</span>
               </div>
             ))}
           </div>

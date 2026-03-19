@@ -6,38 +6,61 @@ export interface PluginCardProps {
   name: string
   description: string
   icon: React.ReactNode
+  logoUrl?: string
   installed: boolean
   rating?: number
   category?: string
   version?: string
   enabled?: boolean
+  installing?: boolean
   toolCount?: number
   onInstall?: () => void
   onConfigure?: () => void
   onUninstall?: () => void
   onToggle?: (enabled: boolean) => void
-  installing?: boolean
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  ARTIFICIAL_INTELLIGENCE: 'AI',
+  COMMUNICATION: 'Communication',
+  COMMERCE: 'Commerce',
+  PRODUCTIVITY: 'Productivity',
+  DEVELOPER_TOOLS: 'Dev Tools',
+  SALES_AND_CRM: 'Sales & CRM',
+  PAYMENT_PROCESSING: 'Payments',
+  MARKETING: 'Marketing',
+  CONTENT_AND_FILES: 'Content',
+  CUSTOMER_SUPPORT: 'Support',
+  FORMS_AND_SURVEYS: 'Forms',
+  BUSINESS_INTELLIGENCE: 'Analytics',
+  ACCOUNTING: 'Accounting',
+  HUMAN_RESOURCES: 'HR',
+  CORE: 'Core',
+  FLOW_CONTROL: 'Flow Control',
+  UNIVERSAL_AI: 'Universal AI',
 }
 
 export function PluginCard({
   name,
   description,
   icon,
+  logoUrl,
   installed,
   rating,
   category,
   version,
   enabled = true,
+  installing = false,
   toolCount,
   onInstall,
   onConfigure,
   onUninstall,
   onToggle,
-  installing = false,
 }: PluginCardProps) {
   return (
     <div
       style={{
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         gap: 14,
@@ -45,24 +68,71 @@ export function PluginCard({
         background: 'var(--surface)',
         borderRadius: 10,
         border: '1px solid var(--border)',
+        overflow: 'hidden',
       }}
     >
-      <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 10,
-          background: 'var(--surface-2)',
-          border: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          color: 'var(--accent)',
-        }}
-      >
-        {icon}
-      </div>
+      {/* Installing progress bar */}
+      {installing && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 3,
+            background: 'var(--border)',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: '40%',
+              background: 'var(--accent)',
+              borderRadius: 3,
+              animation: 'pluginInstallProgress 1.5s ease-in-out infinite',
+            }}
+          />
+          <style>{`
+            @keyframes pluginInstallProgress {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(350%); }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt={name}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            objectFit: 'contain',
+            flexShrink: 0,
+          }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+        />
+      ) : (
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: 'var(--accent)',
+          }}
+        >
+          {icon}
+        </div>
+      )}
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
@@ -74,7 +144,12 @@ export function PluginCard({
           )}
           {category && (
             <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 10, border: '1px solid var(--border)' }}>
-              {category}
+              {CATEGORY_LABELS[category] ?? category}
+            </span>
+          )}
+          {installing && (
+            <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>
+              Installing...
             </span>
           )}
         </div>
@@ -96,7 +171,7 @@ export function PluginCard({
             </span>
           </div>
         )}
-        {installed ? (
+        {installing ? null : installed ? (
           <>
             {onToggle && (
               <label style={{ position: 'relative', display: 'inline-block', width: 32, height: 18, flexShrink: 0 }}>
@@ -138,7 +213,6 @@ export function PluginCard({
             size="sm"
             leftIcon={<Download size={11} />}
             onClick={onInstall}
-            loading={installing}
             aria-label={`Install ${name}`}
           >
             Install

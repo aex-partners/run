@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link, Navigate } from "react-router-dom";
-import { t } from "../locales/en";
+import { useTranslation } from "react-i18next";
 import { trpc } from "../lib/trpc";
 import { AexLogo } from "../components/atoms/AexLogo/AexLogo";
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,13 +32,13 @@ export function LoginPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        setError(data?.message ?? t.auth.invalidCredentials);
+        setError(data?.message ?? t('auth.invalidCredentials'));
         return;
       }
 
       navigate("/");
     } catch {
-      setError(t.auth.networkError);
+      setError(t('auth.networkError'));
     } finally {
       setLoading(false);
     }
@@ -76,16 +77,16 @@ export function LoginPage() {
         </div>
 
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>
-          {t.auth.signIn}
+          {t('auth.signIn')}
         </h1>
         <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 24 }}>
-          {t.auth.signInDescription}
+          {t('auth.signInDescription')}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", display: "block", marginBottom: 6 }}>
-              {t.auth.email}
+              {t('auth.email')}
             </label>
             <input
               type="email"
@@ -110,7 +111,7 @@ export function LoginPage() {
 
           <div>
             <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", display: "block", marginBottom: 6 }}>
-              {t.auth.password}
+              {t('auth.password')}
             </label>
             <input
               type="password"
@@ -154,14 +155,14 @@ export function LoginPage() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? t.auth.signingIn : t.auth.signIn}
+            {loading ? t('auth.signingIn') : t('auth.signIn')}
           </button>
         </form>
 
         <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 20, textAlign: "center" }}>
-          {t.auth.noAccount}{" "}
+          {t('auth.noAccount')}{" "}
           <Link to="/signup" style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>
-            {t.auth.signUp}
+            {t('auth.signUp')}
           </Link>
         </p>
       </div>

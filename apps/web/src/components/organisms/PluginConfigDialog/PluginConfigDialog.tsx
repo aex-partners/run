@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 interface ConfigField {
   key: string
@@ -55,6 +55,7 @@ export function PluginConfigDialog({
   onSave,
   loading = false,
 }: PluginConfigDialogProps) {
+  const { t } = useTranslation()
   const fields = parseFields(configSchema)
   const [values, setValues] = useState<Record<string, unknown>>({})
 
@@ -88,7 +89,7 @@ export function PluginConfigDialog({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <Dialog.Title style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
-              {t.configure} {pluginName}
+              {t('configure')} {pluginName}
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
@@ -102,7 +103,7 @@ export function PluginConfigDialog({
 
           {fields.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>
-              {t.plugins.noConfig}
+              {t('plugins.noConfig')}
             </p>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -173,8 +174,8 @@ export function PluginConfigDialog({
               ))}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                <Button variant="secondary" size="sm" onClick={onClose} type="button">{t.cancel}</Button>
-                <Button variant="primary" size="sm" type="submit" loading={loading}>{t.save}</Button>
+                <Button variant="secondary" size="sm" onClick={onClose} type="button">{t('cancel')}</Button>
+                <Button variant="primary" size="sm" type="submit" loading={loading}>{t('save')}</Button>
               </div>
             </form>
           )}

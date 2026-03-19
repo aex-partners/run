@@ -1,6 +1,6 @@
 import React from 'react'
 import { X, ArrowRight } from 'lucide-react'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface ForwardSelectionBarProps {
   selectedCount: number
@@ -9,6 +9,7 @@ export interface ForwardSelectionBarProps {
 }
 
 export function ForwardSelectionBar({ selectedCount, onCancel, onForward }: ForwardSelectionBarProps) {
+  const { t } = useTranslation()
   return (
     <div
       style={{
@@ -34,13 +35,13 @@ export function ForwardSelectionBar({ selectedCount, onCancel, onForward }: Forw
           alignItems: 'center',
           justifyContent: 'center',
         }}
-        aria-label={t.cancel}
+        aria-label={t('cancel')}
       >
         <X size={18} />
       </button>
 
       <span style={{ flex: 1, fontSize: 13, color: 'var(--text-muted)' }}>
-        {t.chat.contextMenu.forward.selected(selectedCount)}
+        {t('chat.contextMenu.forward.selected', { count: selectedCount })}
       </span>
 
       <button
@@ -68,7 +69,7 @@ export function ForwardSelectionBar({ selectedCount, onCancel, onForward }: Forw
           if (selectedCount > 0) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'
         }}
       >
-        {t.chat.contextMenu.forward.action}
+        {t('chat.contextMenu.forward.action')}
         <ArrowRight size={14} />
       </button>
     </div>

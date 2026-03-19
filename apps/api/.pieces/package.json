@@ -1,0 +1,9 @@
+{
+  "name": "aex-pieces",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@activepieces/piece-gmail": "^0.11.5",
+    "@activepieces/piece-vtex": "^0.2.4"
+  }
+}

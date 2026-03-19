@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Play, Pause } from 'lucide-react'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface AudioPlayerProps {
   url: string
@@ -10,6 +10,7 @@ export interface AudioPlayerProps {
 }
 
 export function AudioPlayer({ url, duration, waveform, onPlayStateChange }: AudioPlayerProps) {
+  const { t } = useTranslation()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -89,7 +90,7 @@ export function AudioPlayer({ url, duration, waveform, onPlayStateChange }: Audi
       {/* Play/Pause button */}
       <button
         onClick={togglePlay}
-        aria-label={playing ? t.audio.pause : t.audio.play}
+        aria-label={playing ? t('audio.pause') : t('audio.play')}
         style={{
           width: 36,
           height: 36,

@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@activepieces/pieces-framework": "*",
     "@aex/shared": "*",
     "@ai-sdk/openai": "^3.0.41",
     "@fastify/cookie": "^11.0.2",

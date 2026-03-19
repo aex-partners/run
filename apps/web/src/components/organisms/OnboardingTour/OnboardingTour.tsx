@@ -1,46 +1,47 @@
 import { useState, useCallback } from 'react'
 import Joyride, { type CallBackProps, type Step, STATUS, ACTIONS, EVENTS } from 'react-joyride'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 const TOUR_STORAGE_KEY = 'aex-tour-completed'
 
-function buildSteps(isAdmin: boolean): Step[] {
+function buildSteps(isAdmin: boolean, t: TFunction): Step[] {
   const steps: Step[] = [
     {
       target: '[data-tour="nav-chat"]',
-      title: t.tour.chat.title,
-      content: t.tour.chat.content,
+      title: t('tour.chat.title'),
+      content: t('tour.chat.content'),
       disableBeacon: true,
       placement: 'right',
     },
     {
       target: '[data-tour="conversation-list"]',
-      title: t.tour.conversationList.title,
-      content: t.tour.conversationList.content,
+      title: t('tour.conversationList.title'),
+      content: t('tour.conversationList.content'),
       placement: 'right',
     },
     {
       target: '[data-tour="new-conversation"]',
-      title: t.tour.newConversation.title,
-      content: t.tour.newConversation.content,
+      title: t('tour.newConversation.title'),
+      content: t('tour.newConversation.content'),
       placement: 'bottom',
     },
     {
       target: '[data-tour="nav-database"]',
-      title: t.tour.database.title,
-      content: t.tour.database.content,
+      title: t('tour.database.title'),
+      content: t('tour.database.content'),
       placement: 'right',
     },
     {
       target: '[data-tour="nav-tasks"]',
-      title: t.tour.tasks.title,
-      content: t.tour.tasks.content,
+      title: t('tour.tasks.title'),
+      content: t('tour.tasks.content'),
       placement: 'right',
     },
     {
       target: '[data-tour="nav-workflows"]',
-      title: t.tour.workflows.title,
-      content: t.tour.workflows.content,
+      title: t('tour.workflows.title'),
+      content: t('tour.workflows.content'),
       placement: 'right',
     },
   ]
@@ -48,8 +49,8 @@ function buildSteps(isAdmin: boolean): Step[] {
   if (isAdmin) {
     steps.push({
       target: '[data-tour="nav-settings"]',
-      title: t.tour.settings.title,
-      content: t.tour.settings.content,
+      title: t('tour.settings.title'),
+      content: t('tour.settings.content'),
       placement: 'right',
     })
   }
@@ -65,11 +66,12 @@ export interface OnboardingTourProps {
 }
 
 export function OnboardingTour({ isAdmin = false, onComplete }: OnboardingTourProps) {
+  const { t } = useTranslation()
   const [run, setRun] = useState(() => {
     return !localStorage.getItem(TOUR_STORAGE_KEY)
   })
 
-  const steps = buildSteps(isAdmin)
+  const steps = buildSteps(isAdmin, t)
 
   const handleCallback = useCallback(
     (data: CallBackProps) => {
@@ -100,10 +102,10 @@ export function OnboardingTour({ isAdmin = false, onComplete }: OnboardingTourPr
       spotlightClicks={false}
       callback={handleCallback}
       locale={{
-        next: t.tour.next,
-        back: t.tour.back,
-        skip: t.tour.skip,
-        last: t.tour.finish,
+        next: t('tour.next'),
+        back: t('tour.back'),
+        skip: t('tour.skip'),
+        last: t('tour.finish'),
       }}
       styles={{
         options: {

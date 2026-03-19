@@ -5,7 +5,7 @@ import { TasksScreen, type FilterItem } from "../components/screens/TasksScreen/
 import { StatsCard } from "../components/molecules/StatsCard/StatsCard";
 import type { Task } from "../components/organisms/TaskList/TaskList";
 import { TaskDetailPanel } from "./TaskDetailPanel";
-import { t } from "../locales/en";
+import { useTranslation } from "react-i18next";
 
 function formatRelativeTime(date: string | Date): string {
   const d = new Date(date);
@@ -32,6 +32,7 @@ function formatDuration(startedAt: string | null, completedAt: string | null): s
 }
 
 export function TasksPage() {
+  const { t } = useTranslation();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState("all");
 
@@ -58,11 +59,11 @@ export function TasksPage() {
   const total = stats.running + stats.pending + stats.failed + stats.completedToday;
 
   const filters: FilterItem[] = [
-    { id: "all", label: t.tasks.allTasks, count: total },
-    { id: "running", label: t.status.running, count: stats.running },
-    { id: "pending", label: t.status.pending, count: stats.pending },
-    { id: "completed", label: t.tasks.completedToday, count: stats.completedToday },
-    { id: "failed", label: t.status.failed, count: stats.failed },
+    { id: "all", label: t('tasks.allTasks'), count: total },
+    { id: "running", label: t('status.running'), count: stats.running },
+    { id: "pending", label: t('status.pending'), count: stats.pending },
+    { id: "completed", label: t('tasks.completedToday'), count: stats.completedToday },
+    { id: "failed", label: t('status.failed'), count: stats.failed },
   ];
 
   const agentsQuery = trpc.agents.list.useQuery();
@@ -108,22 +109,22 @@ export function TasksPage() {
         }}
       >
         <StatsCard
-          label={t.status.running}
+          label={t('status.running')}
           value={stats.running}
           icon={<Activity size={16} />}
         />
         <StatsCard
-          label={t.tasks.completedToday}
+          label={t('tasks.completedToday')}
           value={stats.completedToday}
           icon={<CheckCircle2 size={16} />}
         />
         <StatsCard
-          label={t.status.failed}
+          label={t('status.failed')}
           value={stats.failed}
           icon={<XCircle size={16} />}
         />
         <StatsCard
-          label={t.status.pending}
+          label={t('status.pending')}
           value={stats.pending}
           icon={<Clock size={16} />}
         />

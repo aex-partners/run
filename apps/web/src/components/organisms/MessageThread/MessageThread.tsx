@@ -22,7 +22,7 @@ import { DeleteConfirmModal } from '../DeleteConfirmModal/DeleteConfirmModal'
 import { PromptInput, type PromptInputAttachment } from '../PromptInput/PromptInput'
 import type { ToolState } from '../../molecules/Tool/Tool'
 import type { Conversation } from '../ConversationList/ConversationList'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface MessageReaction {
   emoji: string
@@ -260,6 +260,7 @@ export function MessageThread({
   onTranscriptionEdit,
   conversations,
 }: MessageThreadProps) {
+  const { t } = useTranslation()
   const [localMessages, setLocalMessages] = useState<ThreadMessage[]>(initialMessages)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [replyingTo, setReplyingTo] = useState<{ id: string; author: string; content: string } | null>(null)
@@ -438,19 +439,19 @@ export function MessageThread({
     const isUserMessage = msg?.role === 'user'
 
     const items: Array<{ label: string; icon: React.ReactNode; action: () => void; danger: boolean }> = [
-      { label: t.chat.contextMenu.reply, icon: <CornerUpLeft size={13} />, action: () => handleReply(messageId), danger: false },
-      { label: t.chat.contextMenu.copy, icon: <Copy size={13} />, action: () => handleCopy(messageId), danger: false },
-      { label: t.chat.contextMenu.react, icon: <SmilePlus size={13} />, action: () => { setReactionBarMsgId(messageId); setMsgMenu(null) }, danger: false },
-      { label: t.chat.contextMenu.forward.label, icon: <Forward size={13} />, action: () => handleForwardMenuClick(messageId), danger: false },
-      { label: isPinned ? t.chat.contextMenu.unpin : t.chat.contextMenu.pin, icon: <Pin size={13} />, action: () => handlePin(messageId), danger: false },
-      { label: isStarred ? t.chat.contextMenu.unstar : t.chat.contextMenu.star, icon: <Star size={13} />, action: () => handleStar(messageId), danger: false },
+      { label: t('chat.contextMenu.reply'), icon: <CornerUpLeft size={13} />, action: () => handleReply(messageId), danger: false },
+      { label: t('chat.contextMenu.copy'), icon: <Copy size={13} />, action: () => handleCopy(messageId), danger: false },
+      { label: t('chat.contextMenu.react'), icon: <SmilePlus size={13} />, action: () => { setReactionBarMsgId(messageId); setMsgMenu(null) }, danger: false },
+      { label: t('chat.contextMenu.forward.label'), icon: <Forward size={13} />, action: () => handleForwardMenuClick(messageId), danger: false },
+      { label: isPinned ? t('chat.contextMenu.unpin') : t('chat.contextMenu.pin'), icon: <Pin size={13} />, action: () => handlePin(messageId), danger: false },
+      { label: isStarred ? t('chat.contextMenu.unstar') : t('chat.contextMenu.star'), icon: <Star size={13} />, action: () => handleStar(messageId), danger: false },
     ]
 
     // Delete only available for user's own messages
     if (isUserMessage) {
       items.push(
         { label: 'separator', icon: null, action: () => {}, danger: false },
-        { label: t.chat.contextMenu.delete.label, icon: <Trash2 size={13} />, action: () => handleDeleteMenuClick(messageId), danger: true },
+        { label: t('chat.contextMenu.delete.label'), icon: <Trash2 size={13} />, action: () => handleDeleteMenuClick(messageId), danger: true },
       )
     }
 
@@ -587,7 +588,7 @@ export function MessageThread({
           >
             <Ban size={13} color="var(--text-muted)" />
             <span style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--text-muted)' }}>
-              {t.chat.contextMenu.delete.deletedMessage}
+              {t('chat.contextMenu.delete.deletedMessage')}
             </span>
             {msg.timestamp && (
               <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 6, whiteSpace: 'nowrap' }}>

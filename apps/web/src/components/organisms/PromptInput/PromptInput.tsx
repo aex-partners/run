@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Mic, Square, Paperclip, X, Loader2 } from 'lucide-react'
 import { Attachment } from '../../molecules/Attachment/Attachment'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface PromptInputAttachment {
   id: string
@@ -54,6 +54,7 @@ export function PromptInput({
   onMicClick,
   disabled = false,
 }: PromptInputProps) {
+  const { t } = useTranslation()
   const isControlled = controlledValue !== undefined
   const [internalValue, setInternalValue] = useState('')
   const inputValue = isControlled ? controlledValue : internalValue
@@ -161,7 +162,7 @@ export function PromptInput({
             pointerEvents: 'none',
           }}
         >
-          {t.promptInput.dragDrop}
+          {t('promptInput.dragDrop')}
         </div>
       )}
 
@@ -205,7 +206,7 @@ export function PromptInput({
             </div>
             <button
               onClick={onCancelReply}
-              aria-label={t.promptInput.cancelReply}
+              aria-label={t('promptInput.cancelReply')}
               style={{
                 background: 'none',
                 border: 'none',
@@ -255,7 +256,7 @@ export function PromptInput({
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder={placeholder}
-            aria-label={t.promptInput.messageInput}
+            aria-label={t('promptInput.messageInput')}
             rows={1}
             disabled={disabled}
             style={{
@@ -298,7 +299,7 @@ export function PromptInput({
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button
               type="button"
-              aria-label={t.promptInput.attachFile}
+              aria-label={t('promptInput.attachFile')}
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled}
               style={{
@@ -321,7 +322,7 @@ export function PromptInput({
               <button
                 onClick={handleSend}
                 disabled={disabled}
-                aria-label={t.promptInput.sendMessage}
+                aria-label={t('promptInput.sendMessage')}
                 style={{
                   width: 32,
                   height: 32,
@@ -344,10 +345,10 @@ export function PromptInput({
                 type="button"
                 aria-label={
                   micState === 'recording'
-                    ? t.promptInput.stopRecording
+                    ? t('promptInput.stopRecording')
                     : micState === 'processing'
-                      ? t.promptInput.processingAudio
-                      : t.promptInput.voiceMessage
+                      ? t('promptInput.processingAudio')
+                      : t('promptInput.voiceMessage')
                 }
                 onClick={onMicClick}
                 disabled={disabled || micState === 'processing'}

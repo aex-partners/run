@@ -18,7 +18,7 @@ import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { SortableFieldItem, type FormFieldItem, type EntityFieldInfo } from './SortableFieldItem'
 import { FormPreview } from './FormPreview'
 import { FormSharePanel } from './FormSharePanel'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface FormSettings {
   submitButtonText: string
@@ -65,6 +65,7 @@ export function FormBuilder({
   onSettingsChange,
   onTogglePublic,
 }: FormBuilderProps) {
+  const { t } = useTranslation()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -115,7 +116,7 @@ export function FormBuilder({
             flexShrink: 0,
           }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-              {t.database.forms.builder.fields}
+              {t('database.forms.builder.fields')}
             </span>
             <button
               onClick={() => setShowSettings(!showSettings)}
@@ -139,7 +140,7 @@ export function FormBuilder({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-                    {t.database.forms.builder.formTitle}
+                    {t('database.forms.builder.formTitle')}
                   </label>
                   <input
                     type="text"
@@ -151,7 +152,7 @@ export function FormBuilder({
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-                    {t.database.forms.builder.formDescription}
+                    {t('database.forms.builder.formDescription')}
                   </label>
                   <input
                     type="text"
@@ -163,7 +164,7 @@ export function FormBuilder({
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-                    {t.database.forms.builder.submitButton}
+                    {t('database.forms.builder.submitButton')}
                   </label>
                   <input
                     type="text"
@@ -174,7 +175,7 @@ export function FormBuilder({
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-                    {t.database.forms.builder.successMessage}
+                    {t('database.forms.builder.successMessage')}
                   </label>
                   <input
                     type="text"
@@ -231,7 +232,7 @@ export function FormBuilder({
             flexShrink: 0,
           }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-              {t.database.forms.builder.preview}
+              {t('database.forms.builder.preview')}
             </span>
           </div>
           <FormPreview

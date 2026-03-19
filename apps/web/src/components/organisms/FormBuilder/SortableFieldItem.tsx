@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react'
 import { FormFieldConfigurator } from './FormFieldConfigurator'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface FormFieldItem {
   id: string
@@ -29,6 +29,7 @@ interface SortableFieldItemProps {
 }
 
 export function SortableFieldItem({ field, entityField, onChange }: SortableFieldItemProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const {
     attributes,
@@ -106,7 +107,7 @@ export function SortableFieldItem({ field, entityField, onChange }: SortableFiel
             color: field.visible ? 'var(--text-muted)' : 'var(--text-muted)',
             opacity: field.visible ? 1 : 0.4,
           }}
-          title={t.database.forms.builder.visible}
+          title={t('database.forms.builder.visible')}
         >
           {field.visible ? <Eye size={14} /> : <EyeOff size={14} />}
         </button>

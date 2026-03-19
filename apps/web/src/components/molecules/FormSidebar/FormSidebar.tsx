@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react'
 import { Plus, Search, Trash2, Pencil, Link, FileText } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface FormItem {
   id: string
@@ -45,6 +45,7 @@ export function FormSidebar({
   onDeleteForm,
   onCopyLink,
 }: FormSidebarProps) {
+  const { t } = useTranslation()
   const [searchText, setSearchText] = React.useState('')
   const [hoveredId, setHoveredId] = React.useState<string | undefined>(undefined)
   const [editingId, setEditingId] = React.useState<string | undefined>(undefined)
@@ -110,7 +111,7 @@ export function FormSidebar({
           flexShrink: 0,
         }}
       >
-        <span style={{ fontWeight: 600, fontSize: 14 }}>{t.database.forms.title}</span>
+        <span style={{ fontWeight: 600, fontSize: 14 }}>{t('database.forms.title')}</span>
         <button
           onClick={onNewForm}
           style={{
@@ -141,8 +142,8 @@ export function FormSidebar({
         >
           <Search size={13} color="var(--text-muted)" />
           <input
-            placeholder={t.database.forms.searchPlaceholder}
-            aria-label={t.database.forms.searchPlaceholder}
+            placeholder={t('database.forms.searchPlaceholder')}
+            aria-label={t('database.forms.searchPlaceholder')}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             style={{
@@ -273,7 +274,7 @@ export function FormSidebar({
             <div style={{ padding: '24px 16px', textAlign: 'center' }}>
               <FileText size={28} style={{ color: 'var(--text-muted)', marginBottom: 8 }} />
               <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                {t.database.forms.noForms}
+                {t('database.forms.noForms')}
               </div>
             </div>
           )}
@@ -304,7 +305,7 @@ export function FormSidebar({
             }}
             style={contextMenuItemStyle}
           >
-            <Pencil size={13} /> {t.database.forms.rename}
+            <Pencil size={13} /> {t('database.forms.rename')}
           </button>
           {onCopyLink && (
             <button
@@ -314,7 +315,7 @@ export function FormSidebar({
               }}
               style={contextMenuItemStyle}
             >
-              <Link size={13} /> {t.database.forms.copyLink}
+              <Link size={13} /> {t('database.forms.copyLink')}
             </button>
           )}
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
@@ -326,7 +327,7 @@ export function FormSidebar({
               }}
               style={{ ...contextMenuItemStyle, color: 'var(--danger, #dc2626)' }}
             >
-              <Trash2 size={13} /> {t.database.forms.delete}
+              <Trash2 size={13} /> {t('database.forms.delete')}
             </button>
           )}
         </div>

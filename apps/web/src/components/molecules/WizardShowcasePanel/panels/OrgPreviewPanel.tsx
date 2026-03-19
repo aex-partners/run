@@ -1,6 +1,6 @@
 import React from 'react'
 import { MessageSquare, Database, ListTodo, Workflow, Settings } from 'lucide-react'
-import { t } from '../../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface OrgPreviewPanelProps {
   orgName?: string
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
 ]
 
 export function OrgPreviewPanel({ orgName, orgLogo, accentColor = '#EA580C' }: OrgPreviewPanelProps) {
+  const { t } = useTranslation()
   const displayName = orgName?.trim() || 'Your Company'
   const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
@@ -74,7 +75,7 @@ export function OrgPreviewPanel({ orgName, orgLogo, accentColor = '#EA580C' }: O
               }}
             >
               {item.icon}
-              {t.setup.showcase.org[item.labelKey]}
+              {t(`setup.showcase.org.${item.labelKey}`)}
             </div>
           ))}
         </div>

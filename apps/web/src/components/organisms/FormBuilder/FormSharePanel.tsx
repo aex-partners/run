@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Globe, Copy, Check } from 'lucide-react'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 interface FormSharePanelProps {
   isPublic: boolean
@@ -15,6 +15,7 @@ export function FormSharePanel({
   submissionCount,
   onTogglePublic,
 }: FormSharePanelProps) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
 
   const publicUrl = publicToken
@@ -37,13 +38,13 @@ export function FormSharePanel({
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <Globe size={14} color="var(--text-muted)" />
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-          {t.database.forms.share.title}
+          {t('database.forms.share.title')}
         </span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <span style={{ fontSize: 12, color: 'var(--text)' }}>
-          {t.database.forms.share.publicAccess}
+          {t('database.forms.share.publicAccess')}
         </span>
         <button
           onClick={onTogglePublic}
@@ -113,12 +114,12 @@ export function FormSharePanel({
 
       {!isPublic && (
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          {t.database.forms.share.enablePublic}
+          {t('database.forms.share.enablePublic')}
         </div>
       )}
 
       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
-        {t.database.forms.share.submissions}: {submissionCount}
+        {t('database.forms.share.submissions')}: {submissionCount}
       </div>
     </div>
   )

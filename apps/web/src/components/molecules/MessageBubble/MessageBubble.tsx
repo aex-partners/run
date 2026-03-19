@@ -4,7 +4,7 @@ import { Pin, Star } from 'lucide-react'
 import { ReadReceipt } from '../../atoms/ReadReceipt/ReadReceipt'
 import { ReplyQuote } from '../ReplyQuote/ReplyQuote'
 import { AudioBubble } from '../AudioBubble/AudioBubble'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface MessageBubbleProps {
   role: 'user' | 'ai' | 'system'
@@ -61,6 +61,7 @@ const markdownStyles: Record<string, React.CSSProperties> = {
 }
 
 export function MessageBubble({ role, content, author, timestamp, showAuthor = false, readStatus, replyTo, pinned, starred, audio, isOwner, onTranscriptionEdit }: MessageBubbleProps) {
+  const { t } = useTranslation()
   const isUser = role === 'user'
   const isSystem = role === 'system'
 
@@ -100,7 +101,7 @@ export function MessageBubble({ role, content, author, timestamp, showAuthor = f
       }}
     >
       {audio?.transcriptionEdited && (
-        <span style={{ fontStyle: 'italic', marginRight: 2 }}>{t.audio.edited}</span>
+        <span style={{ fontStyle: 'italic', marginRight: 2 }}>{t('audio.edited')}</span>
       )}
       {pinned && <Pin size={10} style={{ transform: 'rotate(45deg)', color: 'var(--text-muted)' }} />}
       {starred && <Star size={10} style={{ fill: 'var(--accent)', stroke: 'var(--accent)', strokeWidth: 0 }} />}

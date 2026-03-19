@@ -4,9 +4,10 @@ import { Check, AlertCircle } from 'lucide-react'
 import { trpc } from '../lib/trpc'
 import { FormFieldEditor } from '../components/organisms/FormView/FormFieldEditor'
 import type { GridColumn } from '../components/organisms/DataGrid/types'
-import { t } from '../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export function PublicFormPage() {
+  const { t } = useTranslation()
   const { token } = useParams<{ token: string }>()
   const [values, setValues] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
@@ -47,7 +48,7 @@ export function PublicFormPage() {
         <div style={cardStyle}>
           <AlertCircle size={32} style={{ color: '#dc2626', marginBottom: 12 }} />
           <div style={{ fontSize: 14, color: '#374151', textAlign: 'center' }}>
-            {t.database.forms.public.notFound}
+            {t('database.forms.public.notFound')}
           </div>
         </div>
       </div>
@@ -198,7 +199,7 @@ export function PublicFormPage() {
           }}
         >
           {submitMutation.isPending
-            ? t.database.forms.public.submitting
+            ? t('database.forms.public.submitting')
             : form.settings.submitButtonText}
         </button>
       </div>

@@ -12,6 +12,8 @@
   "references": [
     { "path": "apps/api" },
     { "path": "apps/web" },
-    { "path": "packages/shared" }
+    { "path": "packages/shared" },
+    { "path": "packages/plugin-framework" },
+    { "path": "packages/plugin-common" }
   ]
 }

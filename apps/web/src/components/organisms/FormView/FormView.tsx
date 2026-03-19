@@ -3,7 +3,7 @@ import { FormSidebar, type FormItem } from '../../molecules/FormSidebar/FormSide
 import { FormBuilder, type FormSettings } from '../FormBuilder/FormBuilder'
 import type { FormFieldItem, EntityFieldInfo } from '../FormBuilder/SortableFieldItem'
 import { trpc } from '../../../lib/trpc'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface FormViewProps {
   entityId: string
@@ -11,6 +11,7 @@ export interface FormViewProps {
 }
 
 export function FormView({ entityId, entityFields }: FormViewProps) {
+  const { t } = useTranslation()
   const [activeFormId, setActiveFormId] = useState<string | undefined>()
 
   const formsQuery = trpc.forms.listByEntity.useQuery(
@@ -159,7 +160,7 @@ export function FormView({ entityId, entityFields }: FormViewProps) {
           fontSize: 13,
         }}>
           {formItems.length === 0
-            ? t.database.forms.noForms
+            ? t('database.forms.noForms')
             : 'Select a form to edit.'}
         </div>
       )}

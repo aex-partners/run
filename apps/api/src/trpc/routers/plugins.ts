@@ -10,6 +10,8 @@ import {
   setPluginStatus,
 } from "../../plugins/plugin-service.js";
 import { syncRegistry } from "../../plugins/registry.js";
+import { syncPieceCatalog } from "../../plugins/piece-registry.js";
+import { loadPiece } from "../../plugins/piece-loader.js";
 
 export const pluginsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -87,8 +89,51 @@ export const pluginsRouter = router({
     }),
 
   syncRegistry: protectedProcedure.mutation(async ({ ctx }) => {
-    const count = await syncRegistry(ctx.db);
-    return { synced: count };
+    const manifestCount = await syncRegistry(ctx.db);
+    const pieceCount = await syncPieceCatalog(ctx.db);
+    return { synced: manifestCount + pieceCount };
+  }),
+
+  listPieceTools: protectedProcedure.query(async ({ ctx }) => {
+    const installedPieces = await ctx.db
+      .select()
+      .from(plugins)
+      .where(eq(plugins.status, "installed"));
+
+    const tools: Array<{
+      name: string;
+      displayName: string;
+      description: string;
+      pluginName: string;
+      pluginDisplayName: string;
+      pluginLogoUrl: string | null;
+    }> = [];
+
+    for (const plugin of installedPieces) {
+      if (!plugin.pieceName) continue;
+
+      try {
+        const piece = await loadPiece(plugin.pieceName);
+        if (!piece) continue;
+
+        const actions = piece.actions();
+        for (const [actionName, action] of Object.entries(actions)) {
+          const a = action as { displayName?: string; description?: string };
+          tools.push({
+            name: `${plugin.pieceName}:${actionName}`,
+            displayName: a.displayName ?? actionName,
+            description: a.description ?? "",
+            pluginName: plugin.name,
+            pluginDisplayName: plugin.name,
+            pluginLogoUrl: plugin.icon?.startsWith("http") ? plugin.icon : null,
+          });
+        }
+      } catch {
+        // Piece not loadable (not installed yet or error)
+      }
+    }
+
+    return tools;
   }),
 
   getConfigSchema: protectedProcedure
@@ -104,6 +149,7 @@ export const pluginsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
+      if (!plugin.manifest) return null;
       const manifest = JSON.parse(plugin.manifest);
       return manifest.configSchema ?? null;
     }),

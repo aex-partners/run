@@ -1,6 +1,6 @@
 import React from 'react'
 import { X, Trash2 } from 'lucide-react'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface DeleteSelectionBarProps {
   selectedCount: number
@@ -9,6 +9,7 @@ export interface DeleteSelectionBarProps {
 }
 
 export function DeleteSelectionBar({ selectedCount, onCancel, onDelete }: DeleteSelectionBarProps) {
+  const { t } = useTranslation()
   return (
     <div
       style={{
@@ -34,13 +35,13 @@ export function DeleteSelectionBar({ selectedCount, onCancel, onDelete }: Delete
           alignItems: 'center',
           justifyContent: 'center',
         }}
-        aria-label={t.cancel}
+        aria-label={t('cancel')}
       >
         <X size={18} />
       </button>
 
       <span style={{ flex: 1, fontSize: 13, color: 'var(--text-muted)' }}>
-        {t.chat.contextMenu.delete.selected(selectedCount)}
+        {t('chat.contextMenu.delete.selected', { count: selectedCount })}
       </span>
 
       <button
@@ -57,7 +58,7 @@ export function DeleteSelectionBar({ selectedCount, onCancel, onDelete }: Delete
           color: selectedCount === 0 ? 'var(--text-muted)' : 'var(--danger)',
           background: 'none',
         }}
-        aria-label={t.chat.contextMenu.delete.label}
+        aria-label={t('chat.contextMenu.delete.label')}
       >
         <Trash2 size={20} />
       </button>

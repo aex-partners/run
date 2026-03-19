@@ -1,6 +1,6 @@
 import React from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface DeleteConfirmModalProps {
   open: boolean
@@ -10,6 +10,7 @@ export interface DeleteConfirmModalProps {
 }
 
 export function DeleteConfirmModal({ open, onOpenChange, onDeleteForEveryone, onDeleteForMe }: DeleteConfirmModalProps) {
+  const { t } = useTranslation()
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -40,7 +41,7 @@ export function DeleteConfirmModal({ open, onOpenChange, onDeleteForEveryone, on
           }}
         >
           <Dialog.Title style={{ fontSize: 16, fontWeight: 600, margin: 0, textAlign: 'center' }}>
-            {t.chat.contextMenu.delete.title}
+            {t('chat.contextMenu.delete.title')}
           </Dialog.Title>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
@@ -68,7 +69,7 @@ export function DeleteConfirmModal({ open, onOpenChange, onDeleteForEveryone, on
                 ;(e.currentTarget as HTMLButtonElement).style.background = 'none'
               }}
             >
-              {t.chat.contextMenu.delete.forEveryone}
+              {t('chat.contextMenu.delete.forEveryone')}
             </button>
 
             <button
@@ -95,7 +96,7 @@ export function DeleteConfirmModal({ open, onOpenChange, onDeleteForEveryone, on
                 ;(e.currentTarget as HTMLButtonElement).style.background = 'none'
               }}
             >
-              {t.chat.contextMenu.delete.forMe}
+              {t('chat.contextMenu.delete.forMe')}
             </button>
 
             <Dialog.Close asChild>
@@ -119,7 +120,7 @@ export function DeleteConfirmModal({ open, onOpenChange, onDeleteForEveryone, on
                   ;(e.currentTarget as HTMLButtonElement).style.background = 'none'
                 }}
               >
-                {t.cancel}
+                {t('cancel')}
               </button>
             </Dialog.Close>
           </div>

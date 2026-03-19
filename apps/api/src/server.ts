@@ -201,6 +201,42 @@ export async function buildServer() {
     }
   });
 
+  // OAuth2 callback for plugin credentials
+  app.get("/api/credentials/oauth2/callback", async (req, reply) => {
+    const { code, state } = req.query as { code: string; state: string };
+    if (!code || !state) {
+      return reply.status(400).send({ error: "Missing code or state" });
+    }
+
+    try {
+      const { handlePluginOAuth2Callback } = await import("./credentials/oauth2-handler.js");
+      const { db } = await import("./db/index.js");
+
+      const result = await handlePluginOAuth2Callback({
+        db,
+        code,
+        state,
+        baseUrl: env.BETTER_AUTH_URL || `http://localhost:${env.PORT || 3001}`,
+      });
+
+      // Close popup and notify parent window
+      return reply.type("text/html").send(`
+        <html><body><script>
+          window.opener?.postMessage({ type: 'plugin-oauth-complete', pluginName: '${result.pluginName}', credentialId: '${result.credentialId}' }, '*');
+          window.close();
+        </script><p>Connected. You can close this window.</p></body></html>
+      `);
+    } catch (error) {
+      console.error("Plugin OAuth2 callback error:", error);
+      return reply.type("text/html").send(`
+        <html><body><script>
+          window.opener?.postMessage({ type: 'plugin-oauth-error', error: '${(error as Error).message}' }, '*');
+          window.close();
+        </script><p>Connection failed. You can close this window.</p></body></html>
+      `);
+    }
+  });
+
   // Upload routes (audio, files)
   registerUploadRoutes(app);
 

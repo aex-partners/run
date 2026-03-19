@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Search, X, Bot, Users, Check } from 'lucide-react'
 import { Avatar } from '../../atoms/Avatar/Avatar'
 import type { Conversation } from '../ConversationList/ConversationList'
-import { t } from '../../../locales/en'
+import { useTranslation } from 'react-i18next'
 
 export interface ForwardModalProps {
   open: boolean
@@ -13,6 +13,7 @@ export interface ForwardModalProps {
 }
 
 export function ForwardModal({ open, onOpenChange, conversations, onConfirm }: ForwardModalProps) {
+  const { t } = useTranslation()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [searchText, setSearchText] = useState('')
 
@@ -73,7 +74,7 @@ export function ForwardModal({ open, onOpenChange, conversations, onConfirm }: F
         >
           <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Dialog.Title style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
-              {t.chat.contextMenu.forward.title}
+              {t('chat.contextMenu.forward.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
@@ -109,7 +110,7 @@ export function ForwardModal({ open, onOpenChange, conversations, onConfirm }: F
               <input
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                placeholder={t.chat.contextMenu.forward.search}
+                placeholder={t('chat.contextMenu.forward.search')}
                 style={{
                   flex: 1,
                   border: 'none',
@@ -126,7 +127,7 @@ export function ForwardModal({ open, onOpenChange, conversations, onConfirm }: F
           <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
             {filtered.length === 0 ? (
               <div style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                {t.chat.contextMenu.forward.noResults}
+                {t('chat.contextMenu.forward.noResults')}
               </div>
             ) : (
               filtered.map((conv) => {
@@ -256,7 +257,7 @@ export function ForwardModal({ open, onOpenChange, conversations, onConfirm }: F
                 color: 'var(--text)',
               }}
             >
-              {t.cancel}
+              {t('cancel')}
             </button>
             <button
               onClick={handleConfirm}
@@ -280,7 +281,7 @@ export function ForwardModal({ open, onOpenChange, conversations, onConfirm }: F
                 if (selectedIds.size > 0) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'
               }}
             >
-              {t.chat.contextMenu.forward.action}
+              {t('chat.contextMenu.forward.action')}
             </button>
           </div>
         </Dialog.Content>
