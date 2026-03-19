@@ -1,0 +1,20 @@
+{
+  "name": "aex",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @aex/api & npm run dev -w @aex/web",
+    "dev:api": "npm run dev -w @aex/api",
+    "dev:web": "npm run dev -w @aex/web",
+    "storybook": "npm run storybook -w @aex/web"
+  },
+  "devDependencies": {
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^24.39.1"
+  }
+}

@@ -1,0 +1,76 @@
+import { useState } from 'react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import type { CellProps } from '../types'
+
+export function SelectCell({ column, value, isEditing }: CellProps) {
+  const [open, setOpen] = useState(false)
+  const options = column.options ?? []
+  const selected = options.find(o => o.value === String(value))
+  const displayColor = selected?.color ?? '#6b7280'
+
+  return (
+    <DropdownMenu.Root open={open} onOpenChange={setOpen}>
+      <DropdownMenu.Trigger asChild>
+        <button
+          style={{
+            background: displayColor,
+            color: '#fff',
+            borderRadius: 20,
+            padding: '3px 10px',
+            fontSize: 12,
+            fontWeight: 600,
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {selected?.label ?? (String(value) || 'Select...')}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          sideOffset={4}
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+            zIndex: 100,
+            minWidth: 140,
+            padding: '4px 0',
+          }}
+        >
+          {options.map(opt => (
+            <DropdownMenu.Item
+              key={opt.value}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 12px',
+                fontSize: 13,
+                cursor: 'pointer',
+                outline: 'none',
+                borderRadius: 4,
+                color: 'var(--text)',
+              }}
+              onSelect={() => {
+                // Selection handled via onCellEdit callback from parent
+              }}
+            >
+              <div style={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: opt.color ?? '#6b7280',
+                flexShrink: 0,
+              }} />
+              {opt.label}
+            </DropdownMenu.Item>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}

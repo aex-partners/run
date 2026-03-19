@@ -1,0 +1,3 @@
+export const DEFAULT_AGENT_ID = "00000000-0000-0000-0000-000000000001";
+export const DEFAULT_AGENT_NAME = "Eric";
+export const DEFAULT_AGENT_SLUG = "eric";

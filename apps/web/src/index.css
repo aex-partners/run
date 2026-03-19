@@ -1,0 +1,29 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+:root {
+  --background: #f9fafb;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --accent: #EA580C;
+  --accent-hover: #C4490A;
+  --accent-light: #fff5f0;
+  --accent-border: #fed7aa;
+  --success: #16a34a;
+  --success-light: #f0fdf4;
+  --warning: #d97706;
+  --warning-light: #fffbeb;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--background); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+
+.react-flow__background { background: var(--background); }
+.react-flow__controls button { background: var(--surface); border-color: var(--border); color: var(--text-muted); }
+.react-flow__controls button:hover { background: var(--surface-2); }
+.react-flow__minimap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }

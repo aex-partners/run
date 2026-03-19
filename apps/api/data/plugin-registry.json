@@ -1,0 +1,119 @@
+[
+  {
+    "id": "aex-plugin-weather",
+    "name": "Weather",
+    "description": "Get current weather and forecasts for any location.",
+    "version": "1.0.0",
+    "author": "RUN",
+    "icon": "cloud-sun",
+    "category": "Utilities",
+    "configSchema": {
+      "type": "object",
+      "properties": {
+        "apiKey": {
+          "type": "string",
+          "description": "API key for weather service"
+        }
+      },
+      "required": ["apiKey"]
+    },
+    "tools": [
+      {
+        "name": "get_weather",
+        "description": "Get current weather for a city",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "city": { "type": "string", "description": "City name" },
+            "units": { "type": "string", "enum": ["metric", "imperial"], "description": "Temperature units" }
+          },
+          "required": ["city"]
+        },
+        "type": "http",
+        "config": {
+          "method": "GET",
+          "url": "https://api.openweathermap.org/data/2.5/weather?q={{city}}&units={{units}}&appid={{apiKey}}",
+          "responseMapping": "main"
+        }
+      }
+    ]
+  },
+  {
+    "id": "aex-plugin-currency",
+    "name": "Currency Exchange",
+    "description": "Real-time currency conversion and exchange rates.",
+    "version": "1.0.0",
+    "author": "RUN",
+    "icon": "coins",
+    "category": "Finance",
+    "configSchema": {
+      "type": "object",
+      "properties": {
+        "apiKey": {
+          "type": "string",
+          "description": "API key for exchange rate service"
+        }
+      },
+      "required": ["apiKey"]
+    },
+    "tools": [
+      {
+        "name": "convert_currency",
+        "description": "Convert an amount from one currency to another",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": { "type": "string", "description": "Source currency code (e.g. USD)" },
+            "to": { "type": "string", "description": "Target currency code (e.g. BRL)" },
+            "amount": { "type": "number", "description": "Amount to convert" }
+          },
+          "required": ["from", "to", "amount"]
+        },
+        "type": "http",
+        "config": {
+          "method": "GET",
+          "url": "https://v6.exchangerate-api.com/v6/{{apiKey}}/pair/{{from}}/{{to}}/{{amount}}"
+        }
+      }
+    ]
+  },
+  {
+    "id": "aex-plugin-notifications",
+    "name": "Notifications",
+    "description": "Send notifications via email, SMS, or push.",
+    "version": "1.0.0",
+    "author": "RUN",
+    "icon": "bell",
+    "category": "Communication",
+    "configSchema": {
+      "type": "object",
+      "properties": {
+        "smtpHost": { "type": "string", "description": "SMTP server host" },
+        "smtpPort": { "type": "number", "description": "SMTP server port" },
+        "smtpUser": { "type": "string", "description": "SMTP username" },
+        "smtpPass": { "type": "string", "description": "SMTP password" }
+      }
+    },
+    "tools": [
+      {
+        "name": "send_email",
+        "description": "Send an email notification",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "string", "description": "Recipient email address" },
+            "subject": { "type": "string", "description": "Email subject" },
+            "body": { "type": "string", "description": "Email body (HTML allowed)" }
+          },
+          "required": ["to", "subject", "body"]
+        },
+        "type": "http",
+        "config": {
+          "method": "POST",
+          "url": "{{smtpHost}}/send",
+          "headers": { "Content-Type": "application/json" }
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,272 @@
+import React, { useState } from 'react'
+import {
+  X, Paperclip, Sparkles, Minimize2, Maximize2,
+} from 'lucide-react'
+import { Button } from '../../atoms/Button/Button'
+
+export interface MailComposeProps {
+  open: boolean
+  to?: string
+  subject?: string
+  body?: string
+  replyMode?: 'reply' | 'replyAll' | 'forward'
+  onClose?: () => void
+  onSend?: (data: { to: string; cc: string; subject: string; body: string }) => void
+  onAiDraft?: (prompt: string) => void
+  aiDrafting?: boolean
+  minimized?: boolean
+  onToggleMinimize?: () => void
+}
+
+export function MailCompose({
+  open,
+  to: initialTo = '',
+  subject: initialSubject = '',
+  body: initialBody = '',
+  replyMode,
+  onClose,
+  onSend,
+  onAiDraft,
+  aiDrafting = false,
+  minimized = false,
+  onToggleMinimize,
+}: MailComposeProps) {
+  const [to, setTo] = useState(initialTo)
+  const [cc, setCc] = useState('')
+  const [subject, setSubject] = useState(initialSubject)
+  const [body, setBody] = useState(initialBody)
+  const [showCc, setShowCc] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [showAiBar, setShowAiBar] = useState(false)
+
+  React.useEffect(() => {
+    setTo(initialTo)
+    setSubject(initialSubject)
+    setBody(initialBody)
+  }, [initialTo, initialSubject, initialBody])
+
+  if (!open) return null
+
+  const handleSend = () => {
+    onSend?.({ to, cc, subject, body })
+  }
+
+  const handleAiDraft = () => {
+    if (aiPrompt.trim()) {
+      onAiDraft?.(aiPrompt)
+      setAiPrompt('')
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '8px 0',
+    border: 'none',
+    borderBottom: '1px solid var(--border)',
+    background: 'transparent',
+    color: 'var(--text)',
+    fontSize: 13,
+    fontFamily: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box',
+  }
+
+  const prefixMap = {
+    reply: 'Re: ',
+    replyAll: 'Re: ',
+    forward: 'Fwd: ',
+  }
+
+  const displaySubject = replyMode && !subject.startsWith(prefixMap[replyMode])
+    ? prefixMap[replyMode] + subject
+    : subject
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      right: 24,
+      width: minimized ? 320 : 560,
+      background: 'var(--surface)',
+      borderRadius: '12px 12px 0 0',
+      border: '1px solid var(--border)',
+      boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
+      zIndex: 150,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+    }}>
+      {/* Title bar */}
+      <div
+        onClick={onToggleMinimize}
+        style={{
+          padding: '10px 14px',
+          background: 'var(--surface-2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', flex: 1 }}>
+          {replyMode === 'forward' ? 'Forward' : replyMode ? 'Reply' : 'New Message'}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleMinimize?.() }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-muted)' }}
+        >
+          {minimized ? <Maximize2 size={13} /> : <Minimize2 size={13} />}
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onClose?.() }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-muted)' }}
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {!minimized && (
+        <>
+          {/* Fields */}
+          <div style={{ padding: '4px 14px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>To</span>
+              <input
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                placeholder="recipient@email.com"
+                style={inputStyle}
+              />
+              {!showCc && (
+                <button
+                  onClick={() => setShowCc(true)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)', padding: '4px 8px', flexShrink: 0 }}
+                >
+                  Cc
+                </button>
+              )}
+            </div>
+
+            {showCc && (
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>Cc</span>
+                <input
+                  value={cc}
+                  onChange={(e) => setCc(e.target.value)}
+                  placeholder="cc@email.com"
+                  style={inputStyle}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>Sub</span>
+              <input
+                value={displaySubject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Subject"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {/* Body */}
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Write your message..."
+            style={{
+              flex: 1,
+              minHeight: 180,
+              padding: '12px 14px',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text)',
+              fontSize: 13,
+              fontFamily: 'inherit',
+              outline: 'none',
+              resize: 'none',
+              lineHeight: 1.6,
+            }}
+          />
+
+          {/* AI bar */}
+          {showAiBar && (
+            <div style={{
+              padding: '8px 14px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'var(--accent-light)',
+            }}>
+              <Sparkles size={14} color="var(--accent)" />
+              <input
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Describe what you want to write..."
+                onKeyDown={(e) => e.key === 'Enter' && handleAiDraft()}
+                style={{
+                  flex: 1,
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  fontSize: 12,
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                }}
+              />
+              <Button variant="primary" size="sm" onClick={handleAiDraft} loading={aiDrafting}>Draft</Button>
+            </div>
+          )}
+
+          {/* Bottom bar */}
+          <div style={{
+            padding: '8px 14px',
+            borderTop: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexShrink: 0,
+          }}>
+            <Button variant="primary" size="sm" onClick={handleSend}>Send</Button>
+            <button
+              onClick={() => setShowAiBar(!showAiBar)}
+              title="AI Draft"
+              style={{
+                background: showAiBar ? 'var(--accent-light)' : 'none',
+                border: showAiBar ? '1px solid var(--accent)' : '1px solid transparent',
+                cursor: 'pointer',
+                padding: 6,
+                borderRadius: 6,
+                display: 'flex',
+                color: showAiBar ? 'var(--accent)' : 'var(--text-muted)',
+              }}
+            >
+              <Sparkles size={14} />
+            </button>
+            <button
+              title="Attach file"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', color: 'var(--text-muted)' }}
+            >
+              <Paperclip size={14} />
+            </button>
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={onClose}
+              title="Discard"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', color: 'var(--text-muted)' }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+export default MailCompose

@@ -1,0 +1,477 @@
+import React, { useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { X, CloudSun, Coins, Bell } from "lucide-react";
+import { trpc } from "../lib/trpc";
+import { SettingsScreen } from "../components/screens/SettingsScreen/SettingsScreen";
+import type { User } from "../components/organisms/UserTable/UserTable";
+import type { AgentFormData } from "../components/organisms/AgentForm/AgentForm";
+import type { SkillFormData } from "../components/organisms/SkillForm/SkillForm";
+import type { CustomToolFormData } from "../components/organisms/CustomToolForm/CustomToolForm";
+import type { IntegrationFormData } from "../components/organisms/IntegrationForm/IntegrationForm";
+
+export function SettingsPage() {
+  const utils = trpc.useUtils();
+
+  // ─── Users ──────────────────────────────────────────────────
+  const { data: serverUsers = [] } = trpc.users.list.useQuery();
+
+  // ─── Company Settings ─────────────────────────────────────────
+  const { data: companyName } = trpc.settings.get.useQuery({ key: "company.name" });
+  const { data: companyTradeName } = trpc.settings.get.useQuery({ key: "company.tradeName" });
+  const { data: companyAddress } = trpc.settings.get.useQuery({ key: "company.address" });
+  const { data: companyPhone } = trpc.settings.get.useQuery({ key: "company.phone" });
+  const { data: companyEmail } = trpc.settings.get.useQuery({ key: "company.email" });
+  const { data: companyCnpj } = trpc.settings.get.useQuery({ key: "company.cnpj" });
+
+  const setSetting = trpc.settings.set.useMutation({
+    onSuccess: () => {
+      utils.settings.get.invalidate();
+    },
+  });
+
+  const companyInfo = {
+    name: (companyName as string) ?? "",
+    tradeName: (companyTradeName as string) ?? "",
+    cnpj: (companyCnpj as string) ?? "",
+    address: (companyAddress as string) ?? "",
+    phone: (companyPhone as string) ?? "",
+    email: (companyEmail as string) ?? "",
+    plan: "Self-Hosted",
+    activeUsers: String(serverUsers.length),
+  };
+
+  const handleSaveCompany = (info: { name: string; tradeName: string; cnpj: string; address: string; phone: string; email: string; plan: string; activeUsers: string }) => {
+    const fields = ["name", "tradeName", "address", "phone", "email", "cnpj"] as const;
+    for (const field of fields) {
+      setSetting.mutate({ key: `company.${field}`, value: info[field] });
+    }
+  };
+
+  const inviteUser = trpc.users.invite.useMutation({
+    onSuccess: () => {
+      utils.users.list.invalidate();
+      setInviteOpen(false);
+      setInviteForm({ name: "", email: "", password: "" });
+    },
+  });
+
+  const deleteUser = trpc.users.delete.useMutation({
+    onSuccess: () => utils.users.list.invalidate(),
+  });
+  const updateRole = trpc.users.updateRole.useMutation({
+    onSuccess: () => utils.users.list.invalidate(),
+  });
+  const updateStatus = trpc.users.updateStatus.useMutation({
+    onSuccess: () => utils.users.list.invalidate(),
+  });
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ name: "", email: "", password: "" });
+  const [inviteError, setInviteError] = useState("");
+
+  const users: User[] = serverUsers.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    status: u.status as User["status"],
+  }));
+
+  const handleInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviteError("");
+    try {
+      await inviteUser.mutateAsync(inviteForm);
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Failed to invite user");
+    }
+  };
+
+  // ─── Agents ─────────────────────────────────────────────────
+  const { data: serverAgents = [] } = trpc.agents.list.useQuery();
+  const createAgent = trpc.agents.create.useMutation({ onSuccess: () => utils.agents.list.invalidate() });
+  const updateAgent = trpc.agents.update.useMutation({ onSuccess: () => utils.agents.list.invalidate() });
+  const deleteAgent = trpc.agents.delete.useMutation({ onSuccess: () => utils.agents.list.invalidate() });
+
+  const agents = serverAgents.map((a) => {
+    const raw = a as Record<string, unknown>;
+    const skillIds = Array.isArray(raw.skillIds) ? (raw.skillIds as string[]) : [];
+    const toolIds = Array.isArray(raw.toolIds) ? (raw.toolIds as string[]) : [];
+    return {
+      id: a.id,
+      name: a.name,
+      description: a.description ?? undefined,
+      systemPrompt: (raw.systemPrompt as string) ?? '',
+      modelId: (raw.modelId as string) ?? '',
+      skillIds,
+      toolIds,
+      internetAccess: (raw.internetAccess as boolean) ?? (a.name === 'Eric'),
+      skillCount: skillIds.length,
+      toolCount: toolIds.length,
+    };
+  });
+
+  // ─── Skills ─────────────────────────────────────────────────
+  const { data: serverSkills = [] } = trpc.skills.list.useQuery();
+  const createSkill = trpc.skills.create.useMutation({ onSuccess: () => utils.skills.list.invalidate() });
+  const updateSkill = trpc.skills.update.useMutation({ onSuccess: () => utils.skills.list.invalidate() });
+  const deleteSkill = trpc.skills.delete.useMutation({ onSuccess: () => utils.skills.list.invalidate() });
+
+  const skills = serverSkills.map((s) => ({
+    id: s.id,
+    name: s.name,
+    description: s.description ?? undefined,
+    toolCount: (s as Record<string, unknown>).toolIds
+      ? ((s as Record<string, unknown>).toolIds as string[]).length
+      : 0,
+    hasGuardrails: !!(s as Record<string, unknown>).guardrails,
+  }));
+
+  const skillOptions = serverSkills.map((s) => ({ value: s.id, label: s.name }));
+
+  // ─── Custom Tools ───────────────────────────────────────────
+  const { data: serverTools = [] } = trpc.customTools.list.useQuery();
+  const createTool = trpc.customTools.create.useMutation({ onSuccess: () => utils.customTools.list.invalidate() });
+  const updateTool = trpc.customTools.update.useMutation({ onSuccess: () => utils.customTools.list.invalidate() });
+  const deleteTool = trpc.customTools.delete.useMutation({ onSuccess: () => utils.customTools.list.invalidate() });
+  const testTool = trpc.customTools.test.useMutation();
+
+  const [testResult, setTestResult] = useState<{ success: boolean; result?: string; error?: string } | null>(null);
+
+  const customTools = serverTools.map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description ?? undefined,
+    type: t.type as "http" | "query" | "code" | "composite",
+  }));
+
+  const toolOptions = serverTools.map((t) => ({ value: t.id, label: t.name }));
+
+  // ─── Integrations ───────────────────────────────────────────
+  const { data: serverIntegrations = [] } = trpc.integrations.list.useQuery();
+  const createIntegration = trpc.integrations.create.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
+  const updateIntegration = trpc.integrations.update.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
+  const deleteIntegration = trpc.integrations.delete.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
+  const enableIntegration = trpc.integrations.enable.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
+  const disableIntegration = trpc.integrations.disable.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
+
+  const integrations = serverIntegrations.map((i) => ({
+    id: i.id,
+    name: i.name,
+    description: i.description ?? undefined,
+    type: i.type as "rest" | "oauth2" | "webhook",
+    enabled: i.status === "enabled",
+  }));
+
+  const integrationOptions = serverIntegrations.map((i) => ({ value: i.id, label: i.name }));
+
+  // ─── Plugins ─────────────────────────────────────────────────
+  const { data: serverPlugins = [] } = trpc.plugins.list.useQuery();
+  const installPlugin = trpc.plugins.install.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
+  const uninstallPlugin = trpc.plugins.uninstall.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
+  const configurePlugin = trpc.plugins.configure.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
+  const togglePlugin = trpc.plugins.setEnabled.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
+  const syncPluginRegistry = trpc.plugins.syncRegistry.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
+
+  const PLUGIN_ICONS: Record<string, React.ReactNode> = {
+    "cloud-sun": <CloudSun size={18} />,
+    "coins": <Coins size={18} />,
+    "bell": <Bell size={18} />,
+  };
+
+  const installedPlugins = serverPlugins
+    .filter((p) => p.status === "installed" || p.status === "disabled")
+    .map((p) => {
+      const manifest = JSON.parse(p.manifest);
+      return {
+        id: p.id,
+        name: p.name,
+        description: p.description ?? "",
+        icon: PLUGIN_ICONS[p.icon ?? ""] ?? <Coins size={18} />,
+        installed: true as const,
+        enabled: p.status === "installed",
+        version: p.version,
+        category: p.category ?? undefined,
+        toolCount: manifest.tools?.length ?? 0,
+      };
+    });
+
+  const marketplacePlugins = serverPlugins
+    .filter((p) => p.status === "available")
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description ?? "",
+      icon: PLUGIN_ICONS[p.icon ?? ""] ?? <Coins size={18} />,
+      installed: false as const,
+      version: p.version,
+      category: p.category ?? undefined,
+    }));
+
+  const [pluginConfigId, setPluginConfigId] = useState<string | null>(null);
+  const pluginConfigQuery = trpc.plugins.getConfigSchema.useQuery(
+    { id: pluginConfigId ?? "" },
+    { enabled: !!pluginConfigId },
+  );
+
+  const handlePluginInstall = (name: string) => {
+    const plugin = serverPlugins.find((p) => p.name === name);
+    if (plugin) installPlugin.mutate({ id: plugin.id });
+  };
+
+  const handlePluginUninstall = (name: string) => {
+    const plugin = serverPlugins.find((p) => p.name === name);
+    if (plugin) uninstallPlugin.mutate({ id: plugin.id });
+  };
+
+  const handlePluginConfigure = (name: string) => {
+    const plugin = serverPlugins.find((p) => p.name === name);
+    if (plugin) setPluginConfigId(plugin.id);
+  };
+
+  const handlePluginToggle = (name: string, enabled: boolean) => {
+    const plugin = serverPlugins.find((p) => p.name === name);
+    if (plugin) togglePlugin.mutate({ id: plugin.id, enabled });
+  };
+
+  const handlePluginConfigSave = (config: Record<string, unknown>) => {
+    if (pluginConfigId) {
+      configurePlugin.mutate({ id: pluginConfigId, config });
+      setPluginConfigId(null);
+    }
+  };
+
+  // System tools (hardcoded for now; could come from a tRPC query)
+  const systemToolOptions = [
+    { value: "createEntity", label: "createEntity" },
+    { value: "queryEntities", label: "queryEntities" },
+    { value: "updateEntity", label: "updateEntity" },
+    { value: "deleteEntity", label: "deleteEntity" },
+    { value: "createSchema", label: "createSchema" },
+    { value: "addField", label: "addField" },
+  ];
+
+  // ─── Handlers ───────────────────────────────────────────────
+
+  const handleCreateAgent = (data: AgentFormData) => {
+    createAgent.mutate({
+      name: data.name,
+      description: data.description || undefined,
+      systemPrompt: data.systemPrompt,
+      modelId: data.modelId || undefined,
+      skillIds: data.skillIds,
+      toolIds: data.toolIds,
+      internetAccess: data.internetAccess,
+    });
+  };
+
+  const handleUpdateAgent = (id: string, data: AgentFormData) => {
+    updateAgent.mutate({
+      id,
+      name: data.name,
+      description: data.description || undefined,
+      systemPrompt: data.systemPrompt,
+      modelId: data.modelId || undefined,
+      skillIds: data.skillIds,
+      toolIds: data.toolIds,
+      internetAccess: data.internetAccess,
+    });
+  };
+
+  const handleCreateSkill = (data: SkillFormData) => {
+    createSkill.mutate({
+      name: data.name,
+      description: data.description || undefined,
+      systemPrompt: data.systemPrompt,
+      toolIds: data.toolIds,
+      systemToolNames: data.systemToolNames,
+      guardrails: data.guardrails,
+    });
+  };
+
+  const handleUpdateSkill = (id: string, data: SkillFormData) => {
+    updateSkill.mutate({
+      id,
+      name: data.name,
+      description: data.description || undefined,
+      systemPrompt: data.systemPrompt,
+      toolIds: data.toolIds,
+      systemToolNames: data.systemToolNames,
+      guardrails: data.guardrails,
+    });
+  };
+
+  const handleCreateTool = (data: CustomToolFormData) => {
+    createTool.mutate({
+      name: data.name,
+      description: data.description,
+      type: data.type,
+      inputSchema: data.inputSchema,
+      config: data.config,
+      isReadOnly: data.isReadOnly,
+      integrationId: data.integrationId || undefined,
+    });
+  };
+
+  const handleUpdateTool = (id: string, data: CustomToolFormData) => {
+    updateTool.mutate({
+      id,
+      name: data.name,
+      description: data.description,
+      type: data.type,
+      inputSchema: data.inputSchema,
+      config: data.config,
+      isReadOnly: data.isReadOnly,
+      integrationId: data.integrationId || undefined,
+    });
+  };
+
+  const handleTestTool = async (data: CustomToolFormData) => {
+    const existing = serverTools.find((t) => t.name === data.name);
+    if (!existing) return;
+    try {
+      const result = await testTool.mutateAsync({ id: existing.id });
+      setTestResult({
+        success: result.success,
+        result: result.result ? JSON.stringify(result.result, null, 2) : undefined,
+        error: result.error ?? undefined,
+      });
+    } catch (err) {
+      setTestResult({ success: false, error: err instanceof Error ? err.message : "Test failed" });
+    }
+  };
+
+  const handleCreateIntegration = (data: IntegrationFormData) => {
+    createIntegration.mutate({
+      name: data.name,
+      description: data.description || undefined,
+      type: data.type,
+      credentials: data.credentials,
+      webhookSecret: data.webhookSecret || undefined,
+    });
+  };
+
+  const handleUpdateIntegration = (id: string, data: IntegrationFormData) => {
+    updateIntegration.mutate({
+      id,
+      name: data.name,
+      description: data.description || undefined,
+      type: data.type,
+      credentials: data.credentials,
+      webhookSecret: data.webhookSecret || undefined,
+    });
+  };
+
+  const handleToggleIntegration = (id: string, enabled: boolean) => {
+    if (enabled) {
+      enableIntegration.mutate({ id });
+    } else {
+      disableIntegration.mutate({ id });
+    }
+  };
+
+  const formLoading =
+    createAgent.isPending || updateAgent.isPending ||
+    createSkill.isPending || updateSkill.isPending ||
+    createTool.isPending || updateTool.isPending ||
+    createIntegration.isPending || updateIntegration.isPending;
+
+  return (
+    <>
+      <SettingsScreen
+        users={users}
+        installedPlugins={installedPlugins}
+        marketplacePlugins={marketplacePlugins}
+        companyInfo={companyInfo}
+        onSaveCompany={handleSaveCompany}
+        onInviteUser={() => setInviteOpen(true)}
+        onEditUser={() => {}}
+        onDeleteUser={(id) => deleteUser.mutate({ userId: id })}
+        onChangeRole={(id, role) => updateRole.mutate({ userId: id, role })}
+        onChangeStatus={(id, status) => updateStatus.mutate({ userId: id, status: status === "inactive" ? "inactive" : "active" })}
+        onInstallPlugin={handlePluginInstall}
+        onConfigurePlugin={handlePluginConfigure}
+        onUninstallPlugin={handlePluginUninstall}
+        onTogglePlugin={handlePluginToggle}
+        onSyncPluginRegistry={() => syncPluginRegistry.mutate()}
+        syncingPlugins={syncPluginRegistry.isPending}
+        pluginConfigId={pluginConfigId}
+        pluginConfigSchema={pluginConfigQuery.data}
+        pluginCurrentConfig={pluginConfigId ? JSON.parse(serverPlugins.find((p) => p.id === pluginConfigId)?.config ?? "{}") : undefined}
+        onClosePluginConfig={() => setPluginConfigId(null)}
+        onSavePluginConfig={handlePluginConfigSave}
+        agents={agents}
+        skillOptions={skillOptions}
+        toolOptions={toolOptions}
+        systemToolOptions={systemToolOptions}
+        onCreateAgent={handleCreateAgent}
+        onUpdateAgent={handleUpdateAgent}
+        onDeleteAgent={(id) => deleteAgent.mutate({ id })}
+        skills={skills}
+        onCreateSkill={handleCreateSkill}
+        onUpdateSkill={handleUpdateSkill}
+        onDeleteSkill={(id) => deleteSkill.mutate({ id })}
+        customTools={customTools}
+        integrationOptions={integrationOptions}
+        onCreateTool={handleCreateTool}
+        onUpdateTool={handleUpdateTool}
+        onDeleteTool={(id) => deleteTool.mutate({ id })}
+        onTestTool={handleTestTool}
+        testResult={testResult}
+        integrations={integrations}
+        onCreateIntegration={handleCreateIntegration}
+        onUpdateIntegration={handleUpdateIntegration}
+        onDeleteIntegration={(id) => deleteIntegration.mutate({ id })}
+        onToggleIntegration={handleToggleIntegration}
+        formLoading={formLoading}
+      />
+
+      {/* Invite user dialog */}
+      <Dialog.Root open={inviteOpen} onOpenChange={setInviteOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
+          <Dialog.Content
+            style={{
+              position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+              width: 400, background: "var(--surface)", borderRadius: 12,
+              border: "1px solid var(--border)", padding: 24, zIndex: 201,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <Dialog.Title style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>Invite User</Dialog.Title>
+              <Dialog.Close asChild>
+                <button aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4, display: "flex" }}>
+                  <X size={16} />
+                </button>
+              </Dialog.Close>
+            </div>
+            <form onSubmit={handleInviteSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", display: "block", marginBottom: 6 }}>Name</label>
+                <input type="text" value={inviteForm.name} onChange={(e) => setInviteForm((f) => ({ ...f, name: e.target.value }))} required autoFocus
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", display: "block", marginBottom: 6 }}>Email</label>
+                <input type="email" value={inviteForm.email} onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))} required
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", display: "block", marginBottom: 6 }}>Password</label>
+                <input type="password" value={inviteForm.password} onChange={(e) => setInviteForm((f) => ({ ...f, password: e.target.value }))} required minLength={6}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              {inviteError && (
+                <div style={{ fontSize: 13, color: "var(--danger)", padding: "8px 12px", borderRadius: 8, background: "#fef2f2" }}>{inviteError}</div>
+              )}
+              <button type="submit" disabled={inviteUser.isPending}
+                style={{ padding: "10px 16px", borderRadius: 8, background: "var(--accent)", color: "#fff", fontWeight: 600, fontSize: 14, border: "none", cursor: inviteUser.isPending ? "wait" : "pointer", fontFamily: "inherit", opacity: inviteUser.isPending ? 0.7 : 1, marginTop: 4 }}>
+                {inviteUser.isPending ? "Inviting..." : "Invite"}
+              </button>
+            </form>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </>
+  );
+}
