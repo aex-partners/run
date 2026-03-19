@@ -131,31 +131,56 @@ function detectBrowserLocale() {
   }
 }
 
+const STORAGE_KEY = 'aex-setup-wizard'
+
+function loadSavedState(): { step: number; data: Partial<NewWorkspaceWizardData> } | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function clearSavedState() {
+  localStorage.removeItem(STORAGE_KEY)
+}
+
 export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
-  const [step, setStep] = useState(initialStep)
+  const saved = useMemo(() => loadSavedState(), [])
+  const source = saved?.data ?? initialData
+
+  const [step, setStep] = useState(saved?.step ?? initialStep)
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const [data, setData] = useState<NewWorkspaceWizardData>({
-    name: initialData?.name ?? '',
-    email: initialData?.email ?? '',
-    password: initialData?.password ?? '',
-    confirmPassword: initialData?.confirmPassword ?? '',
-    orgName: initialData?.orgName ?? '',
-    orgLogo: initialData?.orgLogo ?? '',
-    accentColor: initialData?.accentColor ?? '#EA580C',
-    website: initialData?.website ?? '',
-    niche: initialData?.niche ?? '',
-    subNiche: initialData?.subNiche ?? '',
-    country: initialData?.country ?? '',
-    language: initialData?.language ?? '',
-    timezone: initialData?.timezone ?? '',
-    currencies: initialData?.currencies ?? [],
-    invites: initialData?.invites ?? [''],
-    onboardingPath: initialData?.onboardingPath ?? null,
-    selectedRoutines: initialData?.selectedRoutines ?? [],
+    name: source?.name ?? '',
+    email: source?.email ?? '',
+    password: '',
+    confirmPassword: '',
+    orgName: source?.orgName ?? '',
+    orgLogo: source?.orgLogo ?? '',
+    accentColor: source?.accentColor ?? '#EA580C',
+    website: source?.website ?? '',
+    niche: source?.niche ?? '',
+    subNiche: source?.subNiche ?? '',
+    country: source?.country ?? '',
+    language: source?.language ?? '',
+    timezone: source?.timezone ?? '',
+    currencies: source?.currencies ?? [],
+    invites: source?.invites ?? [''],
+    onboardingPath: source?.onboardingPath ?? null,
+    selectedRoutines: source?.selectedRoutines ?? [],
   })
+
+  // Persist wizard state to localStorage (excluding passwords)
+  useEffect(() => {
+    const { password, confirmPassword, ...safe } = data
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data: safe }))
+  }, [step, data])
 
   // Refs for team invite inputs
   const inviteRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -193,10 +218,10 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
     return niche ? niche.subNiches.map((s) => ({ value: s.id, label: s.label })) : []
   }, [data.niche])
 
-  // Filtered routines by niche
-  const filteredRoutines = useMemo(() => {
-    if (!data.niche) return ROUTINE_TEMPLATES
-    return ROUTINE_TEMPLATES.filter((r) => r.niches.includes(data.niche))
+  // Routines recommended for the selected niche (used for pre-selection)
+  const nicheRoutineIds = useMemo(() => {
+    if (!data.niche) return ROUTINE_TEMPLATES.map((r) => r.id)
+    return ROUTINE_TEMPLATES.filter((r) => r.niches.includes(data.niche)).map((r) => r.id)
   }, [data.niche])
 
   // Validation
@@ -234,10 +259,10 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
     if (!validate()) return
 
     if (step === 5 && data.onboardingPath === 'default') {
-      // Pre-select all filtered routines
+      // Pre-select routines matching the niche
       setData((prev) => ({
         ...prev,
-        selectedRoutines: filteredRoutines.map((r) => r.id),
+        selectedRoutines: nicheRoutineIds,
       }))
       setStep(6)
       return
@@ -251,12 +276,13 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
 
     if (step === STEPS.length - 1) {
       setSubmitting(true)
+      clearSavedState()
       onSubmit?.(data)
       return
     }
 
     setStep((s) => s + 1)
-  }, [step, data, validate, onSubmit, filteredRoutines])
+  }, [step, data, validate, onSubmit, nicheRoutineIds])
 
   const handleBack = useCallback(() => {
     if (step === 7 && data.onboardingPath === 'scratch') {
@@ -442,6 +468,16 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
               onChange={(e) => update('confirmPassword', e.target.value)}
               type={showPassword ? 'text' : 'password'}
               error={errors.confirmPassword}
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? t.setup.account.hidePassword : t.setup.account.showPassword}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              }
             />
           </div>
         </div>
@@ -645,7 +681,7 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
       {/* Step 6: Routines */}
       {step === 6 && (
         <RoutineSelector
-          routines={filteredRoutines}
+          routines={ROUTINE_TEMPLATES}
           selectedIds={data.selectedRoutines}
           onToggle={toggleRoutine}
         />

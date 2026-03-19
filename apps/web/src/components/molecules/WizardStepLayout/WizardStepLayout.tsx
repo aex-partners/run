@@ -43,7 +43,7 @@ export function WizardStepLayout({
           display: 'flex',
           flexDirection: 'column',
           background: '#fff',
-          overflowY: 'auto',
+          overflow: 'hidden',
         }}
       >
         {/* Logo */}
@@ -55,23 +55,23 @@ export function WizardStepLayout({
         <div
           style={{
             flex: 1,
+            minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             padding: '0 56px 48px',
+            overflow: 'auto',
           }}
         >
-          <div style={{ width: '100%', maxWidth: 560 }}>
-            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
-              {title}
-            </h2>
-            {description && (
-              <p style={{ margin: '10px 0 0', fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                {description}
-              </p>
-            )}
-            <div style={{ marginTop: 36 }}>{children}</div>
-          </div>
+          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, flexShrink: 0 }}>
+            {title}
+          </h2>
+          {description && (
+            <p style={{ margin: '10px 0 0', fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.5, flexShrink: 0 }}>
+              {description}
+            </p>
+          )}
+          <div style={{ marginTop: 36, flex: 1, minHeight: 0 }}>{children}</div>
         </div>
 
         {/* Navigation pinned to bottom */}
