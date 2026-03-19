@@ -702,7 +702,7 @@ export const t = {
       team: 'Team',
       path: 'Path',
       routines: 'Routines',
-      smtp: 'Email',
+      email: 'Email',
       plugins: 'Plugins',
     },
     account: {
@@ -779,9 +779,25 @@ export const t = {
       title: 'Select Routines',
       description: 'Choose the business routines you want to activate. You can always add more later.',
     },
+    email: {
+      title: 'Email Setup',
+      description: 'Choose how to handle email. Connect a provider or configure your own SMTP server.',
+      gmail: {
+        title: 'Gmail',
+        description: 'Connect via Google OAuth2.',
+      },
+      outlook: {
+        title: 'Outlook',
+        description: 'Connect via Microsoft OAuth2.',
+      },
+      smtp: {
+        title: 'SMTP',
+        description: 'Manual server configuration.',
+      },
+      oauthNote: 'OAuth2 connection will be configured after setup completes. You will be redirected to sign in with your email provider in Settings.',
+      hint: 'This step is optional. You can configure email later in Settings.',
+    },
     smtp: {
-      title: 'Email Server (SMTP)',
-      description: 'Configure your mail server to send invites, notifications, and system emails.',
       host: 'SMTP Host',
       hostPlaceholder: 'smtp.gmail.com',
       port: 'Port',
@@ -792,7 +808,6 @@ export const t = {
       from: 'From Address',
       fromPlaceholder: 'noreply@yourcompany.com',
       secure: 'Use TLS/SSL encryption',
-      hint: 'You can skip this step and configure it later in Settings. Without SMTP, team invites will not be sent by email.',
     },
     plugins: {
       title: 'Select Plugins',
@@ -867,12 +882,18 @@ export const t = {
         description: 'Toggle routines on or off. You can always change this later.',
         of: 'of',
       },
-      smtp: {
-        title: 'Email Delivery',
-        description: 'Send invites, notifications, and alerts directly from your instance.',
-        feature1: 'Send team invitations by email',
-        feature2: 'TLS/SSL encrypted delivery',
-        feature3: 'System notifications and alerts',
+      email: {
+        title: 'Email Integration',
+        description: 'Choose a provider to send and receive email from AEX.',
+        gmailDesc: 'Sync your Gmail inbox, send and receive emails directly from AEX.',
+        outlookDesc: 'Sync your Outlook inbox, send and receive emails directly from AEX.',
+        smtpDesc: 'Connect any mail server to send system emails, invites, and notifications.',
+        oauthSync: 'Full inbox sync via OAuth2',
+        sendReceive: 'Send and receive from AEX',
+        autoRefresh: 'Auto-refresh every 5 minutes',
+        smtpSend: 'Send invites and notifications',
+        tlsEncryption: 'TLS/SSL encrypted delivery',
+        anyProvider: 'Works with any mail server',
       },
       plugins: {
         title: 'Integrations',

@@ -35,6 +35,7 @@ export const settingsRouter = router({
         invites: z.array(z.string()).optional(),
         onboardingPath: z.string().nullable().optional(),
         selectedRoutines: z.array(z.string()).optional(),
+        emailProvider: z.enum(['gmail', 'outlook', 'smtp']).nullable().optional(),
         smtpHost: z.string().optional(),
         smtpPort: z.string().optional(),
         smtpUser: z.string().optional(),
@@ -75,7 +76,8 @@ export const settingsRouter = router({
       if (input.selectedRoutines !== undefined) await upsert("onboarding.selectedRoutines", input.selectedRoutines);
       if (input.invites !== undefined) await upsert("onboarding.pendingInvites", input.invites);
 
-      // SMTP settings
+      // Email settings
+      if (input.emailProvider !== undefined) await upsert("mail.provider", input.emailProvider);
       if (input.smtpHost) await upsert("mail.smtp.host", input.smtpHost);
       if (input.smtpPort) await upsert("mail.smtp.port", input.smtpPort);
       if (input.smtpUser) await upsert("mail.smtp.user", input.smtpUser);

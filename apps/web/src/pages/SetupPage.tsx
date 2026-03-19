@@ -58,6 +58,7 @@ export function SetupPage() {
         invites: data.invites.filter((e) => e.trim()),
         onboardingPath: data.onboardingPath,
         selectedRoutines: data.selectedRoutines,
+        emailProvider: data.emailProvider,
         smtpHost: data.smtpHost || undefined,
         smtpPort: data.smtpPort || undefined,
         smtpUser: data.smtpUser || undefined,
