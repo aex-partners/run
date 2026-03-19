@@ -20,6 +20,8 @@ import { PathPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/Pat
 import { RoutinesPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/RoutinesPreviewPanel'
 import { EmailPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/EmailPreviewPanel'
 import { PluginsPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/PluginsPreviewPanel'
+import { AIPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/AIPreviewPanel'
+import type { AIProvider, OllamaModel } from '../../molecules/WizardShowcasePanel/panels/AIPreviewPanel'
 import { t } from '../../../locales/en'
 import { NICHES } from '../../../data/niches'
 import { COUNTRIES, LANGUAGES, TIMEZONES, CURRENCIES, type CountryLocale } from '../../../data/locale-options'
@@ -76,6 +78,12 @@ export interface NewWorkspaceWizardData {
 
 export interface NewWorkspaceWizardProps {
   onSubmit?: (data: NewWorkspaceWizardData) => void
+  /** Called when leaving step 0 to create and authenticate the user account. */
+  onCreateAccount?: (name: string, email: string, password: string) => Promise<void>
+  /** Called when user wants to connect Gmail/Outlook. Should return the connected email address or null. */
+  onConnectEmail?: (provider: 'gmail' | 'outlook') => Promise<string | null>
+  /** Email address of currently connected account (if any) */
+  connectedEmail?: string | null
   /** Start on a specific step (for Storybook previews) */
   initialStep?: number
   /** Pre-fill form data (for Storybook previews) */
@@ -158,7 +166,9 @@ function clearSavedState() {
   localStorage.removeItem('aex-tour-completed')
 }
 
-export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
+export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, connectedEmail, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
+  const [connectingEmail, setConnectingEmail] = useState(false)
+  const [accountCreated, setAccountCreated] = useState(false)
   const saved = useMemo(() => loadSavedState(), [])
   const source = saved?.data ?? initialData
 
@@ -273,8 +283,22 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
     return Object.keys(errs).length === 0
   }, [step, data])
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (!validate()) return
+
+    // Create account when leaving step 0 (so user has a session for OAuth later)
+    if (step === 0 && !accountCreated && onCreateAccount) {
+      try {
+        setSubmitting(true)
+        await onCreateAccount(data.name, data.email, data.password)
+        setAccountCreated(true)
+      } catch (err) {
+        setErrors({ email: err instanceof Error ? err.message : 'Failed to create account' })
+        return
+      } finally {
+        setSubmitting(false)
+      }
+    }
 
     if (step === 5 && data.onboardingPath === 'default') {
       // Pre-select routines matching the niche
@@ -300,7 +324,7 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
     }
 
     setStep((s) => s + 1)
-  }, [step, data, validate, onSubmit, nicheRoutineIds])
+  }, [step, data, validate, onSubmit, onCreateAccount, accountCreated, nicheRoutineIds])
 
   const handleBack = useCallback(() => {
     if (step === 7 && data.onboardingPath === 'scratch') {
@@ -739,10 +763,38 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
             />
           </div>
 
-          {/* Gmail / Outlook info */}
+          {/* Gmail / Outlook connect */}
           {(data.emailProvider === 'gmail' || data.emailProvider === 'outlook') && (
-            <div style={{ padding: 20, background: 'var(--accent-light)', borderRadius: 10, border: '1px solid var(--accent)', fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>
-              {t.setup.email.oauthNote}
+            <div style={{ padding: 20, background: 'var(--accent-light)', borderRadius: 10, border: '1px solid var(--accent)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {connectedEmail ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>
+                    {t.setup.email.connected} <strong>{connectedEmail}</strong>
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5, margin: 0 }}>
+                    {t.setup.email.oauthNote}
+                  </p>
+                  <Button
+                    variant="primary"
+                    loading={connectingEmail}
+                    onClick={async () => {
+                      if (!onConnectEmail) return
+                      setConnectingEmail(true)
+                      try {
+                        await onConnectEmail(data.emailProvider as 'gmail' | 'outlook')
+                      } finally {
+                        setConnectingEmail(false)
+                      }
+                    }}
+                  >
+                    {connectingEmail ? t.setup.email.connecting : t.setup.email.connectButton(data.emailProvider === 'gmail' ? 'Gmail' : 'Outlook')}
+                  </Button>
+                </>
+              )}
             </div>
           )}
 

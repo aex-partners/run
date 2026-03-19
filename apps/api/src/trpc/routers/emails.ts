@@ -52,12 +52,14 @@ export const emailsRouter = router({
     connect: protectedProcedure
       .input(z.object({
         provider: z.enum(["gmail", "outlook"]),
+        returnTo: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const config = getOAuthConfig(input.provider);
         const state = Buffer.from(JSON.stringify({
           provider: input.provider,
           userId: ctx.session.user.id,
+          returnTo: input.returnTo,
         })).toString("base64url");
 
         const authUrl = generateAuthUrl(config, state);

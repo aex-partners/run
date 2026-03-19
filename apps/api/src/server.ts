@@ -115,6 +115,7 @@ export async function buildServer() {
       const stateData = JSON.parse(Buffer.from(state, "base64url").toString()) as {
         provider: "gmail" | "outlook";
         userId: string;
+        returnTo?: string;
       };
 
       const { exchangeCode } = await import("./integrations/oauth.js");
@@ -192,7 +193,8 @@ export async function buildServer() {
       await enqueueEmailSync(accountId);
 
       // Redirect back to app
-      return reply.redirect(`${env.CORS_ORIGIN}/mail`);
+      const redirectTo = stateData.returnTo || "/mail";
+      return reply.redirect(`${env.CORS_ORIGIN}${redirectTo}`);
     } catch (error) {
       console.error("Email OAuth callback error:", error);
       return reply.status(500).send({ error: "OAuth callback failed" });
