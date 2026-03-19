@@ -18,6 +18,7 @@ import { LocalePreviewPanel } from '../../molecules/WizardShowcasePanel/panels/L
 import { TeamPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/TeamPreviewPanel'
 import { PathPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/PathPreviewPanel'
 import { RoutinesPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/RoutinesPreviewPanel'
+import { SmtpPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/SmtpPreviewPanel'
 import { PluginsPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/PluginsPreviewPanel'
 import { t } from '../../../locales/en'
 import { NICHES } from '../../../data/niches'
@@ -34,6 +35,7 @@ const STEPS = [
   { label: t.setup.steps.team },
   { label: t.setup.steps.path },
   { label: t.setup.steps.routines },
+  { label: t.setup.steps.smtp },
   { label: t.setup.steps.plugins },
 ]
 
@@ -62,6 +64,13 @@ export interface NewWorkspaceWizardData {
   onboardingPath: OnboardingPath
   // Routines
   selectedRoutines: string[]
+  // SMTP
+  smtpHost: string
+  smtpPort: string
+  smtpUser: string
+  smtpPass: string
+  smtpFrom: string
+  smtpSecure: boolean
 }
 
 export interface NewWorkspaceWizardProps {
@@ -145,6 +154,7 @@ function loadSavedState(): { step: number; data: Partial<NewWorkspaceWizardData>
 
 function clearSavedState() {
   localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem('aex-tour-completed')
 }
 
 export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
@@ -174,11 +184,17 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
     invites: source?.invites ?? [''],
     onboardingPath: source?.onboardingPath ?? null,
     selectedRoutines: source?.selectedRoutines ?? [],
+    smtpHost: source?.smtpHost ?? '',
+    smtpPort: source?.smtpPort ?? '587',
+    smtpUser: source?.smtpUser ?? '',
+    smtpPass: '',
+    smtpFrom: source?.smtpFrom ?? '',
+    smtpSecure: source?.smtpSecure ?? true,
   })
 
   // Persist wizard state to localStorage (excluding passwords)
   useEffect(() => {
-    const { password, confirmPassword, ...safe } = data
+    const { password, confirmPassword, smtpPass, ...safe } = data
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data: safe }))
   }, [step, data])
 
@@ -269,7 +285,7 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
     }
 
     if (step === 5 && data.onboardingPath === 'scratch') {
-      // Skip routines, go to plugins
+      // Skip routines, go to SMTP
       setStep(7)
       return
     }
@@ -292,6 +308,8 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
     }
     setStep((s) => Math.max(0, s - 1))
   }, [step, data.onboardingPath])
+
+  const [showSmtpPass, setShowSmtpPass] = useState(false)
 
   const toggleRoutine = useCallback((id: string) => {
     setData((prev) => ({
@@ -346,6 +364,8 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
       case 6:
         return <RoutinesPreviewPanel selectedRoutineIds={data.selectedRoutines} />
       case 7:
+        return <SmtpPreviewPanel />
+      case 8:
         return <PluginsPreviewPanel />
       default:
         return <WelcomePanel />
@@ -370,6 +390,8 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
       case 6:
         return { title: t.setup.routines.title, description: t.setup.routines.description }
       case 7:
+        return { title: t.setup.smtp.title, description: t.setup.smtp.description }
+      case 8:
         return { title: t.setup.plugins.title, description: t.setup.plugins.description }
       default:
         return { title: '', description: '' }
@@ -687,8 +709,88 @@ export function NewWorkspaceWizard({ onSubmit, initialStep = 0, initialData }: N
         />
       )}
 
-      {/* Step 7: Plugins */}
+      {/* Step 7: SMTP */}
       {step === 7 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+                {t.setup.smtp.host}
+              </label>
+              <Input
+                placeholder={t.setup.smtp.hostPlaceholder}
+                value={data.smtpHost}
+                onChange={(e) => update('smtpHost', e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+                {t.setup.smtp.port}
+              </label>
+              <Input
+                placeholder="587"
+                value={data.smtpPort}
+                onChange={(e) => update('smtpPort', e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+              {t.setup.smtp.user}
+            </label>
+            <Input
+              placeholder={t.setup.smtp.userPlaceholder}
+              value={data.smtpUser}
+              onChange={(e) => update('smtpUser', e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+              {t.setup.smtp.pass}
+            </label>
+            <Input
+              placeholder={t.setup.smtp.passPlaceholder}
+              value={data.smtpPass}
+              onChange={(e) => update('smtpPass', e.target.value)}
+              type={showSmtpPass ? 'text' : 'password'}
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowSmtpPass(!showSmtpPass)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}
+                >
+                  {showSmtpPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              }
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+              {t.setup.smtp.from}
+            </label>
+            <Input
+              placeholder={t.setup.smtp.fromPlaceholder}
+              value={data.smtpFrom}
+              onChange={(e) => update('smtpFrom', e.target.value)}
+            />
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={data.smtpSecure}
+              onChange={(e) => update('smtpSecure', e.target.checked)}
+              style={{ accentColor: 'var(--accent)' }}
+            />
+            {t.setup.smtp.secure}
+          </label>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+            {t.setup.smtp.hint}
+          </p>
+        </div>
+      )}
+
+      {/* Step 8: Plugins */}
+      {step === 8 && (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
           {t.setup.plugins.placeholder}
         </div>

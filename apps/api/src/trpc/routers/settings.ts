@@ -35,6 +35,12 @@ export const settingsRouter = router({
         invites: z.array(z.string()).optional(),
         onboardingPath: z.string().nullable().optional(),
         selectedRoutines: z.array(z.string()).optional(),
+        smtpHost: z.string().optional(),
+        smtpPort: z.string().optional(),
+        smtpUser: z.string().optional(),
+        smtpPass: z.string().optional(),
+        smtpFrom: z.string().optional(),
+        smtpSecure: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -68,6 +74,14 @@ export const settingsRouter = router({
       if (input.onboardingPath !== undefined) await upsert("onboarding.path", input.onboardingPath);
       if (input.selectedRoutines !== undefined) await upsert("onboarding.selectedRoutines", input.selectedRoutines);
       if (input.invites !== undefined) await upsert("onboarding.pendingInvites", input.invites);
+
+      // SMTP settings
+      if (input.smtpHost) await upsert("mail.smtp.host", input.smtpHost);
+      if (input.smtpPort) await upsert("mail.smtp.port", input.smtpPort);
+      if (input.smtpUser) await upsert("mail.smtp.user", input.smtpUser);
+      if (input.smtpPass) await upsert("mail.smtp.pass", input.smtpPass);
+      if (input.smtpFrom) await upsert("mail.smtp.from", input.smtpFrom);
+      if (input.smtpSecure !== undefined) await upsert("mail.smtp.secure", input.smtpSecure);
 
       // Mark setup as complete
       await upsert("system.setupComplete", "true");

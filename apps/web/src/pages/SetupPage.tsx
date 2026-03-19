@@ -58,6 +58,12 @@ export function SetupPage() {
         invites: data.invites.filter((e) => e.trim()),
         onboardingPath: data.onboardingPath,
         selectedRoutines: data.selectedRoutines,
+        smtpHost: data.smtpHost || undefined,
+        smtpPort: data.smtpPort || undefined,
+        smtpUser: data.smtpUser || undefined,
+        smtpPass: data.smtpPass || undefined,
+        smtpFrom: data.smtpFrom || undefined,
+        smtpSecure: data.smtpSecure,
       });
 
       // 4. Navigate to main app

@@ -702,6 +702,7 @@ export const t = {
       team: 'Team',
       path: 'Path',
       routines: 'Routines',
+      smtp: 'Email',
       plugins: 'Plugins',
     },
     account: {
@@ -778,6 +779,21 @@ export const t = {
       title: 'Select Routines',
       description: 'Choose the business routines you want to activate. You can always add more later.',
     },
+    smtp: {
+      title: 'Email Server (SMTP)',
+      description: 'Configure your mail server to send invites, notifications, and system emails.',
+      host: 'SMTP Host',
+      hostPlaceholder: 'smtp.gmail.com',
+      port: 'Port',
+      user: 'Username',
+      userPlaceholder: 'your@email.com',
+      pass: 'Password',
+      passPlaceholder: 'App password or SMTP password',
+      from: 'From Address',
+      fromPlaceholder: 'noreply@yourcompany.com',
+      secure: 'Use TLS/SSL encryption',
+      hint: 'You can skip this step and configure it later in Settings. Without SMTP, team invites will not be sent by email.',
+    },
     plugins: {
       title: 'Select Plugins',
       description: 'Choose integrations to connect with your existing tools.',
@@ -850,6 +866,13 @@ export const t = {
         title: 'Routines Selected',
         description: 'Toggle routines on or off. You can always change this later.',
         of: 'of',
+      },
+      smtp: {
+        title: 'Email Delivery',
+        description: 'Send invites, notifications, and alerts directly from your instance.',
+        feature1: 'Send team invitations by email',
+        feature2: 'TLS/SSL encrypted delivery',
+        feature3: 'System notifications and alerts',
       },
       plugins: {
         title: 'Integrations',
