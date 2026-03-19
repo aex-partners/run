@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link, Navigate } from "react-router-dom";
 import { t } from "../locales/en";
 import { trpc } from "../lib/trpc";
-import { Logo } from "../components/atoms/Logo/Logo";
+import { AexLogo } from "../components/atoms/AexLogo/AexLogo";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -72,7 +72,7 @@ export function LoginPage() {
             marginBottom: 24,
           }}
         >
-          <Logo width={36} height={36} />
+          <AexLogo size={28} />
         </div>
 
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>

@@ -123,10 +123,10 @@ export const settingsRouter = router({
         await upsert("company_profile", companyProfile);
       }
 
-      // Promote the setup user to admin (first user is always the owner)
+      // Promote the setup user to owner (first user is always the owner)
       await ctx.db
         .update(users)
-        .set({ role: "admin" })
+        .set({ role: "owner" })
         .where(eq(users.id, ctx.session.user.id));
 
       // Process pending invites: create users and DM conversations

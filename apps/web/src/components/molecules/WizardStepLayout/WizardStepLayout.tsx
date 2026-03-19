@@ -1,7 +1,7 @@
 import React from 'react'
 import { type StepIndicatorStep } from '../../atoms/StepIndicator/StepIndicator'
 import { Button } from '../../atoms/Button/Button'
-import { Logo } from '../../atoms/Logo/Logo'
+import { AexLogo } from '../../atoms/AexLogo/AexLogo'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 
 export interface WizardStepLayoutProps {
@@ -48,7 +48,7 @@ export function WizardStepLayout({
       >
         {/* Logo */}
         <div style={{ padding: '36px 56px', flexShrink: 0 }}>
-          <Logo width={28} height={28} />
+          <AexLogo size={28} />
         </div>
 
         {/* Form content area */}

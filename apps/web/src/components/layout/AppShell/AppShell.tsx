@@ -13,7 +13,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { Avatar } from '../../atoms/Avatar/Avatar'
 import { NavItem } from '../../molecules/NavItem/NavItem'
 import { Separator } from '../../atoms/Separator/Separator'
-import { Logo } from '../../atoms/Logo/Logo'
+import { AexLogo } from '../../atoms/AexLogo/AexLogo'
 
 export type Section = 'chat' | 'mail' | 'files' | 'database' | 'tasks' | 'workflows' | 'settings'
 
@@ -110,7 +110,7 @@ export function AppShell({
               justifyContent: 'center',
             }}
           >
-            <Logo width={28} height={28} />
+            <AexLogo size={28} />
           </div>
 
           {navItems
