@@ -14,6 +14,13 @@ import { syncPieceCatalog } from "../../plugins/piece-registry.js";
 import { loadPiece } from "../../plugins/piece-loader.js";
 
 export const pluginsRouter = router({
+  catalog: protectedProcedure.query(async () => {
+    const { default: catalog } = await import("../../../data/piece-catalog.json", {
+      with: { type: "json" },
+    });
+    return catalog;
+  }),
+
   list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(plugins);
   }),

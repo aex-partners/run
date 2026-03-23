@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { Puzzle, Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { trpc } from '../../../../lib/trpc'
 
 interface CatalogEntry {
   id: string
@@ -9,23 +10,14 @@ interface CatalogEntry {
   logoUrl: string
 }
 
-let catalogCache: CatalogEntry[] | null = null
-
 export interface PluginsPreviewPanelProps {
   selectedPlugins?: string[]
 }
 
 export function PluginsPreviewPanel({ selectedPlugins = [] }: PluginsPreviewPanelProps) {
   const { t } = useTranslation()
-  const [catalog, setCatalog] = useState<CatalogEntry[]>(catalogCache ?? [])
-
-  useEffect(() => {
-    if (catalogCache) return
-    import('../../../../data/piece-catalog.json').then((mod) => {
-      catalogCache = mod.default as CatalogEntry[]
-      setCatalog(catalogCache)
-    })
-  }, [])
+  const { data } = trpc.plugins.catalog.useQuery(undefined, { staleTime: Infinity })
+  const catalog = (data ?? []) as CatalogEntry[]
 
   // Show selected plugins, or a few popular ones if none selected
   const displayPlugins = selectedPlugins.length > 0

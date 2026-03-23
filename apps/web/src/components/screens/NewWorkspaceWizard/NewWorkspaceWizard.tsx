@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Eye, EyeOff, Plus, Search, Check } from 'lucide-react'
+import { trpc } from '../../../lib/trpc'
 import { WizardStepLayout } from '../../molecules/WizardStepLayout/WizardStepLayout'
 import { Input } from '../../atoms/Input/Input'
 import { SelectField } from '../../atoms/SelectField/SelectField'
@@ -1056,18 +1057,10 @@ interface CatalogEntry {
   logoUrl: string
 }
 
-// Lazy-load catalog
-let catalogCache: CatalogEntry[] | null = null
+// Fetch catalog from backend (single source of truth)
 function usePieceCatalog() {
-  const [catalog, setCatalog] = useState<CatalogEntry[]>(catalogCache ?? [])
-  useEffect(() => {
-    if (catalogCache) return
-    import('../../../data/piece-catalog.json').then((mod) => {
-      catalogCache = mod.default as CatalogEntry[]
-      setCatalog(catalogCache)
-    })
-  }, [])
-  return catalog
+  const { data } = trpc.plugins.catalog.useQuery(undefined, { staleTime: Infinity })
+  return (data ?? []) as CatalogEntry[]
 }
 
 function PluginSetupStep({ selectedPlugins, onToggle }: { selectedPlugins: string[]; onToggle: (id: string) => void }) {
