@@ -778,6 +778,15 @@ const ptBR = {
       title: 'Selecionar Rotinas',
       description: 'Escolha as rotinas de negócio que deseja ativar. Você sempre pode adicionar mais depois.',
     },
+    plugins: {
+      title: 'Plugins',
+      description: 'Estenda seu workspace com integrações e ferramentas.',
+      searchPlaceholder: 'Buscar plugins...',
+      selected: '{{count}} plugin selecionado',
+      selected_plural: '{{count}} plugins selecionados',
+      loadMore: 'Carregar mais ({{count}} restantes)',
+      noResults: 'Nenhum plugin encontrado.',
+    },
     email: {
       title: 'Configuração de E-mail',
       description: 'Escolha como lidar com e-mail. Conecte um provedor ou configure seu próprio servidor SMTP.',
@@ -1028,6 +1037,28 @@ const ptBR = {
     back: 'Voltar',
     skip: 'Pular',
     finish: 'Começar',
+  },
+
+  // Categorias de plugins
+  pluginCategories: {
+    all: 'Todas',
+    ARTIFICIAL_INTELLIGENCE: 'IA',
+    COMMUNICATION: 'Comunicação',
+    COMMERCE: 'Comércio',
+    PRODUCTIVITY: 'Produtividade',
+    DEVELOPER_TOOLS: 'Dev Tools',
+    SALES_AND_CRM: 'Vendas e CRM',
+    PAYMENT_PROCESSING: 'Pagamentos',
+    MARKETING: 'Marketing',
+    CONTENT_AND_FILES: 'Conteúdo e Arquivos',
+    CUSTOMER_SUPPORT: 'Suporte',
+    FORMS_AND_SURVEYS: 'Formulários',
+    BUSINESS_INTELLIGENCE: 'Analytics',
+    ACCOUNTING: 'Contabilidade',
+    HUMAN_RESOURCES: 'RH',
+    CORE: 'Core',
+    FLOW_CONTROL: 'Controle de Fluxo',
+    UNIVERSAL_AI: 'IA Universal',
   },
 
   // Nichos de negócio & sub-nichos

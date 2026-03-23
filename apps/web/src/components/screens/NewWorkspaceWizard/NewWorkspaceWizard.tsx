@@ -1076,22 +1076,22 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
 
 // --- Plugin Setup Step Component ---
 
-const PLUGIN_CATEGORIES = [
-  { value: 'all', label: 'All' },
-  { value: 'ARTIFICIAL_INTELLIGENCE', label: 'AI' },
-  { value: 'COMMUNICATION', label: 'Communication' },
-  { value: 'PRODUCTIVITY', label: 'Productivity' },
-  { value: 'DEVELOPER_TOOLS', label: 'Dev Tools' },
-  { value: 'SALES_AND_CRM', label: 'Sales & CRM' },
-  { value: 'COMMERCE', label: 'Commerce' },
-  { value: 'PAYMENT_PROCESSING', label: 'Payments' },
-  { value: 'MARKETING', label: 'Marketing' },
-  { value: 'CONTENT_AND_FILES', label: 'Content & Files' },
-  { value: 'CUSTOMER_SUPPORT', label: 'Support' },
-  { value: 'FORMS_AND_SURVEYS', label: 'Forms' },
-  { value: 'BUSINESS_INTELLIGENCE', label: 'Analytics' },
-  { value: 'ACCOUNTING', label: 'Accounting' },
-  { value: 'HUMAN_RESOURCES', label: 'HR' },
+const PLUGIN_CATEGORY_IDS = [
+  'all',
+  'ARTIFICIAL_INTELLIGENCE',
+  'COMMUNICATION',
+  'PRODUCTIVITY',
+  'DEVELOPER_TOOLS',
+  'SALES_AND_CRM',
+  'COMMERCE',
+  'PAYMENT_PROCESSING',
+  'MARKETING',
+  'CONTENT_AND_FILES',
+  'CUSTOMER_SUPPORT',
+  'FORMS_AND_SURVEYS',
+  'BUSINESS_INTELLIGENCE',
+  'ACCOUNTING',
+  'HUMAN_RESOURCES',
 ]
 
 interface CatalogEntry {
@@ -1136,29 +1136,13 @@ function PluginSetupStep({ selectedPlugins, onToggle }: { selectedPlugins: strin
   // Reset page on filter change
   useEffect(() => { setPage(1) }, [search, category])
 
-  const CATEGORY_LABELS: Record<string, string> = {
-    ARTIFICIAL_INTELLIGENCE: 'AI',
-    COMMUNICATION: 'Communication',
-    COMMERCE: 'Commerce',
-    PRODUCTIVITY: 'Productivity',
-    DEVELOPER_TOOLS: 'Dev Tools',
-    SALES_AND_CRM: 'Sales & CRM',
-    PAYMENT_PROCESSING: 'Payments',
-    MARKETING: 'Marketing',
-    CONTENT_AND_FILES: 'Content',
-    CUSTOMER_SUPPORT: 'Support',
-    FORMS_AND_SURVEYS: 'Forms',
-    BUSINESS_INTELLIGENCE: 'Analytics',
-    ACCOUNTING: 'Accounting',
-    HUMAN_RESOURCES: 'HR',
-  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Selected count */}
       {selectedPlugins.length > 0 && (
         <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>
-          {selectedPlugins.length} {selectedPlugins.length === 1 ? 'plugin' : 'plugins'} selected
+          {t('setup.plugins.selected', { count: selectedPlugins.length })}
         </div>
       )}
 
@@ -1181,20 +1165,20 @@ function PluginSetupStep({ selectedPlugins, onToggle }: { selectedPlugins: strin
 
       {/* Category tabs */}
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        {PLUGIN_CATEGORIES.map((cat) => (
+        {PLUGIN_CATEGORY_IDS.map((catId) => (
           <button
-            key={cat.value}
+            key={catId}
             type="button"
-            onClick={() => setCategory(cat.value)}
+            onClick={() => setCategory(catId)}
             style={{
               padding: '3px 8px', borderRadius: 6, fontSize: 11, fontFamily: 'inherit',
-              border: '1px solid ' + (category === cat.value ? 'var(--accent)' : 'var(--border)'),
-              background: category === cat.value ? 'var(--accent-light)' : 'transparent',
-              color: category === cat.value ? 'var(--accent)' : 'var(--text-muted)',
-              cursor: 'pointer', fontWeight: category === cat.value ? 600 : 400,
+              border: '1px solid ' + (category === catId ? 'var(--accent)' : 'var(--border)'),
+              background: category === catId ? 'var(--accent-light)' : 'transparent',
+              color: category === catId ? 'var(--accent)' : 'var(--text-muted)',
+              cursor: 'pointer', fontWeight: category === catId ? 600 : 400,
             }}
           >
-            {cat.label}
+            {t(`pluginCategories.${catId}`)}
           </button>
         ))}
       </div>
@@ -1242,7 +1226,7 @@ function PluginSetupStep({ selectedPlugins, onToggle }: { selectedPlugins: strin
                     fontSize: 9, color: 'var(--text-muted)', background: 'var(--surface-2)',
                     padding: '1px 5px', borderRadius: 8, border: '1px solid var(--border)',
                   }}>
-                    {CATEGORY_LABELS[plugin.category] ?? plugin.category}
+                    {t(`pluginCategories.${plugin.category}`)}
                   </span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1264,13 +1248,13 @@ function PluginSetupStep({ selectedPlugins, onToggle }: { selectedPlugins: strin
               color: 'var(--text-muted)', cursor: 'pointer', textAlign: 'center',
             }}
           >
-            Load more ({filtered.length - visible.length} remaining)
+            {t('setup.plugins.loadMore', { count: filtered.length - visible.length })}
           </button>
         )}
 
         {filtered.length === 0 && catalog.length > 0 && (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-            No plugins match your search.
+            {t('setup.plugins.noResults')}
           </div>
         )}
 

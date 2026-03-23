@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Table, ArrowRight, Layers, Link2, FolderOpen } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export interface RoutinesPreviewPanelProps {
   selectedRoutineIds: string[]
@@ -193,15 +194,9 @@ const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string
   operations: { bg: 'rgba(148, 163, 184, 0.15)', border: 'rgba(148, 163, 184, 0.3)', text: '#cbd5e1' },
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  sales: 'Sales',
-  finance: 'Finance',
-  inventory: 'Inventory',
-  hr: 'HR',
-  operations: 'Operations',
-}
 
 export function RoutinesPreviewPanel({ selectedRoutineIds }: RoutinesPreviewPanelProps) {
+  const { t } = useTranslation()
   const { entities, relations, categorized } = useMemo(() => {
     const entityMap = new Map<string, EntityNode>()
     for (const routineId of selectedRoutineIds) {
@@ -360,7 +355,7 @@ export function RoutinesPreviewPanel({ selectedRoutineIds }: RoutinesPreviewPane
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: colors.text }} />
                             <span style={{ fontSize: 11, fontWeight: 600, color: colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                              {CATEGORY_LABELS[category] || category}
+                              {t(`routineCategories.${category}`)}
                             </span>
                             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
                               {categoryEntities.length}

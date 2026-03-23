@@ -780,6 +780,15 @@ const en = {
       title: 'Select Routines',
       description: 'Choose the business routines you want to activate. You can always add more later.',
     },
+    plugins: {
+      title: 'Plugins',
+      description: 'Extend your workspace with integrations and tools.',
+      searchPlaceholder: 'Search plugins...',
+      selected: '{{count}} plugin selected',
+      selected_plural: '{{count}} plugins selected',
+      loadMore: 'Load more ({{count}} remaining)',
+      noResults: 'No plugins match your search.',
+    },
     email: {
       title: 'Email Setup',
       description: 'Choose how to handle email. Connect a provider or configure your own SMTP server.',
@@ -1030,6 +1039,28 @@ const en = {
     back: 'Back',
     skip: 'Skip',
     finish: 'Get Started',
+  },
+
+  // Plugin categories
+  pluginCategories: {
+    all: 'All',
+    ARTIFICIAL_INTELLIGENCE: 'AI',
+    COMMUNICATION: 'Communication',
+    COMMERCE: 'Commerce',
+    PRODUCTIVITY: 'Productivity',
+    DEVELOPER_TOOLS: 'Dev Tools',
+    SALES_AND_CRM: 'Sales & CRM',
+    PAYMENT_PROCESSING: 'Payments',
+    MARKETING: 'Marketing',
+    CONTENT_AND_FILES: 'Content & Files',
+    CUSTOMER_SUPPORT: 'Support',
+    FORMS_AND_SURVEYS: 'Forms',
+    BUSINESS_INTELLIGENCE: 'Analytics',
+    ACCOUNTING: 'Accounting',
+    HUMAN_RESOURCES: 'HR',
+    CORE: 'Core',
+    FLOW_CONTROL: 'Flow Control',
+    UNIVERSAL_AI: 'Universal AI',
   },
 
   // Business niches & sub-niches

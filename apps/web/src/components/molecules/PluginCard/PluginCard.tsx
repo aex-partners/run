@@ -1,5 +1,6 @@
 import React from 'react'
 import { Download, Settings, Star, Trash2, Wrench } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../atoms/Button/Button'
 
 export interface PluginCardProps {
@@ -20,26 +21,6 @@ export interface PluginCardProps {
   onToggle?: (enabled: boolean) => void
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  ARTIFICIAL_INTELLIGENCE: 'AI',
-  COMMUNICATION: 'Communication',
-  COMMERCE: 'Commerce',
-  PRODUCTIVITY: 'Productivity',
-  DEVELOPER_TOOLS: 'Dev Tools',
-  SALES_AND_CRM: 'Sales & CRM',
-  PAYMENT_PROCESSING: 'Payments',
-  MARKETING: 'Marketing',
-  CONTENT_AND_FILES: 'Content',
-  CUSTOMER_SUPPORT: 'Support',
-  FORMS_AND_SURVEYS: 'Forms',
-  BUSINESS_INTELLIGENCE: 'Analytics',
-  ACCOUNTING: 'Accounting',
-  HUMAN_RESOURCES: 'HR',
-  CORE: 'Core',
-  FLOW_CONTROL: 'Flow Control',
-  UNIVERSAL_AI: 'Universal AI',
-}
-
 export function PluginCard({
   name,
   description,
@@ -57,6 +38,7 @@ export function PluginCard({
   onUninstall,
   onToggle,
 }: PluginCardProps) {
+  const { t } = useTranslation()
   return (
     <div
       style={{
@@ -144,7 +126,7 @@ export function PluginCard({
           )}
           {category && (
             <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--surface-2)', padding: '1px 6px', borderRadius: 10, border: '1px solid var(--border)' }}>
-              {CATEGORY_LABELS[category] ?? category}
+              {t(`pluginCategories.${category}`)}
             </span>
           )}
           {installing && (
