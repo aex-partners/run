@@ -1,182 +1,78 @@
 // Business niches and sub-niches for Setup Wizard
+// Labels come from i18n: niches.{i18nKey}.label / niches.{i18nKey}.subNiches.{subId}
 
 export interface NicheOption {
   id: string
-  label: string
+  i18nKey: string
   icon: string
-  subNiches: SubNicheOption[]
-}
-
-export interface SubNicheOption {
-  id: string
-  label: string
+  subNiches: string[]
 }
 
 export const NICHES: NicheOption[] = [
   {
     id: 'retail',
-    label: 'Retail',
+    i18nKey: 'retail',
     icon: 'ShoppingBag',
-    subNiches: [
-      { id: 'clothing', label: 'Clothing & Fashion' },
-      { id: 'electronics', label: 'Electronics' },
-      { id: 'grocery', label: 'Grocery & Supermarket' },
-      { id: 'furniture', label: 'Furniture & Home Decor' },
-      { id: 'sports', label: 'Sports & Outdoors' },
-      { id: 'beauty', label: 'Beauty & Cosmetics' },
-      { id: 'pet', label: 'Pet Supplies' },
-      { id: 'books', label: 'Books & Stationery' },
-    ],
+    subNiches: ['clothing', 'electronics', 'grocery', 'furniture', 'pharmacy', 'pet', 'sports', 'beauty', 'bookstore', 'jewelry', 'autoparts', 'convenience', 'ecommerce'],
   },
   {
     id: 'food-beverage',
-    label: 'Food & Beverage',
+    i18nKey: 'foodAndBeverage',
     icon: 'UtensilsCrossed',
-    subNiches: [
-      { id: 'restaurant', label: 'Restaurant' },
-      { id: 'cafe', label: 'Cafe & Bakery' },
-      { id: 'bar', label: 'Bar & Nightclub' },
-      { id: 'catering', label: 'Catering' },
-      { id: 'food-truck', label: 'Food Truck' },
-      { id: 'delivery', label: 'Delivery Kitchen' },
-      { id: 'brewery', label: 'Brewery & Winery' },
-      { id: 'food-production', label: 'Food Production' },
-    ],
+    subNiches: ['restaurant', 'cafe', 'bakery', 'bar', 'fastFood', 'foodTruck', 'catering', 'brewery', 'mealPrep', 'iceCream'],
   },
   {
     id: 'services',
-    label: 'Professional Services',
+    i18nKey: 'professionalServices',
     icon: 'Briefcase',
-    subNiches: [
-      { id: 'consulting', label: 'Consulting' },
-      { id: 'accounting', label: 'Accounting & Finance' },
-      { id: 'legal', label: 'Legal' },
-      { id: 'marketing', label: 'Marketing & Advertising' },
-      { id: 'it-services', label: 'IT Services' },
-      { id: 'hr-services', label: 'HR & Recruiting' },
-      { id: 'architecture', label: 'Architecture & Engineering' },
-      { id: 'real-estate', label: 'Real Estate' },
-      { id: 'insurance', label: 'Insurance' },
-    ],
+    subNiches: ['accounting', 'legal', 'consulting', 'marketing', 'recruitment', 'insurance', 'realEstate', 'architecture', 'financial', 'translation'],
   },
   {
     id: 'healthcare',
-    label: 'Healthcare',
+    i18nKey: 'healthcare',
     icon: 'Heart',
-    subNiches: [
-      { id: 'clinic', label: 'Medical Clinic' },
-      { id: 'dental', label: 'Dental Practice' },
-      { id: 'pharmacy', label: 'Pharmacy' },
-      { id: 'veterinary', label: 'Veterinary' },
-      { id: 'therapy', label: 'Therapy & Wellness' },
-      { id: 'lab', label: 'Laboratory' },
-      { id: 'optical', label: 'Optical' },
-      { id: 'home-care', label: 'Home Care' },
-    ],
+    subNiches: ['clinic', 'dental', 'veterinary', 'psychology', 'physiotherapy', 'laboratory', 'homecare', 'nutrition', 'optometry', 'alternativeMedicine'],
   },
   {
     id: 'education',
-    label: 'Education',
+    i18nKey: 'education',
     icon: 'GraduationCap',
-    subNiches: [
-      { id: 'school', label: 'School' },
-      { id: 'university', label: 'University & College' },
-      { id: 'online-courses', label: 'Online Courses' },
-      { id: 'tutoring', label: 'Tutoring' },
-      { id: 'language', label: 'Language School' },
-      { id: 'training', label: 'Corporate Training' },
-      { id: 'daycare', label: 'Daycare & Preschool' },
-      { id: 'driving-school', label: 'Driving School' },
-    ],
+    subNiches: ['school', 'university', 'languageSchool', 'onlineCourses', 'tutoring', 'vocational', 'earlyChildhood', 'musicArts', 'corporate', 'driving'],
   },
   {
     id: 'manufacturing',
-    label: 'Manufacturing',
+    i18nKey: 'manufacturing',
     icon: 'Factory',
-    subNiches: [
-      { id: 'textiles', label: 'Textiles' },
-      { id: 'metals', label: 'Metals & Machinery' },
-      { id: 'plastics', label: 'Plastics & Packaging' },
-      { id: 'automotive-parts', label: 'Automotive Parts' },
-      { id: 'electronics-mfg', label: 'Electronics Manufacturing' },
-      { id: 'chemicals', label: 'Chemicals' },
-      { id: 'woodwork', label: 'Woodwork & Carpentry' },
-      { id: 'printing', label: 'Printing & Publishing' },
-    ],
+    subNiches: ['foodProcessing', 'textile', 'metalwork', 'plastics', 'woodwork', 'chemical', 'electronics', 'automotive', 'printing', 'construction'],
   },
   {
     id: 'construction',
-    label: 'Construction',
+    i18nKey: 'construction',
     icon: 'HardHat',
-    subNiches: [
-      { id: 'residential', label: 'Residential' },
-      { id: 'commercial', label: 'Commercial' },
-      { id: 'renovation', label: 'Renovation & Remodeling' },
-      { id: 'electrical', label: 'Electrical' },
-      { id: 'plumbing', label: 'Plumbing' },
-      { id: 'painting', label: 'Painting & Finishing' },
-      { id: 'landscaping', label: 'Landscaping' },
-      { id: 'demolition', label: 'Demolition' },
-    ],
+    subNiches: ['residential', 'commercial', 'renovation', 'electrical', 'plumbing', 'painting', 'roofing', 'landscaping', 'demolition', 'solarInstall'],
   },
   {
     id: 'logistics',
-    label: 'Logistics & Transportation',
+    i18nKey: 'logistics',
     icon: 'Truck',
-    subNiches: [
-      { id: 'freight', label: 'Freight & Shipping' },
-      { id: 'courier', label: 'Courier & Delivery' },
-      { id: 'warehousing', label: 'Warehousing' },
-      { id: 'fleet', label: 'Fleet Management' },
-      { id: 'moving', label: 'Moving Services' },
-      { id: 'customs', label: 'Customs Brokerage' },
-      { id: 'passenger', label: 'Passenger Transport' },
-      { id: 'cold-chain', label: 'Cold Chain Logistics' },
-    ],
+    subNiches: ['freight', 'lastMile', 'warehouse', 'moving', 'courier', 'fleet', 'customs', 'coldChain', 'rideshare', 'maritime'],
   },
   {
     id: 'technology',
-    label: 'Technology',
+    i18nKey: 'technology',
     icon: 'Cpu',
-    subNiches: [
-      { id: 'saas', label: 'SaaS' },
-      { id: 'ecommerce', label: 'E-commerce' },
-      { id: 'mobile-apps', label: 'Mobile Apps' },
-      { id: 'ai-ml', label: 'AI & Machine Learning' },
-      { id: 'cybersecurity', label: 'Cybersecurity' },
-      { id: 'devops', label: 'DevOps & Cloud' },
-      { id: 'game-dev', label: 'Game Development' },
-      { id: 'iot', label: 'IoT & Hardware' },
-    ],
+    subNiches: ['saas', 'webDev', 'mobileDev', 'itServices', 'cybersecurity', 'dataAnalytics', 'aiMl', 'iot', 'gamedev', 'cloudHosting'],
   },
   {
     id: 'hospitality',
-    label: 'Hospitality & Tourism',
+    i18nKey: 'hospitality',
     icon: 'Hotel',
-    subNiches: [
-      { id: 'hotel', label: 'Hotel & Resort' },
-      { id: 'hostel', label: 'Hostel & B&B' },
-      { id: 'travel-agency', label: 'Travel Agency' },
-      { id: 'event-venue', label: 'Event Venue' },
-      { id: 'tour-operator', label: 'Tour Operator' },
-      { id: 'spa', label: 'Spa & Wellness Center' },
-      { id: 'camping', label: 'Camping & Outdoor' },
-      { id: 'theme-park', label: 'Theme Park' },
-    ],
+    subNiches: ['hotel', 'hostel', 'travelAgency', 'tourOperator', 'eventVenue', 'camping', 'spa', 'themepark', 'vacation', 'ecotourism'],
   },
   {
     id: 'agriculture',
-    label: 'Agriculture',
+    i18nKey: 'agriculture',
     icon: 'Sprout',
-    subNiches: [
-      { id: 'farming', label: 'Farming & Crops' },
-      { id: 'livestock', label: 'Livestock' },
-      { id: 'dairy', label: 'Dairy' },
-      { id: 'aquaculture', label: 'Aquaculture & Fishery' },
-      { id: 'agritech', label: 'Agritech' },
-      { id: 'forestry', label: 'Forestry' },
-      { id: 'organic', label: 'Organic & Sustainable' },
-      { id: 'agribusiness', label: 'Agribusiness Trading' },
-    ],
+    subNiches: ['cropFarming', 'livestock', 'dairy', 'poultry', 'aquaculture', 'organic', 'agribusiness', 'irrigation', 'forestry', 'horticulture'],
   },
 ]

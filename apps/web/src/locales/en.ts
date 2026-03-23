@@ -1299,6 +1299,50 @@ const en = {
       name: 'Payroll',
       description: 'Process salary calculations and payment records',
     },
+    leaveManagement: {
+      name: 'Leave Management',
+      description: 'Handle vacation requests and leave balances',
+    },
+    recruitment: {
+      name: 'Recruitment',
+      description: 'Track job openings, candidates, and hiring pipeline',
+    },
+    training: {
+      name: 'Training & Development',
+      description: 'Manage training programs and certifications',
+    },
+    projectManagement: {
+      name: 'Project Management',
+      description: 'Plan and track projects with milestones and deadlines',
+    },
+    serviceTickets: {
+      name: 'Service Tickets',
+      description: 'Manage customer support and service requests',
+    },
+    scheduling: {
+      name: 'Scheduling',
+      description: 'Manage appointments, bookings, and resource allocation',
+    },
+    qualityControl: {
+      name: 'Quality Control',
+      description: 'Track inspections, defects, and quality metrics',
+    },
+    fleetTracking: {
+      name: 'Fleet Tracking',
+      description: 'Monitor vehicles, maintenance, and fuel consumption',
+    },
+    documentManagement: {
+      name: 'Document Management',
+      description: 'Organize contracts, certificates, and business documents',
+    },
+    maintenance: {
+      name: 'Maintenance',
+      description: 'Schedule and track equipment and facility maintenance',
+    },
+    compliance: {
+      name: 'Compliance',
+      description: 'Track regulatory requirements and compliance deadlines',
+    },
   },
 } as const
 

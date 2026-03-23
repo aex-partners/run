@@ -4,7 +4,7 @@ import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { Input } from '../../atoms/Input/Input'
 import { RoutineCard } from '../../molecules/RoutineCard/RoutineCard'
 import { useTranslation } from 'react-i18next'
-import { ROUTINE_CATEGORIES, type RoutineTemplate, type RoutineCategory } from '../../../data/routine-templates'
+import { ROUTINE_CATEGORY_IDS, type RoutineTemplate, type RoutineCategory } from '../../../data/routine-templates'
 
 export interface RoutineSelectorProps {
   routines: RoutineTemplate[]
@@ -29,11 +29,13 @@ export function RoutineSelector({
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(
-        (r) => r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q)
+        (r) =>
+          t(`routines.${r.i18nKey}.name`).toLowerCase().includes(q) ||
+          t(`routines.${r.i18nKey}.description`).toLowerCase().includes(q)
       )
     }
     return result
-  }, [routines, activeCategory, search])
+  }, [routines, activeCategory, search, t])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -83,13 +85,13 @@ export function RoutineSelector({
         >
           {t('onboarding.routines.allCategories')}
         </button>
-        {ROUTINE_CATEGORIES.map((cat) => (
+        {ROUTINE_CATEGORY_IDS.map((catId) => (
           <button
             type="button"
             role="tab"
-            key={cat.id}
-            aria-selected={activeCategory === cat.id}
-            onClick={() => setActiveCategory(cat.id)}
+            key={catId}
+            aria-selected={activeCategory === catId}
+            onClick={() => setActiveCategory(catId)}
             style={{
               padding: '4px 12px',
               fontSize: 12,
@@ -99,11 +101,11 @@ export function RoutineSelector({
               cursor: 'pointer',
               fontFamily: 'inherit',
               transition: 'all 0.15s',
-              background: activeCategory === cat.id ? 'var(--accent)' : 'var(--surface-2)',
-              color: activeCategory === cat.id ? '#fff' : 'var(--text-muted)',
+              background: activeCategory === catId ? 'var(--accent)' : 'var(--surface-2)',
+              color: activeCategory === catId ? '#fff' : 'var(--text-muted)',
             }}
           >
-            {cat.label}
+            {t(`routineCategories.${catId}`)}
           </button>
         ))}
       </div>
@@ -124,8 +126,8 @@ export function RoutineSelector({
             {filtered.map((routine) => (
               <RoutineCard
                 key={routine.id}
-                name={routine.name}
-                description={routine.description}
+                name={t(`routines.${routine.i18nKey}.name`)}
+                description={t(`routines.${routine.i18nKey}.description`)}
                 icon={routine.icon}
                 selected={selectedIds.includes(routine.id)}
                 onClick={() => onToggle(routine.id)}

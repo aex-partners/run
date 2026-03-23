@@ -1297,6 +1297,50 @@ const ptBR = {
       name: 'Folha de Pagamento',
       description: 'Processe cálculos salariais e registros de pagamento',
     },
+    leaveManagement: {
+      name: 'Gestão de Férias',
+      description: 'Gerencie solicitações de férias e saldos de licenças',
+    },
+    recruitment: {
+      name: 'Recrutamento',
+      description: 'Acompanhe vagas, candidatos e pipeline de contratação',
+    },
+    training: {
+      name: 'Treinamento e Desenvolvimento',
+      description: 'Gerencie programas de treinamento e certificações',
+    },
+    projectManagement: {
+      name: 'Gestão de Projetos',
+      description: 'Planeje e acompanhe projetos com marcos e prazos',
+    },
+    serviceTickets: {
+      name: 'Chamados de Atendimento',
+      description: 'Gerencie suporte ao cliente e solicitações de serviço',
+    },
+    scheduling: {
+      name: 'Agendamento',
+      description: 'Gerencie compromissos, reservas e alocação de recursos',
+    },
+    qualityControl: {
+      name: 'Controle de Qualidade',
+      description: 'Acompanhe inspeções, defeitos e métricas de qualidade',
+    },
+    fleetTracking: {
+      name: 'Rastreamento de Frota',
+      description: 'Monitore veículos, manutenção e consumo de combustível',
+    },
+    documentManagement: {
+      name: 'Gestão de Documentos',
+      description: 'Organize contratos, certificados e documentos empresariais',
+    },
+    maintenance: {
+      name: 'Manutenção',
+      description: 'Agende e acompanhe manutenção de equipamentos e instalações',
+    },
+    compliance: {
+      name: 'Conformidade',
+      description: 'Acompanhe requisitos regulatórios e prazos de conformidade',
+    },
   },
 } as const
 

@@ -258,16 +258,16 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
     })
   }, [])
 
-  // Niche chip options
+  // Niche chip options (labels from i18n)
   const nicheOptions = useMemo(
-    () => NICHES.map((n) => ({ value: n.id, label: n.label })),
-    []
+    () => NICHES.map((n) => ({ value: n.id, label: t(`niches.${n.i18nKey}.label`) })),
+    [t]
   )
 
   const subNicheOptions = useMemo(() => {
     const niche = NICHES.find((n) => n.id === data.niche)
-    return niche ? niche.subNiches.map((s) => ({ value: s.id, label: s.label })) : []
-  }, [data.niche])
+    return niche ? niche.subNiches.map((s) => ({ value: s, label: t(`niches.${niche.i18nKey}.subNiches.${s}`) })) : []
+  }, [data.niche, t])
 
   // Routines recommended for the selected niche (used for pre-selection)
   const nicheRoutineIds = useMemo(() => {
