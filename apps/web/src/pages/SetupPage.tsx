@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { NewWorkspaceWizard, type NewWorkspaceWizardData } from "../components/screens/NewWorkspaceWizard/NewWorkspaceWizard";
 import { trpc } from "../lib/trpc";
-import { startOpenRouterOAuth, getStoredCodeVerifier, clearStoredCodeVerifier } from "../lib/openrouter-oauth";
+import { startOpenRouterOAuth, getStoredCodeVerifier, clearStoredCodeVerifier, OPENROUTER_CONNECTED_KEY } from "../lib/openrouter-oauth";
 
 const EMAIL_CONNECTED_KEY = "aex-email-connected";
 
@@ -23,6 +23,10 @@ export function SetupPage() {
         setConnectedEmail(e.newValue);
         localStorage.removeItem(EMAIL_CONNECTED_KEY);
       }
+      if (e.key === OPENROUTER_CONNECTED_KEY && e.newValue === "1") {
+        setOpenRouterConnected(true);
+        localStorage.removeItem(OPENROUTER_CONNECTED_KEY);
+      }
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
@@ -42,7 +46,7 @@ export function SetupPage() {
     }
   }, []);
 
-  // Handle OpenRouter OAuth callback: ?or_code=xxx
+  // Handle OpenRouter OAuth callback: ?code=xxx (runs inside the popup)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orCode = params.get("code");
@@ -58,7 +62,13 @@ export function SetupPage() {
       .mutateAsync({ code: orCode, codeVerifier })
       .then(() => {
         clearStoredCodeVerifier();
-        setOpenRouterConnected(true);
+        // If running inside a popup, signal parent and close
+        if (window.opener) {
+          localStorage.setItem(OPENROUTER_CONNECTED_KEY, "1");
+          window.close();
+        } else {
+          setOpenRouterConnected(true);
+        }
       })
       .catch((err) => {
         clearStoredCodeVerifier();
@@ -122,10 +132,23 @@ export function SetupPage() {
 
   const handleConnectOpenRouter = useCallback(async () => {
     const callbackUrl = `${window.location.origin}/setup`;
-    await startOpenRouterOAuth(callbackUrl);
-    // Page redirects away; this promise never resolves.
-    // The flow resumes in the useEffect above when the page reloads with ?code=
-    return false;
+    const popup = await startOpenRouterOAuth(callbackUrl);
+
+    return new Promise<boolean>((resolve) => {
+      const interval = setInterval(() => {
+        const connected = localStorage.getItem(OPENROUTER_CONNECTED_KEY);
+        if (connected === "1") {
+          clearInterval(interval);
+          localStorage.removeItem(OPENROUTER_CONNECTED_KEY);
+          setOpenRouterConnected(true);
+          resolve(true);
+        }
+        if (popup?.closed) {
+          clearInterval(interval);
+          resolve(false);
+        }
+      }, 500);
+    });
   }, []);
 
   const handleSubmit = async (data: NewWorkspaceWizardData) => {

@@ -27,13 +27,14 @@ function base64UrlEncode(buffer: ArrayBuffer): string {
 }
 
 const STORAGE_KEY = "aex-openrouter-pkce";
+export const OPENROUTER_CONNECTED_KEY = "aex-openrouter-connected";
 
-export async function startOpenRouterOAuth(callbackUrl: string): Promise<void> {
+export async function startOpenRouterOAuth(callbackUrl: string): Promise<Window | null> {
   const codeVerifier = generateCodeVerifier();
   const challengeBuffer = await sha256(codeVerifier);
   const codeChallenge = base64UrlEncode(challengeBuffer);
 
-  sessionStorage.setItem(STORAGE_KEY, codeVerifier);
+  localStorage.setItem(STORAGE_KEY, codeVerifier);
 
   const params = new URLSearchParams({
     callback_url: callbackUrl,
@@ -41,13 +42,17 @@ export async function startOpenRouterOAuth(callbackUrl: string): Promise<void> {
     code_challenge_method: "S256",
   });
 
-  window.location.href = `https://openrouter.ai/auth?${params.toString()}`;
+  return window.open(
+    `https://openrouter.ai/auth?${params.toString()}`,
+    "aex-openrouter-oauth",
+    "width=500,height=700,left=200,top=100"
+  );
 }
 
 export function getStoredCodeVerifier(): string | null {
-  return sessionStorage.getItem(STORAGE_KEY);
+  return localStorage.getItem(STORAGE_KEY);
 }
 
 export function clearStoredCodeVerifier(): void {
-  sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY);
 }
