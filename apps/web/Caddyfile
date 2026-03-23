@@ -1,0 +1,15 @@
+:{$PORT:80} {
+	handle /api/* {
+		reverse_proxy {$API_URL:http://api:3001}
+	}
+
+	handle /ws {
+		reverse_proxy {$API_URL:http://api:3001}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
