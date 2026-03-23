@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, CloudSun, Coins, Bell } from "lucide-react";
+import { X, Coins, Bell } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { SettingsScreen } from "../components/screens/SettingsScreen/SettingsScreen";
 import { PluginConnectDialog, type PluginConnectDialogProps } from "../components/organisms/PluginConnectDialog/PluginConnectDialog";
@@ -184,7 +184,6 @@ export function SettingsPage() {
   }, [serverPlugins.length, didAutoSync, syncPluginRegistry]);
 
   const PLUGIN_ICONS: Record<string, React.ReactNode> = {
-    "cloud-sun": <CloudSun size={18} />,
     "coins": <Coins size={18} />,
     "bell": <Bell size={18} />,
   };
@@ -195,8 +194,7 @@ export function SettingsPage() {
   };
 
   const getLogoUrl = (p: { icon?: string | null }) => {
-    // If icon is a URL (starts with http), it's a piece logo
-    if (p.icon && p.icon.startsWith("http")) return p.icon;
+    if (p.icon && (p.icon.startsWith("http") || p.icon.startsWith("/"))) return p.icon;
     return undefined;
   };
 

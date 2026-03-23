@@ -1,7 +1,7 @@
 /**
  * Piece catalog registry.
  * Syncs the bundled piece-catalog.json into the plugins table.
- * Pieces appear with source "piece" and status "available" until installed.
+ * All plugins start as "available" until explicitly installed by the user.
  */
 
 import { eq } from "drizzle-orm";
@@ -19,6 +19,8 @@ interface PieceCatalogEntry {
   logoUrl: string;
   auth: { type: string };
   source: "piece" | "local";
+  tools?: unknown[];
+  configSchema?: unknown;
 }
 
 /**
@@ -51,6 +53,8 @@ export async function syncPieceCatalog(db: Database): Promise<number> {
       .where(eq(plugins.id, entry.id))
       .limit(1);
 
+    const manifest = entry.tools ? JSON.stringify(entry) : null;
+
     if (existing) {
       // Update metadata but preserve status, config, and install info
       await db
@@ -64,12 +68,11 @@ export async function syncPieceCatalog(db: Database): Promise<number> {
           authType: entry.auth.type,
           icon: entry.logoUrl,
           source: entry.source === "local" ? "local" : "piece",
+          ...(manifest && { manifest }),
           updatedAt: new Date(),
         })
         .where(eq(plugins.id, entry.id));
     } else {
-      // Local pieces are auto-installed; registry pieces start as "available"
-      const isLocal = entry.source === "local";
       await db.insert(plugins).values({
         id: entry.id,
         name: entry.displayName,
@@ -79,9 +82,10 @@ export async function syncPieceCatalog(db: Database): Promise<number> {
         pieceName: entry.pieceName,
         authType: entry.auth.type,
         icon: entry.logoUrl,
-        source: isLocal ? "local" : "piece",
-        status: isLocal ? "installed" : "available",
+        source: entry.source === "local" ? "local" : "piece",
+        status: "available",
         config: "{}",
+        ...(manifest && { manifest }),
       });
     }
     synced++;

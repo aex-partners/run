@@ -8769,11 +8769,315 @@
     "displayName": "Bling ERP",
     "description": "Import and query data from Bling ERP: contacts, products, orders, invoices, financials, and stock.",
     "version": "1.0.0",
-    "category": "BUSINESS_INTELLIGENCE",
+    "category": "ACCOUNTING",
     "logoUrl": "/logos/bling.svg",
     "auth": {
       "type": "custom_auth"
     },
     "source": "local"
+  },
+  {
+    "id": "aex-plugin-currency",
+    "name": "Currency Exchange",
+    "pieceName": "aex-plugin-currency",
+    "displayName": "Currency Exchange",
+    "description": "Real-time currency conversion and exchange rates.",
+    "version": "1.0.0",
+    "category": "ACCOUNTING",
+    "logoUrl": "coins",
+    "auth": { "type": "custom_auth" },
+    "source": "local",
+    "configSchema": {
+      "type": "object",
+      "properties": {
+        "apiKey": {
+          "type": "string",
+          "description": "API key for exchange rate service"
+        }
+      },
+      "required": ["apiKey"]
+    },
+    "tools": [
+      {
+        "name": "convert_currency",
+        "description": "Convert an amount from one currency to another",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": { "type": "string", "description": "Source currency code (e.g. USD)" },
+            "to": { "type": "string", "description": "Target currency code (e.g. BRL)" },
+            "amount": { "type": "number", "description": "Amount to convert" }
+          },
+          "required": ["from", "to", "amount"]
+        },
+        "type": "http",
+        "config": {
+          "method": "GET",
+          "url": "https://v6.exchangerate-api.com/v6/{{apiKey}}/pair/{{from}}/{{to}}/{{amount}}"
+        }
+      }
+    ]
+  },
+  {
+    "id": "aex-plugin-notifications",
+    "name": "Notifications",
+    "pieceName": "aex-plugin-notifications",
+    "displayName": "Notifications",
+    "description": "Send notifications via email, SMS, or push.",
+    "version": "1.0.0",
+    "category": "COMMUNICATION",
+    "logoUrl": "bell",
+    "auth": { "type": "custom_auth" },
+    "source": "local",
+    "configSchema": {
+      "type": "object",
+      "properties": {
+        "smtpHost": { "type": "string", "description": "SMTP server host" },
+        "smtpPort": { "type": "number", "description": "SMTP server port" },
+        "smtpUser": { "type": "string", "description": "SMTP username" },
+        "smtpPass": { "type": "string", "description": "SMTP password" }
+      }
+    },
+    "tools": [
+      {
+        "name": "send_email",
+        "description": "Send an email notification",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "string", "description": "Recipient email address" },
+            "subject": { "type": "string", "description": "Email subject" },
+            "body": { "type": "string", "description": "Email body (HTML allowed)" }
+          },
+          "required": ["to", "subject", "body"]
+        },
+        "type": "http",
+        "config": {
+          "method": "POST",
+          "url": "{{smtpHost}}/send",
+          "headers": { "Content-Type": "application/json" }
+        }
+      }
+    ]
+  },
+  {
+    "id": "aex-plugin-pagbank",
+    "name": "PagBank",
+    "pieceName": "aex-plugin-pagbank",
+    "displayName": "PagBank",
+    "description": "Brazilian payment gateway integration: PIX, boleto, credit card payments, order management, and refunds via PagBank API v4.",
+    "version": "1.0.0",
+    "category": "PAYMENT_PROCESSING",
+    "logoUrl": "/logos/pagbank.svg",
+    "auth": { "type": "custom_auth" },
+    "source": "local",
+    "configSchema": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string",
+          "description": "PagBank API token (found in your PagBank dashboard under Integrações)"
+        }
+      },
+      "required": ["token"]
+    },
+    "tools": [
+      {
+        "name": "pagbank_create_pix_order",
+        "description": "Create a PIX payment order in PagBank. Returns the order with PIX QR code data for the customer to pay. The amount is in cents (e.g. 10000 = R$100.00).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reference_id": { "type": "string", "description": "Your internal order reference ID" },
+            "description": { "type": "string", "description": "Order/item description" },
+            "amount": { "type": "number", "description": "Amount in cents (e.g. 10000 = R$100.00)" },
+            "customer_name": { "type": "string", "description": "Customer full name" },
+            "customer_email": { "type": "string", "description": "Customer email" },
+            "customer_tax_id": { "type": "string", "description": "Customer CPF or CNPJ (digits only)" }
+          },
+          "required": ["reference_id", "amount", "customer_name", "customer_email", "customer_tax_id"]
+        },
+        "type": "http",
+        "config": {
+          "method": "POST",
+          "url": "https://api.pagseguro.com/orders",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{token}}"
+          },
+          "bodyTemplate": "{\"reference_id\":\"{{reference_id}}\",\"customer\":{\"name\":\"{{customer_name}}\",\"email\":\"{{customer_email}}\",\"tax_id\":\"{{customer_tax_id}}\"},\"items\":[{\"reference_id\":\"{{reference_id}}\",\"name\":\"{{description}}\",\"quantity\":1,\"unit_amount\":{{amount}}}],\"qr_codes\":[{\"amount\":{\"value\":{{amount}}}}]}"
+        }
+      },
+      {
+        "name": "pagbank_create_boleto_order",
+        "description": "Create a boleto payment order in PagBank. Returns the order with boleto PDF and barcode for the customer to pay. The amount is in cents (e.g. 10000 = R$100.00).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reference_id": { "type": "string", "description": "Your internal order reference ID" },
+            "description": { "type": "string", "description": "Order/item description" },
+            "amount": { "type": "number", "description": "Amount in cents (e.g. 10000 = R$100.00)" },
+            "customer_name": { "type": "string", "description": "Customer full name" },
+            "customer_email": { "type": "string", "description": "Customer email" },
+            "customer_tax_id": { "type": "string", "description": "Customer CPF or CNPJ (digits only)" },
+            "due_date": { "type": "string", "description": "Boleto due date in YYYY-MM-DD format" },
+            "address_street": { "type": "string", "description": "Customer street address" },
+            "address_number": { "type": "string", "description": "Customer address number" },
+            "address_locality": { "type": "string", "description": "Customer neighborhood" },
+            "address_city": { "type": "string", "description": "Customer city" },
+            "address_region": { "type": "string", "description": "Customer state (2-letter code, e.g. SP)" },
+            "address_postal_code": { "type": "string", "description": "Customer postal code (digits only)" }
+          },
+          "required": ["reference_id", "amount", "customer_name", "customer_email", "customer_tax_id", "due_date", "address_street", "address_number", "address_locality", "address_city", "address_region", "address_postal_code"]
+        },
+        "type": "http",
+        "config": {
+          "method": "POST",
+          "url": "https://api.pagseguro.com/orders",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{token}}"
+          },
+          "bodyTemplate": "{\"reference_id\":\"{{reference_id}}\",\"customer\":{\"name\":\"{{customer_name}}\",\"email\":\"{{customer_email}}\",\"tax_id\":\"{{customer_tax_id}}\"},\"items\":[{\"reference_id\":\"{{reference_id}}\",\"name\":\"{{description}}\",\"quantity\":1,\"unit_amount\":{{amount}}}],\"charges\":[{\"reference_id\":\"{{reference_id}}\",\"description\":\"{{description}}\",\"amount\":{\"value\":{{amount}},\"currency\":\"BRL\"},\"payment_method\":{\"type\":\"BOLETO\",\"boleto\":{\"due_date\":\"{{due_date}}\",\"instruction_lines\":{\"line_1\":\"Pagamento referente ao pedido {{reference_id}}\",\"line_2\":\"Via PagBank\"},\"holder\":{\"name\":\"{{customer_name}}\",\"tax_id\":\"{{customer_tax_id}}\",\"email\":\"{{customer_email}}\",\"address\":{\"street\":\"{{address_street}}\",\"number\":\"{{address_number}}\",\"locality\":\"{{address_locality}}\",\"city\":\"{{address_city}}\",\"region\":\"{{address_region}}\",\"region_code\":\"{{address_region}}\",\"country\":\"BRA\",\"postal_code\":\"{{address_postal_code}}\"}}}}}]}"
+        }
+      },
+      {
+        "name": "pagbank_create_card_order",
+        "description": "Create a credit card payment order in PagBank. Requires an encrypted card from PagBank.js. The amount is in cents (e.g. 10000 = R$100.00).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "reference_id": { "type": "string", "description": "Your internal order reference ID" },
+            "description": { "type": "string", "description": "Order/item description" },
+            "amount": { "type": "number", "description": "Amount in cents (e.g. 10000 = R$100.00)" },
+            "customer_name": { "type": "string", "description": "Customer full name" },
+            "customer_email": { "type": "string", "description": "Customer email" },
+            "customer_tax_id": { "type": "string", "description": "Customer CPF or CNPJ (digits only)" },
+            "encrypted_card": { "type": "string", "description": "Encrypted card data from PagBank.js encrypt function" },
+            "security_code": { "type": "string", "description": "Card security code (CVV)" },
+            "holder_name": { "type": "string", "description": "Name as printed on the card" },
+            "installments": { "type": "number", "description": "Number of installments (1-12)" },
+            "capture": { "type": "boolean", "description": "Whether to auto-capture the payment (true = charge immediately, false = pre-authorize only)" },
+            "soft_descriptor": { "type": "string", "description": "Text that appears on the customer's card statement (max 17 chars)" }
+          },
+          "required": ["reference_id", "amount", "customer_name", "customer_email", "customer_tax_id", "encrypted_card", "security_code", "holder_name", "installments", "capture", "soft_descriptor"]
+        },
+        "type": "http",
+        "config": {
+          "method": "POST",
+          "url": "https://api.pagseguro.com/orders",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{token}}"
+          },
+          "bodyTemplate": "{\"reference_id\":\"{{reference_id}}\",\"customer\":{\"name\":\"{{customer_name}}\",\"email\":\"{{customer_email}}\",\"tax_id\":\"{{customer_tax_id}}\"},\"items\":[{\"reference_id\":\"{{reference_id}}\",\"name\":\"{{description}}\",\"quantity\":1,\"unit_amount\":{{amount}}}],\"charges\":[{\"reference_id\":\"{{reference_id}}\",\"description\":\"{{description}}\",\"amount\":{\"value\":{{amount}},\"currency\":\"BRL\"},\"payment_method\":{\"type\":\"CREDIT_CARD\",\"installments\":{{installments}},\"capture\":{{capture}},\"soft_descriptor\":\"{{soft_descriptor}}\",\"card\":{\"encrypted\":\"{{encrypted_card}}\",\"security_code\":\"{{security_code}}\",\"holder\":{\"name\":\"{{holder_name}}\"}}}}]}"
+        }
+      },
+      {
+        "name": "pagbank_get_order",
+        "description": "Get details and payment status of an order by its PagBank order ID (starts with ORDE_).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "order_id": { "type": "string", "description": "PagBank order ID (e.g. ORDE_XXXXXXXXXXXX)" }
+          },
+          "required": ["order_id"]
+        },
+        "type": "http",
+        "config": {
+          "method": "GET",
+          "url": "https://api.pagseguro.com/orders/{{order_id}}",
+          "headers": {
+            "Authorization": "Bearer {{token}}"
+          }
+        }
+      },
+      {
+        "name": "pagbank_get_charge",
+        "description": "Get details of a specific charge by its PagBank charge ID (starts with CHAR_).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "charge_id": { "type": "string", "description": "PagBank charge ID (e.g. CHAR_XXXXXXXXXXXX)" }
+          },
+          "required": ["charge_id"]
+        },
+        "type": "http",
+        "config": {
+          "method": "GET",
+          "url": "https://api.pagseguro.com/charges/{{charge_id}}",
+          "headers": {
+            "Authorization": "Bearer {{token}}"
+          }
+        }
+      },
+      {
+        "name": "pagbank_refund_charge",
+        "description": "Refund a charge (full or partial). Amount is in cents and is always required by PagBank API.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "charge_id": { "type": "string", "description": "PagBank charge ID to refund (e.g. CHAR_XXXXXXXXXXXX)" },
+            "amount": { "type": "number", "description": "Amount to refund in cents (e.g. 5000 = R$50.00)" }
+          },
+          "required": ["charge_id", "amount"]
+        },
+        "type": "http",
+        "config": {
+          "method": "POST",
+          "url": "https://api.pagseguro.com/charges/{{charge_id}}/cancel",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{token}}"
+          },
+          "bodyTemplate": "{\"amount\":{\"value\":{{amount}}}}"
+        }
+      },
+      {
+        "name": "pagbank_capture_charge",
+        "description": "Capture a pre-authorized credit card charge. Use this when the card order was created with capture=false.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "charge_id": { "type": "string", "description": "PagBank charge ID to capture (e.g. CHAR_XXXXXXXXXXXX)" },
+            "amount": { "type": "number", "description": "Amount to capture in cents (must be <= authorized amount)" }
+          },
+          "required": ["charge_id", "amount"]
+        },
+        "type": "http",
+        "config": {
+          "method": "POST",
+          "url": "https://api.pagseguro.com/charges/{{charge_id}}/capture",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {{token}}"
+          },
+          "bodyTemplate": "{\"amount\":{\"value\":{{amount}}}}"
+        }
+      },
+      {
+        "name": "pagbank_list_orders",
+        "description": "List orders within a date range. Optionally filter by your internal reference_id.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "initial_date": { "type": "string", "description": "Start date in ISO 8601 format (e.g. 2024-01-01T00:00:00-03:00)" },
+            "final_date": { "type": "string", "description": "End date in ISO 8601 format (e.g. 2024-01-31T23:59:59-03:00)" },
+            "reference_id": { "type": "string", "description": "Filter by your internal reference ID (optional)" },
+            "page": { "type": "number", "description": "Page number (default: 1)" },
+            "page_size": { "type": "number", "description": "Items per page (default: 20, max: 100)" }
+          },
+          "required": ["initial_date", "final_date"]
+        },
+        "type": "http",
+        "config": {
+          "method": "GET",
+          "url": "https://api.pagseguro.com/orders?initial_date={{initial_date}}&final_date={{final_date}}&reference_id={{reference_id}}&page={{page}}&page_size={{page_size}}",
+          "headers": {
+            "Authorization": "Bearer {{token}}"
+          }
+        }
+      }
+    ]
   }
 ]

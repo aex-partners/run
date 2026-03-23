@@ -9,7 +9,6 @@ import {
   configurePlugin,
   setPluginStatus,
 } from "../../plugins/plugin-service.js";
-import { syncRegistry } from "../../plugins/registry.js";
 import { syncPieceCatalog } from "../../plugins/piece-registry.js";
 import { loadPiece } from "../../plugins/piece-loader.js";
 
@@ -96,9 +95,8 @@ export const pluginsRouter = router({
     }),
 
   syncRegistry: protectedProcedure.mutation(async ({ ctx }) => {
-    const manifestCount = await syncRegistry(ctx.db);
-    const pieceCount = await syncPieceCatalog(ctx.db);
-    return { synced: manifestCount + pieceCount };
+    const synced = await syncPieceCatalog(ctx.db);
+    return { synced };
   }),
 
   listPieceTools: protectedProcedure.query(async ({ ctx }) => {
@@ -132,7 +130,7 @@ export const pluginsRouter = router({
             description: a.description ?? "",
             pluginName: plugin.name,
             pluginDisplayName: plugin.name,
-            pluginLogoUrl: plugin.icon?.startsWith("http") ? plugin.icon : null,
+            pluginLogoUrl: plugin.icon?.startsWith("http") || plugin.icon?.startsWith("/") ? plugin.icon : null,
           });
         }
       } catch {
