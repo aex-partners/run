@@ -8761,5 +8761,19 @@
       "type": "custom_auth"
     },
     "source": "piece"
+  },
+  {
+    "id": "piece-bling",
+    "name": "Bling ERP",
+    "pieceName": "piece-bling",
+    "displayName": "Bling ERP",
+    "description": "Import and query data from Bling ERP: contacts, products, orders, invoices, financials, and stock.",
+    "version": "1.0.0",
+    "category": "ACCOUNTING",
+    "logoUrl": "https://cdn.bling.com.br/images/bling-logo.svg",
+    "auth": {
+      "type": "custom_auth"
+    },
+    "source": "local"
   }
 ]
