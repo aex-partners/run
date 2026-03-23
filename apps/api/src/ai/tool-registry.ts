@@ -36,16 +36,32 @@ interface SkillRow {
 
 /**
  * Build an AI SDK tool from a custom_tools DB row.
+ * pluginConfig is the parent plugin's config (from plugins.config column),
+ * merged into tool args so template variables like {{token}} resolve correctly.
  */
-export function buildCustomTool(row: CustomToolRow, ctx: ToolContext): AiTool {
+export function buildCustomTool(
+  row: CustomToolRow,
+  ctx: ToolContext,
+  pluginConfig?: Record<string, unknown>,
+): AiTool {
   const inputSchema = jsonSchemaToZod(JSON.parse(row.inputSchema));
   const config = JSON.parse(row.config) as Record<string, unknown>;
+
+  // Only allow args declared in inputSchema to prevent credential override
+  const declaredKeys = new Set(
+    Object.keys((JSON.parse(row.inputSchema) as { properties?: Record<string, unknown> }).properties ?? {}),
+  );
 
   return tool({
     description: row.description,
     inputSchema,
     execute: async (args) => {
-      const a = args as Record<string, unknown>;
+      const raw = args as Record<string, unknown>;
+      const filtered: Record<string, unknown> = {};
+      for (const key of Object.keys(raw)) {
+        if (declaredKeys.has(key)) filtered[key] = raw[key];
+      }
+      const a = { ...filtered, ...pluginConfig };
       switch (row.type) {
         case "http":
           return executeHttpTool(a, config);
@@ -92,12 +108,23 @@ export async function loadCustomTools(
     .where(eq(integrations.status, "disabled" as const));
   const disabledIds = new Set(disabledIntegrations.map((i) => i.id));
 
-  // Load disabled plugins to filter out their tools
-  const disabledPlugins = await db
-    .select({ id: plugins.id })
-    .from(plugins)
-    .where(eq(plugins.status, "disabled" as const));
-  const disabledPluginIds = new Set(disabledPlugins.map((p) => p.id));
+  // Load disabled plugins and their configs
+  const allPlugins = await db
+    .select({ id: plugins.id, status: plugins.status, config: plugins.config })
+    .from(plugins);
+  const disabledPluginIds = new Set(
+    allPlugins.filter((p) => p.status === "disabled").map((p) => p.id),
+  );
+  const pluginConfigMap = new Map<string, Record<string, unknown>>();
+  for (const p of allPlugins) {
+    if (p.config) {
+      try {
+        pluginConfigMap.set(p.id, JSON.parse(p.config) as Record<string, unknown>);
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+  }
 
   for (const row of rows) {
     // Skip tools from disabled integrations
@@ -111,7 +138,8 @@ export async function loadCustomTools(
     }
 
     try {
-      result[row.name] = buildCustomTool(row, ctx);
+      const pluginCfg = row.pluginId ? pluginConfigMap.get(row.pluginId) : undefined;
+      result[row.name] = buildCustomTool(row, ctx, pluginCfg);
     } catch (err) {
       console.error(`Failed to build custom tool "${row.name}":`, err);
     }

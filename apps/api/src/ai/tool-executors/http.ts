@@ -9,6 +9,20 @@ function interpolate(template: string, args: Record<string, unknown>): string {
   });
 }
 
+/**
+ * JSON-safe interpolation: escapes string values to prevent JSON injection.
+ * Numbers and booleans are inserted raw, strings are escaped via JSON.stringify.
+ */
+function interpolateJson(template: string, args: Record<string, unknown>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+    const value = args[key];
+    if (value === undefined || value === null) return "";
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    // JSON.stringify adds surrounding quotes; strip them since the template already has quotes
+    return JSON.stringify(String(value)).slice(1, -1);
+  });
+}
+
 export async function executeHttp(
   args: Record<string, unknown>,
   config: Record<string, unknown>,
@@ -28,7 +42,7 @@ export async function executeHttp(
   let body: string | undefined;
   if (config.bodyTemplate && method !== "GET") {
     const bodyTemplate = config.bodyTemplate as string;
-    body = interpolate(bodyTemplate, args);
+    body = interpolateJson(bodyTemplate, args);
   } else if (method !== "GET" && Object.keys(args).length > 0) {
     body = JSON.stringify(args);
     if (!headers["Content-Type"]) {
