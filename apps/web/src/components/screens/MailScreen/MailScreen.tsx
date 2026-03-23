@@ -2,12 +2,13 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Inbox, Send, FileText, AlertTriangle, Trash2, Star, Tag,
-  Search, PenSquare, Plus, Menu, Sparkles,
+  Search, PenSquare, Plus, Menu, Sparkles, Mail,
 } from 'lucide-react'
 import { MailFolderItem } from '../../molecules/MailFolderItem/MailFolderItem'
 import { MailList } from '../../organisms/MailList/MailList'
 import { MailDetail, type MailMessage } from '../../organisms/MailDetail/MailDetail'
 import { MailCompose } from '../../organisms/MailCompose/MailCompose'
+import { EmailSetup } from '../../organisms/EmailSetup/EmailSetup'
 import { Button } from '../../atoms/Button/Button'
 import type { MailItemProps } from '../../molecules/MailItem/MailItem'
 
@@ -33,6 +34,10 @@ export interface MailScreenProps {
   activeFolder?: MailFolder
   activeEmailId?: string
   folderCounts?: Partial<Record<MailFolder, number>>
+  hasAccount?: boolean
+  connectedEmail?: string
+  onConnectOAuth?: (provider: 'gmail' | 'outlook') => Promise<void> | void
+  onSmtpSubmit?: (config: { host: string; port: string; user: string; pass: string; from: string; secure: boolean }) => void
   onFolderChange?: (folder: MailFolder) => void
   onEmailClick?: (id: string) => void
   onEmailStar?: (id: string) => void
@@ -70,6 +75,10 @@ export function MailScreen({
   activeFolder: controlledFolder,
   activeEmailId: controlledEmailId,
   folderCounts = {},
+  hasAccount = true,
+  connectedEmail,
+  onConnectOAuth,
+  onSmtpSubmit,
   onFolderChange,
   onEmailClick,
   onEmailStar,
@@ -198,6 +207,52 @@ export function MailScreen({
 
   const activeEmail = emails.find((e) => e.id === activeEmailId)
   const activeEmailIndex = activeEmail ? filteredEmails.findIndex((e) => e.id === activeEmail.id) : -1
+
+  if (!hasAccount) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        padding: 40,
+      }}>
+        <div style={{
+          maxWidth: 640,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 28,
+        }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            borderRadius: 16,
+            background: 'var(--accent-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Mail size={32} color="var(--accent)" />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 8px' }}>
+              {t('mail.setup.title')}
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+              {t('mail.setup.subtitle')}
+            </p>
+          </div>
+          <EmailSetup
+            onConnectOAuth={onConnectOAuth}
+            connectedEmail={connectedEmail}
+            onSmtpSubmit={onSmtpSubmit}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>

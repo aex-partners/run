@@ -177,6 +177,11 @@ const ptBR = {
     selected: '{{count}} selecionados',
     messagesInThread_one: '{{count}} mensagem na conversa',
     messagesInThread_other: '{{count}} mensagens na conversa',
+    setup: {
+      title: 'Configure sua caixa de e-mail',
+      subtitle: 'Conecte sua conta de e-mail para enviar e receber mensagens por aqui.',
+      connect: 'Conectar',
+    },
   },
 
   // Files

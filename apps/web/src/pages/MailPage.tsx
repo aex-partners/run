@@ -81,6 +81,9 @@ export function MailPage() {
       activeFolder={activeFolder}
       activeEmailId={activeEmailId}
       folderCounts={countsQuery.data}
+      hasAccount={hasAccount}
+      connectedEmail={accountsQuery.data?.[0]?.emailAddress}
+      onConnectOAuth={(provider) => connectMut.mutateAsync({ provider })}
       loading={emailsQuery.isLoading}
       aiDrafting={aiDrafting}
       onFolderChange={(folder) => {
