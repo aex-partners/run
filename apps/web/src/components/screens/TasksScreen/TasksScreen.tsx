@@ -61,7 +61,7 @@ export function TasksScreen({
 
   const headerTitle = activeFilterItem && !activeFilterItem.isHeader
     ? activeFilterItem.label
-    : 'All Tasks'
+    : t('tasks.allTasks')
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -165,7 +165,7 @@ export function TasksScreen({
             aria-label={t('tasks.runningTasksCount')}
           />
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            {runningCount ?? running.length} running now
+            {t('tasks.runningNow', { count: runningCount ?? running.length })}
           </span>
         </div>
       </aside>

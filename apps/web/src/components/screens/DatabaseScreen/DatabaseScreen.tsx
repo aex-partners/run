@@ -263,7 +263,7 @@ export function DatabaseScreen({
                 )}
                 {activeView === 'kanban' && !kanbanGroupCol && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 13 }}>
-                    Add a status or select column to use Kanban view.
+                    {t('database.kanbanEmpty')}
                   </div>
                 )}
                 {activeView === 'calendar' && calendarDateCol && (
@@ -275,7 +275,7 @@ export function DatabaseScreen({
                 )}
                 {activeView === 'calendar' && !calendarDateCol && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 13 }}>
-                    Add a date or timeline column to use Calendar view.
+                    {t('database.calendarEmpty')}
                   </div>
                 )}
                 {activeView === 'form' && activeEntityId && entityFields && (
@@ -286,7 +286,7 @@ export function DatabaseScreen({
                 )}
                 {activeView === 'form' && (!activeEntityId || !entityFields) && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 13 }}>
-                    Select an entity to manage forms.
+                    {t('database.formEmpty')}
                   </div>
                 )}
               </div>

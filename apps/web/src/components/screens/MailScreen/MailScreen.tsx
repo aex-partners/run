@@ -52,13 +52,13 @@ export interface MailScreenProps {
   loading?: boolean
 }
 
-const FOLDERS: { id: MailFolder; label: string; icon: React.ReactNode }[] = [
-  { id: 'inbox', label: 'Inbox', icon: <Inbox size={16} /> },
-  { id: 'starred', label: 'Starred', icon: <Star size={16} /> },
-  { id: 'sent', label: 'Sent', icon: <Send size={16} /> },
-  { id: 'drafts', label: 'Drafts', icon: <FileText size={16} /> },
-  { id: 'spam', label: 'Spam', icon: <AlertTriangle size={16} /> },
-  { id: 'trash', label: 'Trash', icon: <Trash2 size={16} /> },
+const FOLDERS: { id: MailFolder; labelKey: string; icon: React.ReactNode }[] = [
+  { id: 'inbox', labelKey: 'mail.inbox', icon: <Inbox size={16} /> },
+  { id: 'starred', labelKey: 'mail.starred', icon: <Star size={16} /> },
+  { id: 'sent', labelKey: 'mail.sent', icon: <Send size={16} /> },
+  { id: 'drafts', labelKey: 'mail.drafts', icon: <FileText size={16} /> },
+  { id: 'spam', labelKey: 'mail.spam', icon: <AlertTriangle size={16} /> },
+  { id: 'trash', labelKey: 'mail.trash', icon: <Trash2 size={16} /> },
 ]
 
 const SIDEBAR_EXPANDED = 220
@@ -221,7 +221,7 @@ export function MailScreen({
         }}>
           <button
             onClick={() => setSidebarExpanded(!sidebarExpanded)}
-            aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-label={sidebarExpanded ? t('collapseSidebar') : t('expandSidebar')}
             style={{
               background: 'none',
               border: 'none',
@@ -243,7 +243,7 @@ export function MailScreen({
               onClick={handleCompose}
               leftIcon={<PenSquare size={14} />}
             >
-              Compose
+              {t('mail.compose')}
             </Button>
           )}
         </div>
@@ -280,7 +280,7 @@ export function MailScreen({
               <MailFolderItem
                 key={folder.id}
                 icon={folder.icon}
-                label={folder.label}
+                label={t(folder.labelKey)}
                 count={folderCounts[folder.id]}
                 active={activeFolder === folder.id}
                 onClick={() => handleFolderChange(folder.id)}
@@ -289,7 +289,7 @@ export function MailScreen({
               <button
                 key={folder.id}
                 onClick={() => handleFolderChange(folder.id)}
-                title={folder.label}
+                title={t(folder.labelKey)}
                 style={{
                   width: '100%',
                   padding: '10px 0',
@@ -336,7 +336,7 @@ export function MailScreen({
               alignItems: 'center',
               justifyContent: 'space-between',
             }}>
-              Labels
+              {t('mail.labels')}
               <button style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex',
                 color: 'var(--text-muted)',
@@ -422,7 +422,7 @@ export function MailScreen({
               onClick={() => setSearchQuery('')}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, fontSize: 12, color: 'var(--text-muted)' }}
             >
-              Clear
+              {t('clear')}
             </button>
           )}
         </div>

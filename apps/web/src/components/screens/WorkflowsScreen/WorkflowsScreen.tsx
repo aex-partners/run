@@ -216,7 +216,7 @@ export function WorkflowsScreen({
                   background: selectedWf.status === 'active' ? 'var(--success)' : 'var(--warning)',
                 }}
               />
-              {selectedWf.status === 'active' ? 'Active' : 'Paused'}
+              {selectedWf.status === 'active' ? t('workflows.active') : t('workflows.paused')}
             </span>
 
             <div style={{ flex: 1 }} />
@@ -296,8 +296,8 @@ export function WorkflowsScreen({
                   }}
                 >
                   {[
-                    { label: 'Duplicate workflow', action: handleDuplicate, danger: false },
-                    { label: 'Delete workflow', action: handleDelete, danger: true },
+                    { label: t('workflows.duplicateWorkflow'), action: handleDuplicate, danger: false },
+                    { label: t('workflows.deleteWorkflow'), action: handleDelete, danger: true },
                   ].map(({ label, action, danger }) => (
                     <button
                       key={label}
@@ -374,7 +374,7 @@ export function WorkflowsScreen({
                   ))}
                   {historyEntries.length === 0 && (
                     <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-                      No executions recorded
+                      {t('workflows.noExecutions')}
                     </div>
                   )}
                 </ScrollArea.Viewport>

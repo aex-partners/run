@@ -44,21 +44,21 @@ export interface FilesScreenProps {
   loading?: boolean
 }
 
-const CATEGORIES: { id: FilesCategory; label: string; icon: React.ReactNode }[] = [
-  { id: 'all', label: 'My Files', icon: <HardDrive size={16} /> },
-  { id: 'recent', label: 'Recent', icon: <Clock size={16} /> },
-  { id: 'starred', label: 'Starred', icon: <Star size={16} /> },
-  { id: 'shared', label: 'Shared', icon: <Share2 size={16} /> },
-  { id: 'trash', label: 'Trash', icon: <Trash2 size={16} /> },
+const CATEGORIES: { id: FilesCategory; labelKey: string; icon: React.ReactNode }[] = [
+  { id: 'all', labelKey: 'files.myFiles', icon: <HardDrive size={16} /> },
+  { id: 'recent', labelKey: 'files.recent', icon: <Clock size={16} /> },
+  { id: 'starred', labelKey: 'files.starred', icon: <Star size={16} /> },
+  { id: 'shared', labelKey: 'files.shared', icon: <Share2 size={16} /> },
+  { id: 'trash', labelKey: 'files.trash', icon: <Trash2 size={16} /> },
 ]
 
-const SOURCE_FILTERS: { id: SourceFilter; label: string; icon: React.ReactNode }[] = [
-  { id: 'all', label: 'All Sources', icon: <HardDrive size={14} /> },
-  { id: 'email', label: 'Email', icon: <Mail size={14} /> },
-  { id: 'chat', label: 'Chat', icon: <MessageSquare size={14} /> },
-  { id: 'generated', label: 'AI Generated', icon: <Sparkles size={14} /> },
-  { id: 'upload', label: 'Uploaded', icon: <Upload size={14} /> },
-  { id: 'workflow', label: 'Workflow', icon: <Zap size={14} /> },
+const SOURCE_FILTERS: { id: SourceFilter; labelKey: string; icon: React.ReactNode }[] = [
+  { id: 'all', labelKey: 'files.allSources', icon: <HardDrive size={14} /> },
+  { id: 'email', labelKey: 'files.sourceEmail', icon: <Mail size={14} /> },
+  { id: 'chat', labelKey: 'files.sourceChat', icon: <MessageSquare size={14} /> },
+  { id: 'generated', labelKey: 'files.sourceGenerated', icon: <Sparkles size={14} /> },
+  { id: 'upload', labelKey: 'files.sourceUpload', icon: <Upload size={14} /> },
+  { id: 'workflow', labelKey: 'files.sourceWorkflow', icon: <Zap size={14} /> },
 ]
 
 const SIDEBAR_EXPANDED = 220
@@ -293,7 +293,7 @@ export function FilesScreen({
         }}>
           <button
             onClick={() => setSidebarExpanded(!sidebarExpanded)}
-            aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-label={sidebarExpanded ? t('collapseSidebar') : t('expandSidebar')}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               padding: 8, borderRadius: 8, display: 'flex',
@@ -305,7 +305,7 @@ export function FilesScreen({
           </button>
           {sidebarExpanded && (
             <Button variant="primary" onClick={onUpload} leftIcon={<FileUp size={14} />}>
-              Upload
+              {t('files.upload')}
             </Button>
           )}
         </div>
@@ -335,7 +335,7 @@ export function FilesScreen({
               <MailFolderItem
                 key={cat.id}
                 icon={cat.icon}
-                label={cat.label}
+                label={t(cat.labelKey)}
                 count={categoryCounts[cat.id]}
                 active={activeCategory === cat.id}
                 onClick={() => handleCategoryChange(cat.id)}
@@ -344,7 +344,7 @@ export function FilesScreen({
               <button
                 key={cat.id}
                 onClick={() => handleCategoryChange(cat.id)}
-                title={cat.label}
+                title={t(cat.labelKey)}
                 style={{
                   width: '100%', padding: '10px 0',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -370,13 +370,13 @@ export function FilesScreen({
               textTransform: 'uppercase', letterSpacing: '0.04em',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              Sources
+              {t('files.sources')}
             </div>
             {SOURCE_FILTERS.map((sf) => (
               <MailFolderItem
                 key={sf.id}
                 icon={sf.icon}
-                label={sf.label}
+                label={t(sf.labelKey)}
                 active={sourceFilter === sf.id}
                 onClick={() => setSourceFilter(sf.id)}
               />
@@ -390,7 +390,7 @@ export function FilesScreen({
         {sidebarExpanded && (
           <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
             <Button variant="ghost" size="sm" leftIcon={<FolderPlus size={14} />} onClick={onNewFolder}>
-              New Folder
+              {t('files.newFolder')}
             </Button>
           </div>
         )}
@@ -451,7 +451,7 @@ export function FilesScreen({
               onClick={() => setSearchQuery('')}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, fontSize: 12, color: 'var(--text-muted)' }}
             >
-              Clear
+              {t('clear')}
             </button>
           )}
         </div>

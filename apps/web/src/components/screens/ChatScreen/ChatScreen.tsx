@@ -38,11 +38,11 @@ export interface ChatScreenProps {
   onSetAgent?: (agentId: string | null) => void
 }
 
-function getStatusLabel(conv: Conversation): string {
-  if (conv.type === 'ai') return 'AI Agent'
-  if (conv.type === 'group' || conv.type === 'channel') return 'Group'
-  if (conv.online) return 'Online'
-  return 'Offline'
+function getStatusLabelKey(conv: Conversation): string {
+  if (conv.type === 'ai') return 'chat.aiAgent'
+  if (conv.type === 'group' || conv.type === 'channel') return 'chat.group'
+  if (conv.online) return 'chat.online'
+  return 'chat.offline'
 }
 
 export function ChatScreen({
@@ -213,7 +213,7 @@ export function ChatScreen({
                     {activeAgent ? activeAgent.name : activeConversation.name}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {activeAgent ? 'Maestro' : getStatusLabel(activeConversation)}
+                    {activeAgent ? t('chat.maestro') : t(getStatusLabelKey(activeConversation))}
                   </div>
                 </div>
               </div>
@@ -297,7 +297,7 @@ export function ChatScreen({
                           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)' }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = !activeAgent ? 'var(--accent-light)' : 'none' }}
                         >
-                          Default
+                          {t('chat.defaultAgent')}
                         </button>
                         {agents.map((agent) => (
                           <button
@@ -392,18 +392,18 @@ export function ChatScreen({
                 <Sparkles size={24} color="#fff" />
               </div>
               <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>
-                Welcome to RUN
+                {t('chat.welcomeTitle')}
               </h2>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, maxWidth: 360 }}>
-                Your AI-powered ERP assistant. Start a conversation to manage tasks, query data, or get help.
+                {t('chat.welcomeDescription')}
               </p>
             </div>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 520 }}>
               {[
-                { icon: <MessageSquarePlus size={16} />, label: 'New conversation', desc: 'Chat with the AI assistant' },
-                { icon: <Users size={16} />, label: 'Manage users', desc: 'List or invite team members' },
-                { icon: <Database size={16} />, label: 'Query data', desc: 'Ask about your ERP data' },
+                { icon: <MessageSquarePlus size={16} />, label: t('chat.newConversationLabel'), desc: t('chat.newConversationDesc') },
+                { icon: <Users size={16} />, label: t('chat.manageUsers'), desc: t('chat.manageUsersDesc') },
+                { icon: <Database size={16} />, label: t('chat.queryData'), desc: t('chat.queryDataDesc') },
               ].map((item) => (
                 <button
                   key={item.label}

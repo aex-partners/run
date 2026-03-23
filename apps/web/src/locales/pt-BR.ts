@@ -34,6 +34,9 @@ const ptBR = {
   saveChanges: 'Salvar Alterações',
   notSet: 'Não definido',
   aiAssistant: 'Assistente IA',
+  clear: 'Limpar',
+  collapseSidebar: 'Recolher menu lateral',
+  expandSidebar: 'Expandir menu lateral',
 
   // Status labels
   status: {
@@ -83,6 +86,16 @@ const ptBR = {
     today: 'Hoje',
     yesterday: 'Ontem',
     group: 'Grupo',
+    maestro: 'Maestro',
+    defaultAgent: 'Padrão',
+    welcomeTitle: 'Bem-vindo ao RUN',
+    welcomeDescription: 'Seu assistente ERP com IA. Inicie uma conversa para gerenciar tarefas, consultar dados ou obter ajuda.',
+    newConversationLabel: 'Nova conversa',
+    newConversationDesc: 'Converse com o assistente de IA',
+    manageUsers: 'Gerenciar usuários',
+    manageUsersDesc: 'Listar ou convidar membros',
+    queryData: 'Consultar dados',
+    queryDataDesc: 'Pergunte sobre seus dados do ERP',
     contextMenu: {
       reply: 'Responder',
       copy: 'Copiar',
@@ -231,6 +244,9 @@ const ptBR = {
   database: {
     entities: 'Entidades',
     noRecords: 'Nenhum registro ainda. Clique em "+ Registro" abaixo ou "Novo" para adicionar.',
+    kanbanEmpty: 'Adicione uma coluna de status ou seleção para usar a visualização Kanban.',
+    calendarEmpty: 'Adicione uma coluna de data ou timeline para usar a visualização Calendário.',
+    formEmpty: 'Selecione uma entidade para gerenciar formulários.',
     searchPlaceholder: 'Buscar entidades...',
     selectRow: 'Selecionar linha',
     selectAllRows: 'Selecionar todas as linhas',
@@ -525,6 +541,8 @@ const ptBR = {
     workflowsList: 'Lista de workflows',
     workflowOptions: 'Opções do workflow',
     deleteWorkflow: 'Excluir workflow',
+    duplicateWorkflow: 'Duplicar workflow',
+    noExecutions: 'Nenhuma execução registrada',
     displayName: 'Nome de Exibição',
     triggerType: 'Tipo de Gatilho',
     pluginTrigger: 'Gatilho de Plugin',

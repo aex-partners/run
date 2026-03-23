@@ -36,6 +36,9 @@ const en = {
   saveChanges: 'Save Changes',
   notSet: 'Not set',
   aiAssistant: 'AI Assistant',
+  clear: 'Clear',
+  collapseSidebar: 'Collapse sidebar',
+  expandSidebar: 'Expand sidebar',
 
   // Status labels
   status: {
@@ -85,6 +88,16 @@ const en = {
     today: 'Today',
     yesterday: 'Yesterday',
     group: 'Group',
+    maestro: 'Maestro',
+    defaultAgent: 'Default',
+    welcomeTitle: 'Welcome to RUN',
+    welcomeDescription: 'Your AI-powered ERP assistant. Start a conversation to manage tasks, query data, or get help.',
+    newConversationLabel: 'New conversation',
+    newConversationDesc: 'Chat with the AI assistant',
+    manageUsers: 'Manage users',
+    manageUsersDesc: 'List or invite team members',
+    queryData: 'Query data',
+    queryDataDesc: 'Ask about your ERP data',
     contextMenu: {
       reply: 'Reply',
       copy: 'Copy',
@@ -233,6 +246,9 @@ const en = {
   database: {
     entities: 'Entities',
     noRecords: 'No records yet. Click "+ Record" below or "New" to add one.',
+    kanbanEmpty: 'Add a status or select column to use Kanban view.',
+    calendarEmpty: 'Add a date or timeline column to use Calendar view.',
+    formEmpty: 'Select an entity to manage forms.',
     searchPlaceholder: 'Search entities...',
     selectRow: 'Select row',
     selectAllRows: 'Select all rows',
@@ -527,6 +543,8 @@ const en = {
     workflowsList: 'Workflows list',
     workflowOptions: 'Workflow options',
     deleteWorkflow: 'Delete workflow',
+    duplicateWorkflow: 'Duplicate workflow',
+    noExecutions: 'No executions recorded',
     displayName: 'Display Name',
     triggerType: 'Trigger Type',
     pluginTrigger: 'Plugin Trigger',
