@@ -64,7 +64,7 @@ describe("task-runner (integration)", () => {
     await db.execute(sql.raw(`DELETE FROM "task_logs"`));
     await db.execute(sql.raw(`DELETE FROM "tasks"`));
     await db.execute(sql.raw(`DELETE FROM "entity_records"`));
-    await db.execute(sql.raw(`DELETE FROM "messages" WHERE "conversation_id" = '${CONV_ID}'`));
+    await db.delete(schema.messages).where(eq(schema.messages.conversationId, CONV_ID));
   });
 
   afterAll(async () => {
@@ -105,6 +105,7 @@ describe("task-runner (integration)", () => {
           data: { Nome: "Erva-mate 1kg", Preco: 18.5 },
         }),
         outputSchema: null,
+        createdAt: null,
       },
       db as any,
     );
@@ -206,6 +207,7 @@ describe("task-runner (integration)", () => {
         toolName: "query_records",
         structuredInput: JSON.stringify({ entity_id_or_name: "produtos" }),
         outputSchema: null,
+        createdAt: null,
       },
       db as any,
     );
@@ -248,6 +250,7 @@ describe("task-runner (integration)", () => {
         toolName: "list_entities",
         structuredInput: "{}",
         outputSchema: null,
+        createdAt: null,
       },
       db as any,
     );

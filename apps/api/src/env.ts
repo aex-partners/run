@@ -9,6 +9,8 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().url(),
   OPENAI_API_KEY: z.string().min(1),
   ENCRYPTION_KEY: z.string().optional(),
+  BLING_CLIENT_ID: z.string().optional(),
+  BLING_CLIENT_SECRET: z.string().optional(),
 });
 
 function loadEnv() {

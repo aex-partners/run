@@ -54,6 +54,7 @@ function getPreviewIcon(type: string) {
 }
 
 export function FilePreview({
+  id,
   name,
   type,
   size,
@@ -111,7 +112,7 @@ export function FilePreview({
         </button>
         <div style={{ flex: 1 }} />
         {!isFolder && (
-          <button onClick={onDownload} title="Open in new tab" style={iconBtnStyle}>
+          <button onClick={() => window.open(`/api/files/${id}/download`, '_blank')} title="Open in new tab" style={iconBtnStyle}>
             <ExternalLink size={16} />
           </button>
         )}

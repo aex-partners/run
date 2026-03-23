@@ -10,7 +10,9 @@ const { env } = await import("./env.js");
 const { buildServer } = await import("./server.js");
 const { startTaskWorker } = await import("./queue/task-worker.js");
 const { startWorkflowWorker } = await import("./queue/workflow-worker.js");
+const { startFlowWorker } = await import("./queue/flow-worker.js");
 const { startEmailSyncWorker } = await import("./queue/email-worker.js");
+const { startBlingSyncWorker } = await import("./queue/bling-worker.js");
 const { loadActiveTriggers } = await import("./workflows/triggers.js");
 const { db } = await import("./db/index.js");
 
@@ -20,7 +22,9 @@ try {
   await app.listen({ port: env.PORT, host: "0.0.0.0" });
   startTaskWorker();
   startWorkflowWorker();
+  startFlowWorker();
   startEmailSyncWorker();
+  startBlingSyncWorker();
   await loadActiveTriggers(db);
 } catch (err) {
   app.log.error(err);

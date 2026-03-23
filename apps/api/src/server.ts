@@ -67,6 +67,44 @@ export async function buildServer() {
     } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
   });
 
+  // Bling webhook endpoint (must be before generic :integrationId route)
+  app.post("/api/webhooks/bling/:integrationId", async (req, reply) => {
+    const { integrationId } = req.params as { integrationId: string };
+    const { eq } = await import("drizzle-orm");
+    const { db } = await import("./db/index.js");
+    const { integrations } = await import("./db/schema/index.js");
+    const { verifyBlingWebhook } = await import("./bling/webhook.js");
+    const { decryptCredentials } = await import("./integrations/crypto.js");
+
+    const [integration] = await db
+      .select()
+      .from(integrations)
+      .where(eq(integrations.id, integrationId))
+      .limit(1);
+
+    if (!integration || integration.status !== "enabled") {
+      return reply.status(404).send({ error: "Integration not found or disabled" });
+    }
+
+    // Verify Bling signature
+    const signature = req.headers["x-bling-signature-256"] as string | undefined;
+    if (!signature) {
+      return reply.status(401).send({ error: "Missing Bling webhook signature" });
+    }
+
+    const creds = decryptCredentials(integration.credentials!) as { clientSecret: string };
+    const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    if (!verifyBlingWebhook(rawBody, signature, creds.clientSecret)) {
+      return reply.status(401).send({ error: "Invalid Bling webhook signature" });
+    }
+
+    // Enqueue a sync for the updated resource
+    const { enqueueBlingSync } = await import("./queue/bling-queue.js");
+    await enqueueBlingSync(integrationId);
+
+    return reply.status(200).send({ received: true });
+  });
+
   // Webhook endpoint for integrations
   app.all("/api/webhooks/:integrationId", async (req, reply) => {
     const { integrationId } = req.params as { integrationId: string };
@@ -90,7 +128,15 @@ export async function buildServer() {
       if (!signature) {
         return reply.status(401).send({ error: "Missing webhook signature" });
       }
-      // Basic signature check (integration-specific verification can be added)
+      const { createHmac, timingSafeEqual } = await import("node:crypto");
+      const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+      const expected = "sha256=" + createHmac("sha256", integration.webhookSecret).update(rawBody).digest("hex");
+      const sigStr = Array.isArray(signature) ? signature[0] : signature;
+      const expectedBuf = Buffer.from(expected);
+      const sigBuf = Buffer.from(sigStr ?? "");
+      if (!sigStr || expectedBuf.length !== sigBuf.length || !timingSafeEqual(expectedBuf, sigBuf)) {
+        return reply.status(401).send({ error: "Invalid webhook signature" });
+      }
     }
 
     const { broadcast } = await import("./ws/index.js");
@@ -104,6 +150,37 @@ export async function buildServer() {
     return reply.status(200).send({ received: true });
   });
 
+  // Webhook endpoint for flow triggers (must be registered before the generic :integrationId route)
+  app.all("/api/flow-webhooks/:flowId", async (req, reply) => {
+    const { flowId } = req.params as { flowId: string };
+    const { handleWebhook } = await import("./flow-engine/webhook-handler.js");
+    const { db } = await import("./db/index.js");
+
+    const headers: Record<string, string | string[] | undefined> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      headers[key] = value;
+    }
+
+    const queryParams: Record<string, string | string[] | undefined> = {};
+    if (req.query && typeof req.query === "object") {
+      for (const [key, value] of Object.entries(req.query as Record<string, string>)) {
+        queryParams[key] = value;
+      }
+    }
+
+    const result = await handleWebhook(
+      flowId,
+      { body: req.body, headers, queryParams },
+      db,
+    );
+
+    if ("error" in result) {
+      return reply.status(result.status).send({ error: result.error });
+    }
+
+    return reply.status(200).send({ runId: result.runId });
+  });
+
   // OAuth callback for email
   app.get("/api/auth/email/callback", async (req, reply) => {
     const { code, state } = req.query as { code: string; state: string };
@@ -112,11 +189,15 @@ export async function buildServer() {
     }
 
     try {
-      const stateData = JSON.parse(Buffer.from(state, "base64url").toString()) as {
+      const { verifyOAuthState } = await import("./utils/oauth-state.js");
+      const stateData = verifyOAuthState(state) as {
         provider: "gmail" | "outlook";
         userId: string;
         returnTo?: string;
       };
+      if (!stateData) {
+        return reply.status(400).send({ error: "Invalid or tampered state parameter" });
+      }
 
       const { exchangeCode } = await import("./integrations/oauth.js");
       const { encryptCredentials } = await import("./integrations/crypto.js");
@@ -220,20 +301,103 @@ export async function buildServer() {
       });
 
       // Close popup and notify parent window
+      const successPayload = JSON.stringify({ type: 'plugin-oauth-complete', pluginName: result.pluginName, credentialId: result.credentialId });
       return reply.type("text/html").send(`
         <html><body><script>
-          window.opener?.postMessage({ type: 'plugin-oauth-complete', pluginName: '${result.pluginName}', credentialId: '${result.credentialId}' }, '*');
+          window.opener?.postMessage(${successPayload}, ${JSON.stringify(env.CORS_ORIGIN)});
           window.close();
         </script><p>Connected. You can close this window.</p></body></html>
       `);
     } catch (error) {
       console.error("Plugin OAuth2 callback error:", error);
+      const errorPayload = JSON.stringify({ type: 'plugin-oauth-error', error: (error as Error).message });
       return reply.type("text/html").send(`
         <html><body><script>
-          window.opener?.postMessage({ type: 'plugin-oauth-error', error: '${(error as Error).message}' }, '*');
+          window.opener?.postMessage(${errorPayload}, ${JSON.stringify(env.CORS_ORIGIN)});
           window.close();
         </script><p>Connection failed. You can close this window.</p></body></html>
       `);
+    }
+  });
+
+  // Bling OAuth callback
+  app.get("/api/auth/bling/callback", async (req, reply) => {
+    const { code, state } = req.query as { code: string; state: string };
+    if (!code || !state) {
+      return reply.status(400).send({ error: "Missing code or state" });
+    }
+
+    try {
+      const { verifyOAuthState } = await import("./utils/oauth-state.js");
+      const stateData = verifyOAuthState(state) as {
+        provider: "bling";
+        userId: string;
+        secrets: string;
+      };
+      if (!stateData) {
+        return reply.status(400).send({ error: "Invalid or tampered state parameter" });
+      }
+
+      const { exchangeBlingCode } = await import("./bling/oauth.js");
+      const { encryptCredentials, decryptCredentials } = await import("./integrations/crypto.js");
+
+      // Decrypt the secrets from state
+      const { clientId, clientSecret } = decryptCredentials(stateData.secrets) as {
+        clientId: string;
+        clientSecret: string;
+      };
+      const { db } = await import("./db/index.js");
+      const { integrations, credentials } = await import("./db/schema/index.js");
+      const { ensureBlingEntities } = await import("./bling/entities.js");
+      const { enqueueBlingSync } = await import("./queue/bling-queue.js");
+
+      const tokens = await exchangeBlingCode(clientId, clientSecret, code);
+
+      const credentialValue = {
+        clientId,
+        clientSecret,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: Date.now() + tokens.expiresIn * 1000,
+      };
+
+      // Store in integrations table (for sync worker)
+      const integrationId = crypto.randomUUID();
+      await db.insert(integrations).values({
+        id: integrationId,
+        name: "Bling ERP",
+        slug: `bling-${Date.now()}`,
+        type: "oauth2",
+        status: "enabled",
+        config: JSON.stringify({
+          authUrl: "https://www.bling.com.br/Api/v3/oauth/authorize",
+          tokenUrl: "https://www.bling.com.br/Api/v3/oauth/token",
+          syncInterval: 15 * 60 * 1000,
+        }),
+        credentials: encryptCredentials(credentialValue),
+        createdBy: stateData.userId,
+      });
+
+      // Store in credentials table (for piece system)
+      await db.insert(credentials).values({
+        id: crypto.randomUUID(),
+        name: "Bling ERP (OAuth2)",
+        pluginName: "piece-bling",
+        type: "custom_auth",
+        status: "active",
+        value: encryptCredentials(credentialValue),
+        createdBy: stateData.userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await ensureBlingEntities(db, stateData.userId);
+      await enqueueBlingSync(integrationId);
+
+      return reply.redirect(`${env.CORS_ORIGIN}/settings?section=integrations`);
+    } catch (error) {
+      console.error("Bling OAuth callback error:", error);
+      return reply.status(500).send({ error: "Bling OAuth callback failed" });
     }
   });
 

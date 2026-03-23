@@ -165,6 +165,58 @@ export const workflowExecutions = pgTable("workflow_executions", {
   index("workflow_executions_status_idx").on(table.status),
 ]);
 
+// --- Flow Engine (AP-based) ---
+
+export const flowFolders = pgTable("flow_folders", {
+  id: text("id").primaryKey(),
+  displayName: text("display_name").notNull(),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const flows = pgTable("flows", {
+  id: text("id").primaryKey(),
+  status: text("status", { enum: ["enabled", "disabled"] }).notNull().default("disabled"),
+  folderId: text("folder_id").references(() => flowFolders.id, { onDelete: "set null" }),
+  publishedVersionId: text("published_version_id"),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const flowVersions = pgTable("flow_versions", {
+  id: text("id").primaryKey(),
+  flowId: text("flow_id").notNull().references(() => flows.id, { onDelete: "cascade" }),
+  displayName: text("display_name").notNull(),
+  trigger: text("trigger").notNull().default("{}"),
+  state: text("state", { enum: ["draft", "locked"] }).notNull().default("draft"),
+  valid: boolean("valid").notNull().default(false),
+  schemaVersion: text("schema_version"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("flow_versions_flow_id_idx").on(table.flowId),
+]);
+
+export const flowRuns = pgTable("flow_runs", {
+  id: text("id").primaryKey(),
+  flowId: text("flow_id").notNull().references(() => flows.id, { onDelete: "cascade" }),
+  flowVersionId: text("flow_version_id").references(() => flowVersions.id),
+  status: text("status", { enum: ["running", "succeeded", "failed", "paused", "stopped"] }).notNull().default("running"),
+  triggeredBy: text("triggered_by"),
+  triggerPayload: text("trigger_payload"),
+  steps: text("steps").notNull().default("{}"),
+  duration: integer("duration"),
+  tags: text("tags").notNull().default("[]"),
+  error: text("error"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("flow_runs_flow_id_idx").on(table.flowId),
+  index("flow_runs_status_idx").on(table.status),
+]);
+
 // --- Phase 7: Extensible Agent Platform ---
 
 export const agents = pgTable("agents", {

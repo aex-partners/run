@@ -100,7 +100,7 @@ export const credentialsRouter = router({
       }
 
       const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3001";
-      const url = generatePluginAuthUrl({
+      const url = await generatePluginAuthUrl({
         pluginName: input.pluginName,
         oauthConfig: {
           authUrl: entry.auth.authUrl,

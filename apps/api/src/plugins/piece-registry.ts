@@ -18,7 +18,7 @@ interface PieceCatalogEntry {
   category: string;
   logoUrl: string;
   auth: { type: string };
-  source: "piece";
+  source: "piece" | "local";
 }
 
 /**
@@ -63,11 +63,13 @@ export async function syncPieceCatalog(db: Database): Promise<number> {
           pieceName: entry.pieceName,
           authType: entry.auth.type,
           icon: entry.logoUrl,
-          source: "piece",
+          source: entry.source === "local" ? "local" : "piece",
           updatedAt: new Date(),
         })
         .where(eq(plugins.id, entry.id));
     } else {
+      // Local pieces are auto-installed; registry pieces start as "available"
+      const isLocal = entry.source === "local";
       await db.insert(plugins).values({
         id: entry.id,
         name: entry.displayName,
@@ -77,8 +79,8 @@ export async function syncPieceCatalog(db: Database): Promise<number> {
         pieceName: entry.pieceName,
         authType: entry.auth.type,
         icon: entry.logoUrl,
-        source: "piece",
-        status: "available",
+        source: isLocal ? "local" : "piece",
+        status: isLocal ? "installed" : "available",
         config: "{}",
       });
     }

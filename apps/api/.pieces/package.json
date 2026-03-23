@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@activepieces/piece-capsule-crm": "^0.1.3",
     "@activepieces/piece-gmail": "^0.11.5",
-    "@activepieces/piece-vtex": "^0.2.4"
+    "@activepieces/piece-http": "^0.11.7",
+    "@activepieces/piece-vtex": "^0.2.4",
+    "@activepieces/piece-whatsapp": "^0.2.3"
   }
 }

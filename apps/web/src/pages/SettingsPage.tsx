@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, CloudSun, Coins, Bell } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { SettingsScreen } from "../components/screens/SettingsScreen/SettingsScreen";
+import { PluginConnectDialog, type PluginConnectDialogProps } from "../components/organisms/PluginConnectDialog/PluginConnectDialog";
 import type { User } from "../components/organisms/UserTable/UserTable";
 import type { AgentFormData } from "../components/organisms/AgentForm/AgentForm";
 import type { SkillFormData } from "../components/organisms/SkillForm/SkillForm";
@@ -247,11 +248,23 @@ export function SettingsPage() {
       category: p.category ?? undefined,
     }));
 
-  const [pluginConfigId, setPluginConfigId] = useState<string | null>(null);
-  const pluginConfigQuery = trpc.plugins.getConfigSchema.useQuery(
-    { id: pluginConfigId ?? "" },
-    { enabled: !!pluginConfigId },
+  // Connect dialog state
+  const [connectPluginId, setConnectPluginId] = useState<string | null>(null);
+  const connectPlugin = connectPluginId ? serverPlugins.find((p) => p.id === connectPluginId) : null;
+  const { data: pluginCredentials = [] } = trpc.credentials.getByPlugin.useQuery(
+    { pluginName: connectPlugin?.pieceName ?? "" },
+    { enabled: !!connectPlugin?.pieceName },
   );
+  const createCredentialMut = trpc.credentials.create.useMutation({
+    onSuccess: () => {
+      utils.credentials.getByPlugin.invalidate();
+      setConnectPluginId(null);
+    },
+  });
+  const deleteCredentialMut = trpc.credentials.delete.useMutation({
+    onSuccess: () => utils.credentials.getByPlugin.invalidate(),
+  });
+  const getOAuth2Url = trpc.credentials.getOAuth2Url.useMutation();
 
   const handlePluginInstall = (name: string) => {
     const plugin = serverPlugins.find((p) => p.name === name);
@@ -265,7 +278,7 @@ export function SettingsPage() {
 
   const handlePluginConfigure = (name: string) => {
     const plugin = serverPlugins.find((p) => p.name === name);
-    if (plugin) setPluginConfigId(plugin.id);
+    if (plugin) setConnectPluginId(plugin.id);
   };
 
   const handlePluginToggle = (name: string, enabled: boolean) => {
@@ -273,10 +286,32 @@ export function SettingsPage() {
     if (plugin) togglePlugin.mutate({ id: plugin.id, enabled });
   };
 
-  const handlePluginConfigSave = (config: Record<string, unknown>) => {
-    if (pluginConfigId) {
-      configurePlugin.mutate({ id: pluginConfigId, config });
-      setPluginConfigId(null);
+  const handleSaveCredential = (value: Record<string, unknown>) => {
+    if (!connectPlugin?.pieceName) return;
+    createCredentialMut.mutate({
+      name: `${connectPlugin.name} API Key`,
+      pluginName: connectPlugin.pieceName,
+      type: (connectPlugin as Record<string, unknown>).authType === "oauth2" ? "oauth2"
+        : (connectPlugin as Record<string, unknown>).authType === "basic_auth" ? "basic_auth"
+        : (connectPlugin as Record<string, unknown>).authType === "custom_auth" ? "custom_auth"
+        : "secret_text",
+      value,
+    });
+  };
+
+  const handleStartOAuth2 = async (clientId: string, clientSecret: string): Promise<string> => {
+    if (!connectPlugin?.pieceName) throw new Error("No plugin selected");
+    const result = await getOAuth2Url.mutateAsync({
+      pluginName: connectPlugin.pieceName,
+      clientId,
+      clientSecret,
+    });
+    return result.url;
+  };
+
+  const handleDisconnect = () => {
+    if (pluginCredentials.length > 0) {
+      deleteCredentialMut.mutate({ id: pluginCredentials[0].id });
     }
   };
 
@@ -432,11 +467,6 @@ export function SettingsPage() {
         onTogglePlugin={handlePluginToggle}
         onSyncPluginRegistry={() => syncPluginRegistry.mutate()}
         syncingPlugins={syncPluginRegistry.isPending}
-        pluginConfigId={pluginConfigId}
-        pluginConfigSchema={pluginConfigQuery.data}
-        pluginCurrentConfig={pluginConfigId ? JSON.parse(serverPlugins.find((p) => p.id === pluginConfigId)?.config ?? "{}") : undefined}
-        onClosePluginConfig={() => setPluginConfigId(null)}
-        onSavePluginConfig={handlePluginConfigSave}
         agents={agents}
         skillOptions={skillOptions}
         toolOptions={toolOptions}
@@ -510,6 +540,21 @@ export function SettingsPage() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      {/* Plugin Connect dialog */}
+      <PluginConnectDialog
+        open={!!connectPluginId}
+        onClose={() => setConnectPluginId(null)}
+        pluginName={connectPlugin?.pieceName ?? ""}
+        pluginDisplayName={connectPlugin?.name ?? ""}
+        pluginLogoUrl={getLogoUrl(connectPlugin ?? {})}
+        authType={((connectPlugin as Record<string, unknown> | undefined)?.authType as PluginConnectDialogProps["authType"]) ?? "none"}
+        connected={pluginCredentials.length > 0}
+        onSaveCredential={handleSaveCredential}
+        onStartOAuth2={handleStartOAuth2}
+        onDisconnect={handleDisconnect}
+        saving={createCredentialMut.isPending}
+      />
     </>
   );
 }

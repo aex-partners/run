@@ -56,11 +56,12 @@ export const emailsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const config = getOAuthConfig(input.provider);
-        const state = Buffer.from(JSON.stringify({
+        const { signOAuthState } = await import("../../utils/oauth-state.js");
+        const state = signOAuthState({
           provider: input.provider,
           userId: ctx.session.user.id,
           returnTo: input.returnTo,
-        })).toString("base64url");
+        });
 
         const authUrl = generateAuthUrl(config, state);
         // Add access_type=offline for Gmail to get refresh token

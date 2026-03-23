@@ -193,7 +193,11 @@ export function sanitizeToolName(name: string): string {
  * Extract the piece name from a Piece instance.
  */
 function getPieceName(piece: Piece): string {
-  // The piece metadata contains the name
-  const meta = piece.metadata();
-  return meta.name || piece.displayName.toLowerCase().replace(/\s+/g, "-");
+  try {
+    const meta = piece.metadata();
+    if (meta?.name) return meta.name;
+  } catch {
+    // metadata() may not exist on npm-installed pieces (different framework version)
+  }
+  return piece.displayName.toLowerCase().replace(/\s+/g, "-");
 }

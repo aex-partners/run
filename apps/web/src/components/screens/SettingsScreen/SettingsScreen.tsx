@@ -14,7 +14,7 @@ import { SkillForm, type SkillFormData } from '../../organisms/SkillForm/SkillFo
 import { CustomToolForm, type CustomToolFormData, type TestResult } from '../../organisms/CustomToolForm/CustomToolForm'
 import { IntegrationForm, type IntegrationFormData } from '../../organisms/IntegrationForm/IntegrationForm'
 import { Button } from '../../atoms/Button/Button'
-import { PluginConfigDialog, type PluginConfigDialogProps } from '../../organisms/PluginConfigDialog/PluginConfigDialog'
+// PluginConfigDialog replaced by PluginConnectDialog (rendered in SettingsPage)
 import type { MultiSelectOption } from '../../molecules/MultiSelect/MultiSelect'
 
 export type SettingsSection = 'users' | 'plugins' | 'permissions' | 'company' | 'agents' | 'skills' | 'tools' | 'integrations'
@@ -98,11 +98,6 @@ export interface SettingsScreenProps {
   onTogglePlugin?: (name: string, enabled: boolean) => void
   onSyncPluginRegistry?: () => void
   syncingPlugins?: boolean
-  pluginConfigId?: string | null
-  pluginConfigSchema?: unknown
-  pluginCurrentConfig?: Record<string, unknown>
-  onClosePluginConfig?: () => void
-  onSavePluginConfig?: (config: Record<string, unknown>) => void
   onSaveCompany?: (info: CompanyInfo) => void
 
   // Agents
@@ -251,7 +246,6 @@ export function SettingsScreen(props: SettingsScreenProps) {
     users, installedPlugins, marketplacePlugins, companyInfo,
     activeSection: controlledSection, onSectionChange, onEditUser, onDeleteUser, onChangeRole, onChangeStatus, onInviteUser,
     onInstallPlugin, onConfigurePlugin, onUninstallPlugin, onTogglePlugin, onSyncPluginRegistry, syncingPlugins,
-    pluginConfigId, pluginConfigSchema, pluginCurrentConfig, onClosePluginConfig, onSavePluginConfig,
     onSaveCompany,
     agents = [], skillOptions = [], toolOptions = [], onCreateAgent, onUpdateAgent, onDeleteAgent,
     skills = [], systemToolOptions = [], onCreateSkill, onUpdateSkill, onDeleteSkill,
@@ -317,6 +311,9 @@ export function SettingsScreen(props: SettingsScreenProps) {
   // Reset page when filter changes
   React.useEffect(() => { setMarketplacePage(1) }, [pluginSearch, pluginCategory])
 
+  // Plugin tab state
+  const [pluginTab, setPluginTab] = useState<'installed' | 'marketplace'>('installed')
+
   // Tools filter
   const [toolFilter, setToolFilter] = useState<string>('all')
   const [toolSearch, setToolSearch] = useState('')
@@ -341,8 +338,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
   const handleInstall = (name: string) => {
     const plugin = localMarketplace.find((p) => p.name === name)
     if (plugin) {
-      setLocalInstalled((prev) => [...prev, { ...plugin, installed: true }])
+      setLocalInstalled((prev) => [...prev, { ...plugin, installed: true, installing: true }])
       setLocalMarketplace((prev) => prev.filter((p) => p.name !== name))
+      // Switch to installed tab to show progress
+      setPluginTab('installed')
     }
     onInstallPlugin?.(name)
   }
@@ -458,101 +457,131 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 </Button>
               )}
             </div>
-            {localInstalled.length > 0 && (
-              <div style={{ marginBottom: 32 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Installed</h3>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>{localInstalled.length} plugins installed</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {localInstalled.map((plugin) => (
-                    <PluginCard
-                      key={plugin.name}
-                      {...plugin}
-                      onConfigure={() => onConfigurePlugin?.(plugin.name)}
-                      onUninstall={() => handleUninstall(plugin.name)}
-                      onToggle={onTogglePlugin ? (enabled) => onTogglePlugin(plugin.name, enabled) : undefined}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            {localMarketplace.length > 0 && (
-              <div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Marketplace</h3>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                  {filteredMarketplace.length} plugins available
-                  {pluginSearch || pluginCategory !== 'all' ? ` (filtered from ${localMarketplace.length})` : ''}
-                </p>
 
-                {/* Search */}
-                <div style={{ position: 'relative', marginBottom: 12 }}>
-                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input
-                    type="text"
-                    placeholder="Search plugins..."
-                    value={pluginSearch}
-                    onChange={(e) => setPluginSearch(e.target.value)}
-                    style={{
-                      width: '100%', padding: '8px 12px 8px 30px', borderRadius: 8,
-                      border: '1px solid var(--border)', background: 'var(--surface)',
-                      color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
-                      outline: 'none', boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
+            {/* Tabs: Installed / Marketplace */}
+            <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
+              {(['installed', 'marketplace'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setPluginTab(tab)}
+                  style={{
+                    padding: '8px 20px', fontSize: 13, fontWeight: pluginTab === tab ? 600 : 400,
+                    color: pluginTab === tab ? 'var(--accent)' : 'var(--text-muted)',
+                    borderBottom: pluginTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
+                    background: 'none', border: 'none', borderBottomStyle: 'solid',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    marginBottom: -1,
+                  }}
+                >
+                  {tab === 'installed' ? `Installed (${localInstalled.length})` : `Marketplace (${localMarketplace.length})`}
+                </button>
+              ))}
+            </div>
 
-                {/* Category tabs */}
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
-                  {PLUGIN_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.value}
-                      onClick={() => setPluginCategory(cat.value)}
-                      style={{
-                        padding: '4px 10px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit',
-                        border: '1px solid ' + (pluginCategory === cat.value ? 'var(--accent)' : 'var(--border)'),
-                        background: pluginCategory === cat.value ? 'var(--accent-light)' : 'transparent',
-                        color: pluginCategory === cat.value ? 'var(--accent)' : 'var(--text-muted)',
-                        cursor: 'pointer', fontWeight: pluginCategory === cat.value ? 600 : 400,
-                      }}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Plugin grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  {visibleMarketplace.map((plugin) => (
-                    <PluginCard key={plugin.name} {...plugin} onInstall={() => handleInstall(plugin.name)} />
-                  ))}
-                </div>
-
-                {/* Load more */}
-                {hasMoreMarketplace && (
-                  <div style={{ textAlign: 'center', marginTop: 16 }}>
-                    <button
-                      onClick={() => setMarketplacePage((p) => p + 1)}
-                      style={{
-                        padding: '8px 24px', borderRadius: 8, fontSize: 13, fontFamily: 'inherit',
-                        border: '1px solid var(--border)', background: 'var(--surface)',
-                        color: 'var(--text)', cursor: 'pointer',
-                      }}
-                    >
-                      Load more ({filteredMarketplace.length - visibleMarketplace.length} remaining)
-                    </button>
+            {/* Installed tab */}
+            {pluginTab === 'installed' && (
+              <>
+                {localInstalled.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {localInstalled.map((plugin) => (
+                      <PluginCard
+                        key={plugin.name}
+                        {...plugin}
+                        onConfigure={() => onConfigurePlugin?.(plugin.name)}
+                        onUninstall={() => handleUninstall(plugin.name)}
+                        onToggle={onTogglePlugin ? (enabled) => onTogglePlugin(plugin.name, enabled) : undefined}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                    No plugins installed yet. Browse the <button onClick={() => setPluginTab('marketplace')} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: 0 }}>Marketplace</button> to find integrations.
                   </div>
                 )}
+              </>
+            )}
 
-                {filteredMarketplace.length === 0 && (
-                  <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                    No plugins match your search.
+            {/* Marketplace tab */}
+            {pluginTab === 'marketplace' && (
+              <>
+                {localMarketplace.length > 0 ? (
+                  <div>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                      {filteredMarketplace.length} plugins available
+                      {pluginSearch || pluginCategory !== 'all' ? ` (filtered from ${localMarketplace.length})` : ''}
+                    </p>
+
+                    {/* Search */}
+                    <div style={{ position: 'relative', marginBottom: 12 }}>
+                      <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                      <input
+                        type="text"
+                        placeholder="Search plugins..."
+                        value={pluginSearch}
+                        onChange={(e) => setPluginSearch(e.target.value)}
+                        style={{
+                          width: '100%', padding: '8px 12px 8px 30px', borderRadius: 8,
+                          border: '1px solid var(--border)', background: 'var(--surface)',
+                          color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+                          outline: 'none', boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    {/* Category filters */}
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
+                      {PLUGIN_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat.value}
+                          onClick={() => setPluginCategory(cat.value)}
+                          style={{
+                            padding: '4px 10px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit',
+                            border: '1px solid ' + (pluginCategory === cat.value ? 'var(--accent)' : 'var(--border)'),
+                            background: pluginCategory === cat.value ? 'var(--accent-light)' : 'transparent',
+                            color: pluginCategory === cat.value ? 'var(--accent)' : 'var(--text-muted)',
+                            cursor: 'pointer', fontWeight: pluginCategory === cat.value ? 600 : 400,
+                          }}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Plugin grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      {visibleMarketplace.map((plugin) => (
+                        <PluginCard key={plugin.name} {...plugin} onInstall={() => handleInstall(plugin.name)} />
+                      ))}
+                    </div>
+
+                    {/* Load more */}
+                    {hasMoreMarketplace && (
+                      <div style={{ textAlign: 'center', marginTop: 16 }}>
+                        <button
+                          onClick={() => setMarketplacePage((p) => p + 1)}
+                          style={{
+                            padding: '8px 24px', borderRadius: 8, fontSize: 13, fontFamily: 'inherit',
+                            border: '1px solid var(--border)', background: 'var(--surface)',
+                            color: 'var(--text)', cursor: 'pointer',
+                          }}
+                        >
+                          Load more ({filteredMarketplace.length - visibleMarketplace.length} remaining)
+                        </button>
+                      </div>
+                    )}
+
+                    {filteredMarketplace.length === 0 && (
+                      <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                        No plugins match your search.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                    No plugins available. Click "Sync Registry" to load the plugin catalog.
                   </div>
                 )}
-              </div>
-            )}
-            {localInstalled.length === 0 && localMarketplace.length === 0 && (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                No plugins available. Click "Sync Registry" to load the plugin catalog.
-              </div>
+              </>
             )}
           </div>
         )
@@ -969,16 +998,6 @@ export function SettingsScreen(props: SettingsScreenProps) {
         />
       </FormDialog>
 
-      {onSavePluginConfig && onClosePluginConfig && (
-        <PluginConfigDialog
-          open={!!pluginConfigId}
-          onClose={onClosePluginConfig}
-          pluginName={localInstalled.find((p) => (p as { id?: string }).id === pluginConfigId)?.name ?? ''}
-          configSchema={pluginConfigSchema as PluginConfigDialogProps['configSchema']}
-          currentConfig={pluginCurrentConfig}
-          onSave={onSavePluginConfig}
-        />
-      )}
     </div>
   )
 }

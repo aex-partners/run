@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   File, FileText, FileSpreadsheet, Image, Film, Music, Archive,
   FileCode, Presentation, Star, MoreVertical, Download, FolderOpen,
+  Share2, Trash2,
 } from 'lucide-react'
 
 export type FileSource = 'email' | 'chat' | 'generated' | 'upload' | 'workflow'
@@ -31,6 +32,9 @@ export interface FileItemProps extends FileItemData {
   onStar?: (id: string) => void
   onSelect?: (id: string, selected: boolean) => void
   onContextMenu?: (id: string, e: React.MouseEvent) => void
+  onDownload?: (id: string) => void
+  onShare?: (id: string) => void
+  onDelete?: (id: string) => void
 }
 
 const SOURCE_COLORS: Record<FileSource, string> = {
@@ -69,8 +73,10 @@ export function FileItem(props: FileItemProps) {
     id, name, type, size, modifiedAt, source, starred = false,
     selected = false, isFolder = false, view = 'list',
     onClick, onDoubleClick, onStar, onSelect, onContextMenu,
+    onDownload, onShare, onDelete,
   } = props
   const [hovered, setHovered] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   if (view === 'grid') {
     return (
@@ -233,21 +239,58 @@ export function FileItem(props: FileItemProps) {
         {modifiedAt}
       </span>
 
-      <div style={{ display: 'flex', gap: 2, flexShrink: 0, opacity: hovered ? 1 : 0, transition: 'opacity 0.1s' }}>
+      <div style={{ display: 'flex', gap: 2, flexShrink: 0, opacity: hovered || menuOpen ? 1 : 0, transition: 'opacity 0.1s', position: 'relative' }}>
         <button
-          onClick={(e) => { e.stopPropagation() }}
+          onClick={(e) => { e.stopPropagation(); onDownload?.(id) }}
           title="Download"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-muted)' }}
         >
           <Download size={14} />
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); onContextMenu?.(id, e) }}
+          onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
           title="More"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-muted)' }}
         >
           <MoreVertical size={14} />
         </button>
+        {menuOpen && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false) }}
+            />
+            <div style={{
+              position: 'absolute', right: 0, top: '100%', zIndex: 100,
+              minWidth: 160, padding: '4px 0', borderRadius: 8,
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+            }}>
+              {[
+                { label: 'Download', icon: <Download size={14} />, action: () => onDownload?.(id) },
+                { label: 'Share', icon: <Share2 size={14} />, action: () => onShare?.(id) },
+                { label: 'Star', icon: <Star size={14} fill={starred ? '#f59e0b' : 'none'} color={starred ? '#f59e0b' : 'currentColor'} />, action: () => onStar?.(id) },
+                { label: 'Delete', icon: <Trash2 size={14} />, action: () => onDelete?.(id), danger: true },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  onClick={(e) => { e.stopPropagation(); item.action(); setMenuOpen(false) }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 12px', border: 'none', background: 'none',
+                    cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
+                    color: (item as { danger?: boolean }).danger ? '#dc2626' : 'var(--text)',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget.style.background) = 'var(--surface-2)' }}
+                  onMouseLeave={(e) => { (e.currentTarget.style.background) = 'none' }}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

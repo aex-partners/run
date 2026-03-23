@@ -1,7 +1,6 @@
 import { generateText, stepCountIs } from "ai";
-import { eq, desc } from "drizzle-orm";
-import { model } from "../ai/client.js";
-import { getModel } from "../ai/client.js";
+import { eq, desc, and, lte } from "drizzle-orm";
+import { model, getModel } from "../ai/client.js";
 import { createWorkerTools } from "../ai/tools.js";
 import { getToolsForAgent, buildCustomTool } from "../ai/tool-registry.js";
 import { messages, tasks, taskLogs, customTools } from "../db/schema/index.js";
@@ -52,6 +51,7 @@ interface TaskInput {
   toolName: string | null;
   structuredInput: string | null;
   outputSchema: string | null;
+  createdAt: Date | null;
 }
 
 /**
@@ -123,12 +123,20 @@ async function runStructuredTask(task: TaskInput, db: Database): Promise<string>
 async function runInferenceTask(task: TaskInput, db: Database): Promise<string> {
   const contextMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
 
-  // Load conversation context if available
+  // Load conversation context from when the task was created (not current state).
+  // This preserves the original topic even if the user changed subjects after scheduling.
   if (task.conversationId) {
+    const filter = task.createdAt
+      ? and(
+          eq(messages.conversationId, task.conversationId),
+          lte(messages.createdAt, task.createdAt),
+        )
+      : eq(messages.conversationId, task.conversationId);
+
     const rows = await db
       .select({ content: messages.content, role: messages.role })
       .from(messages)
-      .where(eq(messages.conversationId, task.conversationId))
+      .where(filter)
       .orderBy(desc(messages.createdAt))
       .limit(10);
 

@@ -198,8 +198,8 @@ export function PluginCard({
                 </span>
               </label>
             )}
-            <Button variant="secondary" size="sm" leftIcon={<Settings size={11} />} onClick={onConfigure} aria-label={`Configure ${name}`}>
-              Configure
+            <Button variant="secondary" size="sm" leftIcon={<Settings size={11} />} onClick={onConfigure} aria-label={`Connect ${name}`}>
+              Connect
             </Button>
             {onUninstall && (
               <Button variant="danger" size="sm" leftIcon={<Trash2 size={11} />} onClick={onUninstall} aria-label={`Uninstall ${name}`}>

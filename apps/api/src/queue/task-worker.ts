@@ -86,6 +86,7 @@ export function startTaskWorker() {
             toolName: task.toolName,
             structuredInput: task.structuredInput,
             outputSchema: task.outputSchema,
+            createdAt: task.createdAt,
           },
           db,
         );
@@ -123,7 +124,7 @@ export function startTaskWorker() {
           console.error(`Task ${taskId} failed:`, err);
           await reportToChat(
             task.conversationId,
-            `The task "${task.title}" failed: ${error}`,
+            `The task "${task.title}" failed. Please try again or contact support.`,
           );
         }
       }

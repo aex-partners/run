@@ -62,6 +62,7 @@ describe("task-runner: structured task edge cases", () => {
         toolName: "list_entities",
         structuredInput: null,
         outputSchema: null,
+        createdAt: null,
       },
       db as any,
     );
@@ -98,6 +99,7 @@ describe("task-runner: structured task edge cases", () => {
         toolName: "list_users",
         structuredInput: "{}",
         outputSchema: null,
+        createdAt: null,
       },
       db as any,
     );
@@ -139,6 +141,7 @@ describe("task-runner: structured task edge cases", () => {
         toolName: "list_entities",
         structuredInput: "{}",
         outputSchema: null,
+        createdAt: null,
       },
       db as any,
     );

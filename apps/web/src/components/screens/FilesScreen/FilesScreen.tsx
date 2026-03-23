@@ -404,7 +404,12 @@ export function FilesScreen({
               placeholder="Ask AI about files..."
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                  onAiAction?.(e.currentTarget.value)
+                  const query = e.currentTarget.value.trim()
+                  if (onAiAction) {
+                    onAiAction(query)
+                  } else {
+                    window.location.href = '/?q=' + encodeURIComponent(query)
+                  }
                   e.currentTarget.value = ''
                 }
               }}
@@ -484,6 +489,9 @@ export function FilesScreen({
             onDelete={handleRequestDelete}
             onDownload={onDownload}
             onRefresh={onRefresh}
+            onFileDownload={(id) => onDownload?.([id])}
+            onFileShare={(id) => handleOpenShare([id])}
+            onFileDelete={(id) => handleRequestDelete([id])}
             onViewChange={setViewMode}
             onNavigateUp={handleNavigateUp}
             onBreadcrumbClick={handleBreadcrumbClick}

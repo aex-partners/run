@@ -5,9 +5,18 @@
  */
 
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Piece } from "@activepieces/pieces-framework";
 import { getPiecesNodeModulesDir } from "./piece-installer.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const LOCAL_PIECES_DIR = join(__dirname, "..", "pieces");
+
+/** Registry of local piece module paths (pieceName -> module path). */
+const LOCAL_PIECES: Record<string, string> = {
+  "piece-bling": join(LOCAL_PIECES_DIR, "piece-bling", "index.js"),
+};
 
 const pieceCache = new Map<string, Piece>();
 
@@ -18,6 +27,21 @@ const pieceCache = new Map<string, Piece>();
 export async function loadPiece(pieceName: string): Promise<Piece | null> {
   if (pieceCache.has(pieceName)) {
     return pieceCache.get(pieceName)!;
+  }
+
+  // Try local pieces first (built-in integrations like Bling)
+  const localPath = LOCAL_PIECES[pieceName];
+  if (localPath) {
+    try {
+      const mod = await import(localPath);
+      const piece = findPieceExport(mod);
+      if (piece) {
+        pieceCache.set(pieceName, piece);
+        return piece;
+      }
+    } catch (err) {
+      console.error(`Failed to load local piece "${pieceName}":`, err);
+    }
   }
 
   const packageName = pieceName.startsWith("@activepieces/")

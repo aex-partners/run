@@ -27,6 +27,9 @@ export interface FileGridProps {
   onBreadcrumbClick?: (index: number) => void
   onSort?: (field: SortField, dir: SortDir) => void
   onContextMenu?: (id: string, e: React.MouseEvent) => void
+  onFileDownload?: (id: string) => void
+  onFileShare?: (id: string) => void
+  onFileDelete?: (id: string) => void
   loading?: boolean
 }
 
@@ -46,8 +49,11 @@ export function FileGrid({
   onViewChange,
   onNavigateUp,
   onBreadcrumbClick,
-  onSort,
+  onSort: _onSort,
   onContextMenu,
+  onFileDownload,
+  onFileShare,
+  onFileDelete,
   loading = false,
 }: FileGridProps) {
   const [sortField, setSortField] = useState<SortField>('name')
@@ -57,7 +63,7 @@ export function FileGrid({
     const newDir = sortField === field && sortDir === 'asc' ? 'desc' : 'asc'
     setSortField(field)
     setSortDir(newDir)
-    onSort?.(field, newDir)
+    // Local sort is handled by React state; no server callback needed
   }
 
   const folders = files.filter((f) => f.isFolder)
@@ -94,7 +100,7 @@ export function FileGrid({
             <Button variant="ghost" size="sm" leftIcon={<Download size={13} />} onClick={() => onDownload?.([...selectedIds])}>
               Download
             </Button>
-            <Button variant="ghost" size="sm" leftIcon={<Star size={13} />} onClick={() => {}}>
+            <Button variant="ghost" size="sm" leftIcon={<Star size={13} />} onClick={() => { selectedIds.forEach((id) => onFileStar?.(id)) }}>
               Star
             </Button>
             <Button variant="ghost" size="sm" leftIcon={<Trash2 size={13} />} onClick={() => onDelete?.([...selectedIds])}>
@@ -273,6 +279,9 @@ export function FileGrid({
                       onStar={onFileStar}
                       onSelect={onFileSelect}
                       onContextMenu={onContextMenu}
+                      onDownload={onFileDownload}
+                      onShare={onFileShare}
+                      onDelete={(id) => onFileDelete?.(id)}
                     />
                   ))}
                 </div>
@@ -303,6 +312,9 @@ export function FileGrid({
                       onStar={onFileStar}
                       onSelect={onFileSelect}
                       onContextMenu={onContextMenu}
+                      onDownload={onFileDownload}
+                      onShare={onFileShare}
+                      onDelete={(id) => onFileDelete?.(id)}
                     />
                   ))}
                 </div>

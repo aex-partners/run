@@ -17,6 +17,8 @@ import { pluginsRouter } from "./routers/plugins.js";
 import { filesRouter } from "./routers/files.js";
 import { emailsRouter } from "./routers/emails.js";
 import { credentialsRouter } from "./routers/credentials.js";
+import { flowsRouter } from "./routers/flows.js";
+import { blingRouter } from "./routers/bling.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -37,6 +39,8 @@ export const appRouter = router({
   files: filesRouter,
   emails: emailsRouter,
   credentials: credentialsRouter,
+  flows: flowsRouter,
+  bling: blingRouter,
 });
 
 export type AppRouter = typeof appRouter;

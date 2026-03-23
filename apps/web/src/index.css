@@ -27,3 +27,5 @@ body { background: var(--background); color: var(--text); font-family: 'Inter', 
 .react-flow__controls button { background: var(--surface); border-color: var(--border); color: var(--text-muted); }
 .react-flow__controls button:hover { background: var(--surface-2); }
 .react-flow__minimap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }

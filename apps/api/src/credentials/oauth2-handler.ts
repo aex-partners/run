@@ -20,7 +20,7 @@ interface PluginOAuth2Config {
 /**
  * Generate an OAuth2 authorization URL for a plugin credential.
  */
-export function generatePluginAuthUrl(opts: {
+export async function generatePluginAuthUrl(opts: {
   pluginName: string;
   oauthConfig: PluginOAuth2Config;
   clientId: string;
@@ -28,13 +28,12 @@ export function generatePluginAuthUrl(opts: {
   userId: string;
   baseUrl: string;
 }): string {
-  const state = Buffer.from(
-    JSON.stringify({
-      pluginName: opts.pluginName,
-      userId: opts.userId,
-      clientSecret: opts.clientSecret,
-    }),
-  ).toString("base64url");
+  const { signOAuthState } = await import("../utils/oauth-state.js");
+  const state = signOAuthState({
+    pluginName: opts.pluginName,
+    userId: opts.userId,
+    clientSecret: opts.clientSecret,
+  });
 
   const redirectUri = `${opts.baseUrl}/api/credentials/oauth2/callback`;
 
@@ -62,11 +61,15 @@ export async function handlePluginOAuth2Callback(opts: {
 }): Promise<{ credentialId: string; pluginName: string }> {
   const { db, code, state, baseUrl } = opts;
 
-  const stateData = JSON.parse(Buffer.from(state, "base64url").toString()) as {
+  const { verifyOAuthState } = await import("../utils/oauth-state.js");
+  const stateData = verifyOAuthState(state) as {
     pluginName: string;
     userId: string;
     clientSecret: string;
   };
+  if (!stateData) {
+    throw new Error("Invalid or tampered OAuth state parameter");
+  }
 
   // We need the plugin's OAuth config to get tokenUrl
   // For now we store it in the catalog, but the actual piece has it.

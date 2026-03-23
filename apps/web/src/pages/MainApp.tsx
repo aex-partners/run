@@ -7,7 +7,7 @@ import { FilesPage } from "./FilesPage";
 import { SettingsPage } from "./SettingsPage";
 import { TasksPage } from "./TasksPage";
 import { DatabasePage } from "./DatabasePage";
-import { WorkflowsPage } from "./WorkflowsPage";
+import { FlowsPage } from "./FlowsPage";
 import { WebSocketProvider, useWS } from "../providers/WebSocketProvider";
 import { OnboardingTour } from "../components/organisms/OnboardingTour/OnboardingTour";
 
@@ -29,7 +29,7 @@ function MainAppInner() {
       case "database":
         return <DatabasePage />;
       case "workflows":
-        return <WorkflowsPage />;
+        return <FlowsPage />;
       case "settings":
         return <SettingsPage />;
       default:

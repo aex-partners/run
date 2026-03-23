@@ -970,6 +970,8 @@ const ptBR = {
     plugins: {
       title: 'Selecionar Plugins',
       description: 'Escolha integrações para conectar com suas ferramentas existentes.',
+      searchPlaceholder: 'Buscar plugins...',
+      placeholder: 'Selecione plugins para instalar',
     },
     complete: 'Concluir Configuração',
     completing: 'Concluindo...',

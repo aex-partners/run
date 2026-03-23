@@ -162,9 +162,14 @@ function createConnectionsManager(db: Database): ConnectionsManager {
       if (!row) return null;
 
       try {
-        return JSON.parse(row.value) as Record<string, unknown>;
+        const { decryptCredentials } = await import("../integrations/crypto.js");
+        return decryptCredentials(row.value) as Record<string, unknown>;
       } catch {
-        return null;
+        try {
+          return JSON.parse(row.value) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
       }
     },
   };
