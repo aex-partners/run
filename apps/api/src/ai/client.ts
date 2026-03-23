@@ -1,6 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { eq } from "drizzle-orm";
-import { env } from "../env.js";
 import { db } from "../db/index.js";
 import { settings } from "../db/schema/index.js";
 
@@ -14,9 +13,6 @@ const DEFAULT_MODELS: Record<string, { chat: string; nano: string }> = {
 let resolvedProviderType: string = "openai";
 
 async function getAIConfig(): Promise<{ apiKey: string; provider: string }> {
-  // env var takes precedence (backwards-compat / testing)
-  if (env.OPENAI_API_KEY) return { apiKey: env.OPENAI_API_KEY, provider: "openai" };
-
   const rows = await db
     .select({ key: settings.key, value: settings.value })
     .from(settings)
