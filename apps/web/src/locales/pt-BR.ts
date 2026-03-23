@@ -813,7 +813,7 @@ const ptBR = {
     },
     ai: {
       title: 'Provedor de IA',
-      description: 'Escolha como o AEX vai executar sua IA. Use OpenAI para a melhor experiência, ou rode um modelo local com Ollama.',
+      description: 'Escolha como o AEX vai executar sua IA. OpenRouter é a forma mais fácil de começar.',
       openai: {
         title: 'OpenAI',
         description: 'Hospedado na nuvem, melhor qualidade. Requer uma chave de API.',
@@ -822,6 +822,14 @@ const ptBR = {
         title: 'Ollama (Local)',
         description: 'Rode IA no seu próprio servidor. Gratuito, privado, sem chamadas externas.',
       },
+      openrouter: {
+        title: 'OpenRouter',
+        description: 'Configuração com um clique. Acesse OpenAI, Anthropic e mais. Você paga direto.',
+        connectButton: 'Conectar OpenRouter',
+        connecting: 'Conectando...',
+        connected: 'Conectado',
+        connectedHint: 'Sua conta OpenRouter está vinculada. Os custos de IA são cobrados na sua conta.',
+      },
       apiKey: 'Chave da API',
       apiKeyPlaceholder: 'sk-...',
       apiKeyHint: 'Sua chave é armazenada localmente e nunca compartilhada.',
@@ -829,11 +837,6 @@ const ptBR = {
       providerRequired: 'Por favor, selecione um provedor de IA.',
       apiKeyRequired: 'A chave da API é obrigatória para OpenAI.',
       modelRequired: 'Por favor, selecione um modelo.',
-    },
-    plugins: {
-      title: 'Selecionar Plugins',
-      description: 'Escolha integrações para conectar com suas ferramentas existentes.',
-      placeholder: 'A biblioteca de plugins será exibida aqui.',
     },
     navigation: {
       back: 'Voltar',
@@ -937,6 +940,10 @@ const ptBR = {
         cloudHosted: 'Hospedado na nuvem, sem GPU necessária',
         fullToolCalling: 'GPT-4.1 com suporte completo a chamada de ferramentas',
         payPerUse: 'Pague por uso ($2-8 / 1M tokens)',
+        openrouterTitle: 'OpenRouter',
+        openrouterDesc: 'Acesse todos os principais modelos de IA com uma única conta. Entre com Google ou GitHub, vincule seu cartão e pronto.',
+        multipleModels: 'Acesso a OpenAI, Anthropic, Google e mais',
+        easySetup: 'Configuração OAuth com um clique, sem gerenciar API keys',
         selectModelHint: 'Selecione um modelo para ver os requisitos de hardware. Modelos maiores produzem melhores resultados, mas precisam de hardware mais potente.',
         downloadSize: 'Tamanho do download: {{size}}',
       },

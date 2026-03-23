@@ -815,7 +815,7 @@ const en = {
     },
     ai: {
       title: 'AI Provider',
-      description: 'Choose how AEX will run its AI. Use OpenAI for the best experience, or run a local model with Ollama.',
+      description: 'Choose how AEX will run its AI. OpenRouter is the easiest way to get started.',
       openai: {
         title: 'OpenAI',
         description: 'Cloud-hosted, best quality. Requires an API key.',
@@ -824,6 +824,14 @@ const en = {
         title: 'Ollama (Local)',
         description: 'Run AI on your own server. Free, private, no external calls.',
       },
+      openrouter: {
+        title: 'OpenRouter',
+        description: 'One-click setup. Access OpenAI, Anthropic, and more. You pay directly.',
+        connectButton: 'Connect OpenRouter',
+        connecting: 'Connecting...',
+        connected: 'Connected',
+        connectedHint: 'Your OpenRouter account is linked. AI costs are billed to your account.',
+      },
       apiKey: 'API Key',
       apiKeyPlaceholder: 'sk-...',
       apiKeyHint: 'Your key is stored locally and never shared.',
@@ -831,11 +839,6 @@ const en = {
       providerRequired: 'Please select an AI provider.',
       apiKeyRequired: 'API key is required for OpenAI.',
       modelRequired: 'Please select a model.',
-    },
-    plugins: {
-      title: 'Select Plugins',
-      description: 'Choose integrations to connect with your existing tools.',
-      placeholder: 'Plugin library will be shown here.',
     },
     navigation: {
       back: 'Back',
@@ -939,6 +942,10 @@ const en = {
         cloudHosted: 'Cloud-hosted, no GPU required',
         fullToolCalling: 'GPT-4.1 with full tool calling support',
         payPerUse: 'Pay-per-use ($2-8 / 1M tokens)',
+        openrouterTitle: 'OpenRouter',
+        openrouterDesc: 'Access all major AI models through a single account. Sign in with Google or GitHub, link your card, and you are ready to go.',
+        multipleModels: 'Access to OpenAI, Anthropic, Google, and more',
+        easySetup: 'One-click OAuth setup, no API keys to manage',
         selectModelHint: 'Select a model to see hardware requirements. Larger models produce better results but need more powerful hardware.',
         downloadSize: 'Download size: {{size}}',
       },
