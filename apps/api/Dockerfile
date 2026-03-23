@@ -19,4 +19,4 @@ COPY apps/api ./apps/api
 
 WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["sh", "-c", "npx drizzle-kit push && npx tsx src/index.ts"]
+CMD ["sh", "-c", "npx drizzle-kit push --force && npx tsx src/index.ts"]
