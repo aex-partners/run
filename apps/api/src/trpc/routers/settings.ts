@@ -9,6 +9,126 @@ import { slugify, serializeFields, type EntityField } from "../../db/entity-fiel
 import { processAIMessage } from "../../ai/agent.js";
 import { auth } from "../../auth/index.js";
 
+// Niche display names per locale (keyed by niche ID)
+const NICHE_NAMES: Record<string, Record<string, string>> = {
+  en: {
+    retail: "Retail", "food-beverage": "Food & Beverage", services: "Professional Services",
+    healthcare: "Healthcare", education: "Education", manufacturing: "Manufacturing",
+    construction: "Construction", logistics: "Logistics & Transportation",
+    technology: "Technology", hospitality: "Hospitality & Tourism", agriculture: "Agriculture",
+  },
+  "pt-BR": {
+    retail: "Varejo", "food-beverage": "Alimentação e Bebidas", services: "Serviços Profissionais",
+    healthcare: "Saúde", education: "Educação", manufacturing: "Indústria",
+    construction: "Construção Civil", logistics: "Logística e Transporte",
+    technology: "Tecnologia", hospitality: "Hotelaria e Turismo", agriculture: "Agricultura",
+  },
+};
+
+// Sub-niche display names per locale (keyed by niche ID -> sub-niche ID)
+const SUB_NICHE_NAMES: Record<string, Record<string, Record<string, string>>> = {
+  en: {
+    retail: { clothing: "Clothing & Apparel", electronics: "Electronics", grocery: "Grocery & Supermarket", furniture: "Furniture & Home Decor", pharmacy: "Pharmacy & Drugstore", pet: "Pet Shop", sports: "Sports & Outdoors", beauty: "Beauty & Cosmetics", bookstore: "Bookstore & Stationery", jewelry: "Jewelry & Accessories", autoparts: "Auto Parts", convenience: "Convenience Store", ecommerce: "E-commerce" },
+    "food-beverage": { restaurant: "Restaurant", cafe: "Cafe & Coffee Shop", bakery: "Bakery & Confectionery", bar: "Bar & Pub", fastFood: "Fast Food", foodTruck: "Food Truck", catering: "Catering", brewery: "Brewery & Winery", mealPrep: "Meal Prep & Delivery", iceCream: "Ice Cream & Desserts" },
+    services: { accounting: "Accounting & Bookkeeping", legal: "Legal & Law Firm", consulting: "Consulting", marketing: "Marketing & Advertising", recruitment: "Recruitment & Staffing", insurance: "Insurance", realEstate: "Real Estate", architecture: "Architecture & Design", financial: "Financial Advisory", translation: "Translation & Localization" },
+    healthcare: { clinic: "Medical Clinic", dental: "Dental Practice", veterinary: "Veterinary Clinic", psychology: "Psychology & Therapy", physiotherapy: "Physiotherapy & Rehabilitation", laboratory: "Laboratory & Diagnostics", homecare: "Home Care", nutrition: "Nutrition & Dietetics", optometry: "Optometry & Eye Care", alternativeMedicine: "Alternative & Integrative Medicine" },
+    education: { school: "School (K-12)", university: "University & College", languageSchool: "Language School", onlineCourses: "Online Courses & E-learning", tutoring: "Tutoring & Test Prep", vocational: "Vocational & Technical Training", earlyChildhood: "Early Childhood & Daycare", musicArts: "Music & Arts School", corporate: "Corporate Training", driving: "Driving School" },
+    manufacturing: { foodProcessing: "Food Processing", textile: "Textile & Garment", metalwork: "Metalwork & Machining", plastics: "Plastics & Packaging", woodwork: "Woodwork & Furniture", chemical: "Chemical & Pharmaceutical", electronics: "Electronics Assembly", automotive: "Automotive Parts", printing: "Printing & Publishing", construction: "Construction Materials" },
+    construction: { residential: "Residential Construction", commercial: "Commercial Construction", renovation: "Renovation & Remodeling", electrical: "Electrical Services", plumbing: "Plumbing & HVAC", painting: "Painting & Finishing", roofing: "Roofing & Waterproofing", landscaping: "Landscaping", demolition: "Demolition & Earthwork", solarInstall: "Solar Panel Installation" },
+    logistics: { freight: "Freight & Cargo", lastMile: "Last Mile Delivery", warehouse: "Warehousing & Storage", moving: "Moving & Relocation", courier: "Courier & Express", fleet: "Fleet Management", customs: "Customs Brokerage", coldChain: "Cold Chain & Refrigerated", rideshare: "Ride-share & Taxi", maritime: "Maritime & Shipping" },
+    technology: { saas: "SaaS", webDev: "Web Development", mobileDev: "Mobile App Development", itServices: "IT Services & Support", cybersecurity: "Cybersecurity", dataAnalytics: "Data & Analytics", aiMl: "AI & Machine Learning", iot: "IoT & Hardware", gamedev: "Game Development", cloudHosting: "Cloud & Hosting" },
+    hospitality: { hotel: "Hotel & Resort", hostel: "Hostel & Guesthouse", travelAgency: "Travel Agency", tourOperator: "Tour Operator", eventVenue: "Event Venue", camping: "Camping & Glamping", spa: "Spa & Wellness Center", themepark: "Theme Park & Attractions", vacation: "Vacation Rental", ecotourism: "Ecotourism" },
+    agriculture: { cropFarming: "Crop Farming", livestock: "Livestock & Ranching", dairy: "Dairy Farming", poultry: "Poultry", aquaculture: "Aquaculture & Fisheries", organic: "Organic Farming", agribusiness: "Agribusiness & Trading", irrigation: "Irrigation & Equipment", forestry: "Forestry & Timber", horticulture: "Horticulture & Nursery" },
+  },
+  "pt-BR": {
+    retail: { clothing: "Roupas e Vestuário", electronics: "Eletrônicos", grocery: "Supermercado e Mercearia", furniture: "Móveis e Decoração", pharmacy: "Farmácia e Drogaria", pet: "Pet Shop", sports: "Esportes e Lazer", beauty: "Beleza e Cosméticos", bookstore: "Livraria e Papelaria", jewelry: "Joalheria e Acessórios", autoparts: "Autopeças", convenience: "Loja de Conveniência", ecommerce: "E-commerce" },
+    "food-beverage": { restaurant: "Restaurante", cafe: "Cafeteria", bakery: "Padaria e Confeitaria", bar: "Bar e Pub", fastFood: "Fast Food", foodTruck: "Food Truck", catering: "Buffet e Catering", brewery: "Cervejaria e Vinícola", mealPrep: "Marmitas e Delivery", iceCream: "Sorveteria e Sobremesas" },
+    services: { accounting: "Contabilidade", legal: "Advocacia e Jurídico", consulting: "Consultoria", marketing: "Marketing e Publicidade", recruitment: "Recrutamento e Seleção", insurance: "Seguros", realEstate: "Imobiliária", architecture: "Arquitetura e Design", financial: "Assessoria Financeira", translation: "Tradução e Localização" },
+    healthcare: { clinic: "Clínica Médica", dental: "Odontologia", veterinary: "Clínica Veterinária", psychology: "Psicologia e Terapia", physiotherapy: "Fisioterapia e Reabilitação", laboratory: "Laboratório e Diagnósticos", homecare: "Home Care", nutrition: "Nutrição e Dietética", optometry: "Ótica e Oftalmologia", alternativeMedicine: "Medicina Alternativa e Integrativa" },
+    education: { school: "Escola (Ensino Fundamental e Médio)", university: "Universidade e Faculdade", languageSchool: "Escola de Idiomas", onlineCourses: "Cursos Online e EAD", tutoring: "Reforço Escolar e Preparatório", vocational: "Ensino Técnico e Profissionalizante", earlyChildhood: "Educação Infantil e Creche", musicArts: "Escola de Música e Artes", corporate: "Treinamento Corporativo", driving: "Autoescola" },
+    manufacturing: { foodProcessing: "Processamento de Alimentos", textile: "Têxtil e Confecção", metalwork: "Metalurgia e Usinagem", plastics: "Plásticos e Embalagens", woodwork: "Marcenaria e Móveis", chemical: "Química e Farmacêutica", electronics: "Montagem Eletrônica", automotive: "Peças Automotivas", printing: "Gráfica e Editorial", construction: "Materiais de Construção" },
+    construction: { residential: "Construção Residencial", commercial: "Construção Comercial", renovation: "Reforma e Remodelação", electrical: "Serviços Elétricos", plumbing: "Hidráulica e HVAC", painting: "Pintura e Acabamento", roofing: "Telhados e Impermeabilização", landscaping: "Paisagismo", demolition: "Demolição e Terraplanagem", solarInstall: "Instalação de Painéis Solares" },
+    logistics: { freight: "Frete e Carga", lastMile: "Entrega Last Mile", warehouse: "Armazenagem e Estoque", moving: "Mudanças e Transporte", courier: "Motoboy e Entregas Rápidas", fleet: "Gestão de Frota", customs: "Despachante Aduaneiro", coldChain: "Cadeia Fria e Refrigerado", rideshare: "Transporte de Passageiros", maritime: "Marítimo e Naval" },
+    technology: { saas: "SaaS", webDev: "Desenvolvimento Web", mobileDev: "Desenvolvimento Mobile", itServices: "Serviços de TI e Suporte", cybersecurity: "Cibersegurança", dataAnalytics: "Dados e Analytics", aiMl: "IA e Machine Learning", iot: "IoT e Hardware", gamedev: "Desenvolvimento de Jogos", cloudHosting: "Cloud e Hospedagem" },
+    hospitality: { hotel: "Hotel e Resort", hostel: "Hostel e Pousada", travelAgency: "Agência de Viagens", tourOperator: "Operadora de Turismo", eventVenue: "Espaço de Eventos", camping: "Camping e Glamping", spa: "Spa e Centro de Bem-estar", themepark: "Parque Temático e Atrações", vacation: "Aluguel de Temporada", ecotourism: "Ecoturismo" },
+    agriculture: { cropFarming: "Agricultura de Grãos", livestock: "Pecuária", dairy: "Laticínios", poultry: "Avicultura", aquaculture: "Aquicultura e Pesca", organic: "Agricultura Orgânica", agribusiness: "Agronegócio e Comércio", irrigation: "Irrigação e Equipamentos", forestry: "Silvicultura e Madeira", horticulture: "Horticultura e Viveiro" },
+  },
+};
+
+// Routine display names per locale (keyed by routine ID)
+const ROUTINE_NAMES: Record<string, Record<string, string>> = {
+  en: {
+    "lead-capture": "Lead Capture", "sales-pipeline": "Sales Pipeline", "quotation-mgmt": "Quotation Management",
+    "customer-crm": "Customer CRM", "order-processing": "Order Processing", "commission-tracking": "Commission Tracking",
+    "accounts-receivable": "Accounts Receivable", "accounts-payable": "Accounts Payable", "cash-flow": "Cash Flow",
+    "expense-tracking": "Expense Tracking", "tax-management": "Tax Management", "budget-planning": "Budget Planning",
+    "stock-control": "Stock Control", "purchase-orders": "Purchase Orders", "supplier-mgmt": "Supplier Management",
+    "product-catalog": "Product Catalog", "warehouse-mgmt": "Warehouse Management", "inventory-audit": "Inventory Audit",
+    "employee-registry": "Employee Registry", "time-attendance": "Time & Attendance", "payroll": "Payroll",
+    "leave-mgmt": "Leave Management", "recruitment": "Recruitment", "training": "Training & Development",
+    "project-mgmt": "Project Management", "service-tickets": "Service Tickets", "scheduling": "Scheduling",
+    "quality-control": "Quality Control", "fleet-tracking": "Fleet Tracking", "document-mgmt": "Document Management",
+    "maintenance": "Maintenance", "compliance": "Compliance",
+  },
+  "pt-BR": {
+    "lead-capture": "Captação de Leads", "sales-pipeline": "Pipeline de Vendas", "quotation-mgmt": "Gestão de Orçamentos",
+    "customer-crm": "CRM de Clientes", "order-processing": "Processamento de Pedidos", "commission-tracking": "Controle de Comissões",
+    "accounts-receivable": "Contas a Receber", "accounts-payable": "Contas a Pagar", "cash-flow": "Fluxo de Caixa",
+    "expense-tracking": "Controle de Despesas", "tax-management": "Gestão Tributária", "budget-planning": "Planejamento Orçamentário",
+    "stock-control": "Controle de Estoque", "purchase-orders": "Ordens de Compra", "supplier-mgmt": "Gestão de Fornecedores",
+    "product-catalog": "Catálogo de Produtos", "warehouse-mgmt": "Gestão de Armazém", "inventory-audit": "Inventário Físico",
+    "employee-registry": "Cadastro de Funcionários", "time-attendance": "Ponto e Presença", "payroll": "Folha de Pagamento",
+    "leave-mgmt": "Gestão de Férias", "recruitment": "Recrutamento", "training": "Treinamento e Desenvolvimento",
+    "project-mgmt": "Gestão de Projetos", "service-tickets": "Chamados de Atendimento", "scheduling": "Agendamento",
+    "quality-control": "Controle de Qualidade", "fleet-tracking": "Rastreamento de Frota", "document-mgmt": "Gestão de Documentos",
+    "maintenance": "Manutenção", "compliance": "Conformidade",
+  },
+};
+
+/** Build the kickoff message in the user's selected language */
+function buildKickoffMessage(input: {
+  orgName: string;
+  website?: string;
+  niche?: string;
+  subNiche?: string;
+  language?: string;
+  selectedRoutines?: string[];
+}): string {
+  const lang = input.language?.startsWith("pt") ? "pt-BR" : "en";
+  const nicheNames = NICHE_NAMES[lang] ?? NICHE_NAMES.en;
+  const subNicheNames = SUB_NICHE_NAMES[lang] ?? SUB_NICHE_NAMES.en;
+  const routineNames = ROUTINE_NAMES[lang] ?? ROUTINE_NAMES.en;
+
+  const nicheName = input.niche ? (nicheNames[input.niche] ?? input.niche) : undefined;
+  const subNicheName = input.niche && input.subNiche
+    ? (subNicheNames[input.niche]?.[input.subNiche] ?? input.subNiche)
+    : undefined;
+
+  const parts: string[] = [];
+
+  if (lang === "pt-BR") {
+    parts.push(`Acabei de configurar o RUN para ${input.orgName}.`);
+    if (input.website) parts.push(`Nosso site é ${input.website}.`);
+    if (nicheName) parts.push(`Trabalhamos com ${nicheName}${subNicheName ? ` (${subNicheName})` : ""}.`);
+    if (input.selectedRoutines && input.selectedRoutines.length > 0) {
+      const names = input.selectedRoutines.map((id) => routineNames[id] ?? id);
+      parts.push(`Selecionamos estas rotinas: ${names.join(", ")}.`);
+    }
+    parts.push("Pesquise sobre nossa empresa e se apresente. Explique como pode nos ajudar baseado no contexto do nosso negócio.");
+  } else {
+    parts.push(`I just set up RUN for ${input.orgName}.`);
+    if (input.website) parts.push(`Our website is ${input.website}.`);
+    if (nicheName) parts.push(`We work in ${nicheName}${subNicheName ? ` (${subNicheName})` : ""}.`);
+    if (input.selectedRoutines && input.selectedRoutines.length > 0) {
+      const names = input.selectedRoutines.map((id) => routineNames[id] ?? id);
+      parts.push(`We selected these routines: ${names.join(", ")}.`);
+    }
+    parts.push("Research our company and introduce yourself. Explain what you can help us with based on our business context.");
+  }
+
+  return parts.join(" ");
+}
+
 export const settingsRouter = router({
   isSetupComplete: publicProcedure.query(async ({ ctx }) => {
     const [row] = await ctx.db
@@ -215,22 +335,15 @@ export const settingsRouter = router({
         userId: ctx.session.user.id,
       });
 
-      // Send a kickoff message so Eric starts researching the company
-      const parts: string[] = [];
-      parts.push(`I just set up RUN for ${input.orgName}.`);
-      if (input.website) parts.push(`Our website is ${input.website}.`);
-      if (input.niche) parts.push(`We work in ${input.niche}${input.subNiche ? ` (${input.subNiche})` : ""}.`);
-      if (input.selectedRoutines && input.selectedRoutines.length > 0) {
-        parts.push(`We selected these routines: ${input.selectedRoutines.join(", ")}.`);
-      }
-      parts.push("Research our company and introduce yourself. Explain what you can help us with based on our business context.");
+      // Send a kickoff message so Eric starts researching the company (in the user's language)
+      const kickoffContent = buildKickoffMessage(input);
 
       const msgId = crypto.randomUUID();
       await ctx.db.insert(messages).values({
         id: msgId,
         conversationId: convId,
         authorId: ctx.session.user.id,
-        content: parts.join(" "),
+        content: kickoffContent,
         role: "user",
       });
 
