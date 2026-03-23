@@ -4,7 +4,7 @@ import { router, publicProcedure, protectedProcedure } from "../index.js";
 import { entities, settings, conversations, conversationMembers, messages, agents } from "../../db/schema/index.js";
 import { resetProvider } from "../../ai/client.js";
 import { users } from "../../db/schema/auth.js";
-import { getEntitiesForRoutines } from "@aex/shared";
+import { getEntitiesForRoutines, translateEntity } from "@aex/shared";
 import { slugify, serializeFields, type EntityField } from "../../db/entity-fields.js";
 import { processAIMessage } from "../../ai/agent.js";
 import { auth } from "../../auth/index.js";
@@ -222,9 +222,12 @@ export const settingsRouter = router({
 
       // Create entities from selected routines (default path)
       if (input.onboardingPath === "default" && input.selectedRoutines && input.selectedRoutines.length > 0) {
+        const locale = input.language ?? "en";
         const templates = getEntitiesForRoutines(input.selectedRoutines);
         for (const tpl of templates) {
-          const slug = slugify(tpl.name);
+          const translated = translateEntity(tpl, locale);
+          const slug = slugify(tpl.name); // slug always from English name
+
           // Skip if entity already exists
           const [existing] = await ctx.db
             .select({ id: entities.id })
@@ -233,7 +236,7 @@ export const settingsRouter = router({
             .limit(1);
           if (existing) continue;
 
-          const fields: EntityField[] = tpl.fields.map((f) => ({
+          const fields: EntityField[] = translated.fields.map((f) => ({
             id: crypto.randomUUID(),
             name: f.name,
             slug: slugify(f.name),
@@ -242,7 +245,7 @@ export const settingsRouter = router({
             ...(f.options ? { options: f.options } : {}),
           }));
 
-          // Build ai_context: the aiContext + related entities info
+          // Build ai_context: the aiContext + related entities info (always English for AI)
           const related = tpl.relatedEntities.length > 0
             ? ` Related entities: ${tpl.relatedEntities.join(", ")}.`
             : "";
@@ -250,9 +253,9 @@ export const settingsRouter = router({
 
           await ctx.db.insert(entities).values({
             id: crypto.randomUUID(),
-            name: tpl.name,
+            name: translated.name,
             slug,
-            description: tpl.description,
+            description: translated.description,
             aiContext,
             fields: serializeFields(fields),
             createdBy: ctx.session.user.id,

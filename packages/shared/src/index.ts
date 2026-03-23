@@ -25,3 +25,5 @@ export type {
   EntityKnowledge,
   FieldDefinition,
 } from "./knowledge/entity-knowledge.js";
+
+export { translateEntity } from "./knowledge/entity-translations.js";
