@@ -6,7 +6,7 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/shared/package.json ./packages/shared/
-RUN npm ci --workspace=@aex/api --workspace=@aex/shared --include-workspace-root
+RUN npm ci
 
 # Build
 FROM deps AS build
