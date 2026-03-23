@@ -61,7 +61,7 @@ export function PluginConnectDialog({
 
   const handleSaveSecretText = () => {
     if (!apiKey.trim()) {
-      setError('API key is required')
+      setError(t('pluginConnect.apiKeyRequired'))
       return
     }
     onSaveCredential({ type: 'SECRET_TEXT', secret_text: apiKey })
@@ -69,7 +69,7 @@ export function PluginConnectDialog({
 
   const handleSaveBasicAuth = () => {
     if (!username.trim() || !password.trim()) {
-      setError('Username and password are required')
+      setError(t('pluginConnect.usernamePasswordRequired'))
       return
     }
     onSaveCredential({ type: 'BASIC_AUTH', username, password })
@@ -77,7 +77,7 @@ export function PluginConnectDialog({
 
   const handleOAuth2Connect = async () => {
     if (!oauthClientId.trim() || !oauthClientSecret.trim()) {
-      setError('Client ID and Client Secret are required')
+      setError(t('pluginConnect.clientIdSecretRequired'))
       return
     }
     setConnecting(true)
@@ -97,7 +97,7 @@ export function PluginConnectDialog({
         } else if (event.data?.type === 'plugin-oauth-error') {
           window.removeEventListener('message', handler)
           setConnecting(false)
-          setError(event.data.error || 'OAuth2 connection failed')
+          setError(event.data.error || t('pluginConnect.oauth2Failed'))
         }
       }
       window.addEventListener('message', handler)
@@ -112,7 +112,7 @@ export function PluginConnectDialog({
       }, 1000)
     } catch (err) {
       setConnecting(false)
-      setError(err instanceof Error ? err.message : 'Failed to start OAuth2')
+      setError(err instanceof Error ? err.message : t('pluginConnect.oauth2StartFailed'))
     }
   }
 
@@ -182,7 +182,7 @@ export function PluginConnectDialog({
                 />
               </div>
               <Button variant="primary" onClick={handleSaveSecretText} loading={saving}>
-                Connect
+                {t('pluginConnect.connect')}
               </Button>
             </div>
           )}

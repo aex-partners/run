@@ -137,19 +137,19 @@ export function PluginCard({
           )}
           {installing && (
             <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>
-              Installing...
+              {t('pluginCard.installing')}
             </span>
           )}
           {installed && !installing && needsAuth && !connected && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#d97706' }} title="Authentication required">
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#d97706' }} title={t('pluginCard.notConnected')}>
               <AlertTriangle size={12} />
-              <span style={{ fontSize: 10, fontWeight: 600 }}>Not connected</span>
+              <span style={{ fontSize: 10, fontWeight: 600 }}>{t('pluginCard.notConnected')}</span>
             </span>
           )}
           {installed && !installing && needsAuth && connected && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#16a34a' }} title="Connected">
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#16a34a' }} title={t('pluginCard.connected')}>
               <CheckCircle2 size={12} />
-              <span style={{ fontSize: 10, fontWeight: 600 }}>Connected</span>
+              <span style={{ fontSize: 10, fontWeight: 600 }}>{t('pluginCard.connected')}</span>
             </span>
           )}
         </div>
@@ -179,7 +179,7 @@ export function PluginCard({
                   type="checkbox"
                   checked={enabled}
                   onChange={(e) => onToggle(e.target.checked)}
-                  aria-label={`${enabled ? 'Disable' : 'Enable'} ${name}`}
+                  aria-label={`${enabled ? t('pluginCard.disable') : t('pluginCard.enable')} ${name}`}
                   style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
                 />
                 <span
@@ -198,12 +198,12 @@ export function PluginCard({
                 </span>
               </label>
             )}
-            <Button variant="secondary" size="sm" leftIcon={<Settings size={11} />} onClick={onConfigure} aria-label={`${needsAuth && !connected ? 'Connect' : 'Configure'} ${name}`}>
-              {needsAuth && !connected ? 'Connect' : 'Configure'}
+            <Button variant="secondary" size="sm" leftIcon={<Settings size={11} />} onClick={onConfigure} aria-label={`${needsAuth && !connected ? t('pluginCard.connect') : t('pluginCard.configure')} ${name}`}>
+              {needsAuth && !connected ? t('pluginCard.connect') : t('pluginCard.configure')}
             </Button>
             {onUninstall && (
-              <Button variant="danger" size="sm" leftIcon={<Trash2 size={11} />} onClick={onUninstall} aria-label={`Uninstall ${name}`}>
-                Uninstall
+              <Button variant="danger" size="sm" leftIcon={<Trash2 size={11} />} onClick={onUninstall} aria-label={`${t('pluginCard.uninstall')} ${name}`}>
+                {t('pluginCard.uninstall')}
               </Button>
             )}
           </>
@@ -213,9 +213,9 @@ export function PluginCard({
             size="sm"
             leftIcon={<Download size={11} />}
             onClick={onInstall}
-            aria-label={`Install ${name}`}
+            aria-label={`${t('pluginCard.install')} ${name}`}
           >
-            Install
+            {t('pluginCard.install')}
           </Button>
         )}
       </div>

@@ -169,14 +169,14 @@ const COMPANY_FIELD_LABELS: Record<keyof CompanyInfo, string> = {
 
 const READ_ONLY_FIELDS: (keyof CompanyInfo)[] = ['cnpj', 'plan', 'activeUsers']
 
-const navItems: { id: SettingsSection; label: string; icon: React.ReactNode }[] = [
-  { id: 'users', label: 'Users', icon: <Users size={15} /> },
-  { id: 'agents', label: 'Agents', icon: <Bot size={15} /> },
-  { id: 'skills', label: 'Skills', icon: <Sparkles size={15} /> },
-  { id: 'tools', label: 'Tools', icon: <Wrench size={15} /> },
-  { id: 'plugins', label: 'Plugins', icon: <Puzzle size={15} /> },
-  { id: 'permissions', label: 'Permissions', icon: <Shield size={15} /> },
-  { id: 'company', label: 'Company', icon: <Building2 size={15} /> },
+const navItems: { id: SettingsSection; labelKey: string; icon: React.ReactNode }[] = [
+  { id: 'users', labelKey: 'settings.users', icon: <Users size={15} /> },
+  { id: 'agents', labelKey: 'settings.agents', icon: <Bot size={15} /> },
+  { id: 'skills', labelKey: 'settings.skills', icon: <Sparkles size={15} /> },
+  { id: 'tools', labelKey: 'settings.tools', icon: <Wrench size={15} /> },
+  { id: 'plugins', labelKey: 'settings.plugins', icon: <Puzzle size={15} /> },
+  { id: 'permissions', labelKey: 'settings.permissions', icon: <Shield size={15} /> },
+  { id: 'company', labelKey: 'settings.company', icon: <Building2 size={15} /> },
 ]
 
 // Dialog wrapper
@@ -252,22 +252,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
   // Marketplace search and filter
   const [pluginSearch, setPluginSearch] = useState('')
   const [pluginCategory, setPluginCategory] = useState<string>('all')
-  const PLUGIN_CATEGORIES = [
-    { value: 'all', label: 'All' },
-    { value: 'ARTIFICIAL_INTELLIGENCE', label: 'AI' },
-    { value: 'COMMUNICATION', label: 'Communication' },
-    { value: 'PRODUCTIVITY', label: 'Productivity' },
-    { value: 'DEVELOPER_TOOLS', label: 'Dev Tools' },
-    { value: 'SALES_AND_CRM', label: 'Sales & CRM' },
-    { value: 'COMMERCE', label: 'Commerce' },
-    { value: 'PAYMENT_PROCESSING', label: 'Payments' },
-    { value: 'MARKETING', label: 'Marketing' },
-    { value: 'CONTENT_AND_FILES', label: 'Content & Files' },
-    { value: 'CUSTOMER_SUPPORT', label: 'Support' },
-    { value: 'FORMS_AND_SURVEYS', label: 'Forms' },
-    { value: 'BUSINESS_INTELLIGENCE', label: 'Analytics' },
-    { value: 'ACCOUNTING', label: 'Accounting' },
-    { value: 'HUMAN_RESOURCES', label: 'HR' },
+  const PLUGIN_CATEGORY_VALUES = [
+    'all', 'ARTIFICIAL_INTELLIGENCE', 'COMMUNICATION', 'PRODUCTIVITY', 'DEVELOPER_TOOLS',
+    'SALES_AND_CRM', 'COMMERCE', 'PAYMENT_PROCESSING', 'MARKETING', 'CONTENT_AND_FILES',
+    'CUSTOMER_SUPPORT', 'FORMS_AND_SURVEYS', 'BUSINESS_INTELLIGENCE', 'ACCOUNTING', 'HUMAN_RESOURCES',
   ]
 
   const filteredMarketplace = useMemo(() => {
@@ -430,11 +418,11 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('settings.plugins')}</h2>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>Extend RUN with plugins that provide tools and integrations.</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>{t('settings.pluginsSubtitle')}</p>
               </div>
               {onSyncPluginRegistry && (
                 <Button variant="secondary" size="sm" onClick={onSyncPluginRegistry} loading={syncingPlugins}>
-                  Sync Registry
+                  {t('settings.syncRegistry')}
                 </Button>
               )}
             </div>
@@ -454,7 +442,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     marginBottom: -1,
                   }}
                 >
-                  {tab === 'installed' ? `Installed (${localInstalled.length})` : `Marketplace (${localMarketplace.length})`}
+                  {tab === 'installed' ? t('settings.installedTab', { count: localInstalled.length }) : t('settings.marketplaceTab', { count: localMarketplace.length })}
                 </button>
               ))}
             </div>
@@ -488,8 +476,8 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 {localMarketplace.length > 0 ? (
                   <div>
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                      {filteredMarketplace.length} plugins available
-                      {pluginSearch || pluginCategory !== 'all' ? ` (filtered from ${localMarketplace.length})` : ''}
+                      {t('settings.pluginsAvailable', { count: filteredMarketplace.length })}
+                      {pluginSearch || pluginCategory !== 'all' ? ` ${t('settings.pluginsFiltered', { count: localMarketplace.length })}` : ''}
                     </p>
 
                     {/* Search */}
@@ -511,19 +499,19 @@ export function SettingsScreen(props: SettingsScreenProps) {
 
                     {/* Category filters */}
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16 }}>
-                      {PLUGIN_CATEGORIES.map((cat) => (
+                      {PLUGIN_CATEGORY_VALUES.map((cat) => (
                         <button
-                          key={cat.value}
-                          onClick={() => setPluginCategory(cat.value)}
+                          key={cat}
+                          onClick={() => setPluginCategory(cat)}
                           style={{
                             padding: '4px 10px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit',
-                            border: '1px solid ' + (pluginCategory === cat.value ? 'var(--accent)' : 'var(--border)'),
-                            background: pluginCategory === cat.value ? 'var(--accent-light)' : 'transparent',
-                            color: pluginCategory === cat.value ? 'var(--accent)' : 'var(--text-muted)',
-                            cursor: 'pointer', fontWeight: pluginCategory === cat.value ? 600 : 400,
+                            border: '1px solid ' + (pluginCategory === cat ? 'var(--accent)' : 'var(--border)'),
+                            background: pluginCategory === cat ? 'var(--accent-light)' : 'transparent',
+                            color: pluginCategory === cat ? 'var(--accent)' : 'var(--text-muted)',
+                            cursor: 'pointer', fontWeight: pluginCategory === cat ? 600 : 400,
                           }}
                         >
-                          {cat.label}
+                          {t(`pluginCategories.${cat}`)}
                         </button>
                       ))}
                     </div>
@@ -546,20 +534,20 @@ export function SettingsScreen(props: SettingsScreenProps) {
                             color: 'var(--text)', cursor: 'pointer',
                           }}
                         >
-                          Load more ({filteredMarketplace.length - visibleMarketplace.length} remaining)
+                          {t('settings.loadMore', { count: filteredMarketplace.length - visibleMarketplace.length })}
                         </button>
                       </div>
                     )}
 
                     {filteredMarketplace.length === 0 && (
                       <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                        No plugins match your search.
+                        {t('settings.noPluginsMatch')}
                       </div>
                     )}
                   </div>
                 ) : (
                   <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                    No plugins available. Click "Sync Registry" to load the plugin catalog.
+                    {t('settings.noPluginsAvailable')}
                   </div>
                 )}
               </>
@@ -572,7 +560,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           <div style={{ padding: '24px' }}>
             <SectionHeader title={t('agents.title')} subtitle={t('settings.agentsSubtitle')} onNew={onCreateAgent ? () => openCreate('agent') : undefined} newLabel={t('new')} />
             {agents.length === 0 ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No agents created yet.</div>
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{t('settings.noAgents')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {agents.map((a) => (
@@ -598,7 +586,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           <div style={{ padding: '24px' }}>
             <SectionHeader title={t('skills.title')} subtitle={t('settings.skillsSubtitle')} onNew={onCreateSkill ? () => openCreate('skill') : undefined} newLabel={t('new')} />
             {skills.length === 0 ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No skills created yet.</div>
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{t('settings.noSkills')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {skills.map((s) => (
@@ -684,7 +672,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                   </select>
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                  {filteredPieceTools.length} tools{toolFilter !== 'all' || toolSearch ? ' (filtered)' : ''}
+                  {t('settings.toolsCount', { count: filteredPieceTools.length })}{toolFilter !== 'all' || toolSearch ? ` ${t('settings.toolsFiltered')}` : ''}
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {filteredPieceTools.map((t) => (
@@ -721,7 +709,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 </div>
                 {filteredPieceTools.length === 0 && (
                   <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                    No tools match your search.
+                    {t('settings.noToolsMatch')}
                   </div>
                 )}
               </div>
@@ -729,7 +717,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
 
             {customTools.length === 0 && pieceTools.length === 0 && (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                No tools available. Install plugins to add tools, or create custom tools.
+                {t('settings.noTools')}
               </div>
             )}
           </div>
@@ -740,13 +728,13 @@ export function SettingsScreen(props: SettingsScreenProps) {
           <div style={{ padding: '24px' }}>
             <div style={{ marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('settings.permissions')}</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage role-based access controls. Administrator permissions are fixed and cannot be changed.</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('settings.permissionsSubtitle')}</p>
             </div>
             <div style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th scope="col" style={thRoleStyle}>Role</th>
+                    <th scope="col" style={thRoleStyle}>{t('settings.role')}</th>
                     {PERMISSIONS.map((p) => <th key={p} scope="col" style={thStyle}>{p}</th>)}
                   </tr>
                 </thead>
@@ -783,7 +771,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           <div style={{ padding: '24px' }}>
             <div style={{ marginBottom: 24 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('settings.company')}</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Organization information. Click a field to edit it.</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('settings.companySubtitle')}</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(Object.keys(COMPANY_FIELD_LABELS) as (keyof CompanyInfo)[]).map((field) => {
@@ -856,7 +844,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
             >
               <span style={{ color: activeSection === item.id ? 'var(--accent)' : 'var(--text-muted)' }}>{item.icon}</span>
               <span style={{ fontSize: 13, color: activeSection === item.id ? 'var(--accent)' : 'var(--text)', fontWeight: activeSection === item.id ? 500 : 400 }}>
-                {item.label}
+                {t(item.labelKey)}
               </span>
               {activeSection === item.id && <ChevronRight size={12} color="var(--accent)" style={{ marginLeft: 'auto' }} />}
             </button>

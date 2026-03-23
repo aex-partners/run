@@ -138,7 +138,7 @@ export function PluginConfigDialog({
                         color: 'var(--text)', fontSize: 14, fontFamily: 'inherit',
                       }}
                     >
-                      <option value="">Select...</option>
+                      <option value="">{t('plugins.select')}</option>
                       {field.enum.map((val) => (
                         <option key={String(val)} value={String(val)}>{String(val)}</option>
                       ))}
