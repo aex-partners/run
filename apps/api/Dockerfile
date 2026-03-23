@@ -10,14 +10,12 @@ COPY packages/plugin-framework/package.json ./packages/plugin-framework/
 COPY packages/plugin-common/package.json ./packages/plugin-common/
 RUN npm ci
 
-# Runtime
-FROM base AS runtime
-COPY --from=deps /app/node_modules ./node_modules
+# Runtime - copy full workspace from deps (preserves symlinks and nested node_modules)
+FROM deps AS runtime
 COPY packages/shared ./packages/shared
 COPY packages/plugin-framework ./packages/plugin-framework
 COPY packages/plugin-common ./packages/plugin-common
 COPY apps/api ./apps/api
-COPY package.json ./
 
 WORKDIR /app/apps/api
 EXPOSE 3001
