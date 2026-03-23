@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Users, Puzzle, Shield, Building2, ChevronRight, Bot, Sparkles, Wrench, Plug, Plus, Search } from 'lucide-react'
+import { Users, Puzzle, Shield, Building2, ChevronRight, Bot, Sparkles, Wrench, Plus, Search } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
@@ -9,16 +9,14 @@ import { PluginCard, type PluginCardProps } from '../../molecules/PluginCard/Plu
 import { AgentCard, type AgentCardProps } from '../../molecules/AgentCard/AgentCard'
 import { SkillCard, type SkillCardProps } from '../../molecules/SkillCard/SkillCard'
 import { CustomToolCard, type CustomToolCardProps } from '../../molecules/CustomToolCard/CustomToolCard'
-import { IntegrationCard, type IntegrationCardProps } from '../../molecules/IntegrationCard/IntegrationCard'
 import { AgentForm, type AgentFormData } from '../../organisms/AgentForm/AgentForm'
 import { SkillForm, type SkillFormData } from '../../organisms/SkillForm/SkillForm'
 import { CustomToolForm, type CustomToolFormData, type TestResult } from '../../organisms/CustomToolForm/CustomToolForm'
-import { IntegrationForm, type IntegrationFormData } from '../../organisms/IntegrationForm/IntegrationForm'
 import { Button } from '../../atoms/Button/Button'
 // PluginConfigDialog replaced by PluginConnectDialog (rendered in SettingsPage)
 import type { MultiSelectOption } from '../../molecules/MultiSelect/MultiSelect'
 
-export type SettingsSection = 'users' | 'plugins' | 'permissions' | 'company' | 'agents' | 'skills' | 'tools' | 'integrations'
+export type SettingsSection = 'users' | 'plugins' | 'permissions' | 'company' | 'agents' | 'skills' | 'tools'
 
 export interface CompanyInfo {
   name: string
@@ -72,15 +70,6 @@ export interface PieceToolData {
   pluginLogoUrl?: string
 }
 
-// Integration data from server
-export interface IntegrationData {
-  id: string
-  name: string
-  description?: string
-  type: 'rest' | 'oauth2' | 'webhook'
-  enabled?: boolean
-}
-
 export interface SettingsScreenProps {
   users: User[]
   installedPlugins: Omit<PluginCardProps, 'onInstall' | 'onConfigure' | 'onUninstall' | 'onToggle'>[]
@@ -125,14 +114,6 @@ export interface SettingsScreenProps {
   onDeleteTool?: (id: string) => void
   onTestTool?: (data: CustomToolFormData) => void
   testResult?: TestResult | null
-
-  // Integrations
-  integrations?: IntegrationData[]
-  onCreateIntegration?: (data: IntegrationFormData) => void
-  onUpdateIntegration?: (id: string, data: IntegrationFormData) => void
-  onDeleteIntegration?: (id: string) => void
-  onToggleIntegration?: (id: string, enabled: boolean) => void
-  onOAuthConnect?: (type: string) => void
 
   // Form loading state
   formLoading?: boolean
@@ -194,7 +175,6 @@ const navItems: { id: SettingsSection; label: string; icon: React.ReactNode }[] 
   { id: 'skills', label: 'Skills', icon: <Sparkles size={15} /> },
   { id: 'tools', label: 'Tools', icon: <Wrench size={15} /> },
   { id: 'plugins', label: 'Plugins', icon: <Puzzle size={15} /> },
-  { id: 'integrations', label: 'Integrations', icon: <Plug size={15} /> },
   { id: 'permissions', label: 'Permissions', icon: <Shield size={15} /> },
   { id: 'company', label: 'Company', icon: <Building2 size={15} /> },
 ]
@@ -252,7 +232,6 @@ export function SettingsScreen(props: SettingsScreenProps) {
     agents = [], skillOptions = [], toolOptions = [], onCreateAgent, onUpdateAgent, onDeleteAgent,
     skills = [], systemToolOptions = [], onCreateSkill, onUpdateSkill, onDeleteSkill,
     customTools = [], pieceTools = [], integrationOptions = [], onCreateTool, onUpdateTool, onDeleteTool, onTestTool, testResult,
-    integrations = [], onCreateIntegration, onUpdateIntegration, onDeleteIntegration, onToggleIntegration, onOAuthConnect,
     formLoading = false,
   } = props
 
@@ -260,7 +239,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
   const activeSection = controlledSection ?? internalSection
 
   // Dialog states
-  const [dialogType, setDialogType] = useState<'agent' | 'skill' | 'tool' | 'integration' | null>(null)
+  const [dialogType, setDialogType] = useState<'agent' | 'skill' | 'tool' | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
 
   // Plugins local state
@@ -405,12 +384,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
   }
 
   // Dialog open helpers
-  const openCreate = (type: 'agent' | 'skill' | 'tool' | 'integration') => {
+  const openCreate = (type: 'agent' | 'skill' | 'tool') => {
     setEditId(null)
     setDialogType(type)
   }
 
-  const openEdit = (type: 'agent' | 'skill' | 'tool' | 'integration', id: string) => {
+  const openEdit = (type: 'agent' | 'skill' | 'tool', id: string) => {
     setEditId(id)
     setDialogType(type)
   }
@@ -756,31 +735,6 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </div>
         )
 
-      case 'integrations':
-        return (
-          <div style={{ padding: '24px' }}>
-            <SectionHeader title={t('integrations.title')} subtitle={t('settings.integrationsSubtitle')} onNew={onCreateIntegration ? () => openCreate('integration') : undefined} newLabel={t('new')} />
-            {integrations.length === 0 ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No integrations configured yet.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {integrations.map((i) => (
-                  <IntegrationCard
-                    key={i.id}
-                    id={i.id}
-                    name={i.name}
-                    description={i.description}
-                    type={i.type}
-                    enabled={i.enabled}
-                    onToggle={onToggleIntegration}
-                    onConfigure={onUpdateIntegration ? (id) => openEdit('integration', id) : undefined}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )
-
       case 'permissions':
         return (
           <div style={{ padding: '24px' }}>
@@ -979,23 +933,6 @@ export function SettingsScreen(props: SettingsScreenProps) {
           onCancel={closeDialog}
           onTest={onTestTool}
           testResult={testResult}
-          loading={formLoading}
-        />
-      </FormDialog>
-
-      <FormDialog open={dialogType === 'integration'} onClose={closeDialog} title={editId ? t('integrations.editIntegration') : t('integrations.newIntegration')} closeLabel={t('close')}>
-        <IntegrationForm
-          initialData={editId ? (() => {
-            const i = integrations.find((x) => x.id === editId)
-            return i ? { name: i.name, description: i.description ?? '', type: i.type } : undefined
-          })() : undefined}
-          onSubmit={(data) => {
-            if (editId) onUpdateIntegration?.(editId, data)
-            else onCreateIntegration?.(data)
-            closeDialog()
-          }}
-          onCancel={closeDialog}
-          onOAuthConnect={onOAuthConnect}
           loading={formLoading}
         />
       </FormDialog>

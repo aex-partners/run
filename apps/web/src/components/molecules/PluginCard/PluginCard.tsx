@@ -1,5 +1,5 @@
 import React from 'react'
-import { Download, Settings, Star, Trash2, Wrench } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Download, Settings, Star, Trash2, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../../atoms/Button/Button'
 
@@ -15,6 +15,10 @@ export interface PluginCardProps {
   enabled?: boolean
   installing?: boolean
   toolCount?: number
+  /** Whether auth is required for this plugin */
+  needsAuth?: boolean
+  /** Whether credentials are already configured */
+  connected?: boolean
   onInstall?: () => void
   onConfigure?: () => void
   onUninstall?: () => void
@@ -33,6 +37,8 @@ export function PluginCard({
   enabled = true,
   installing = false,
   toolCount,
+  needsAuth = false,
+  connected = false,
   onInstall,
   onConfigure,
   onUninstall,
@@ -134,6 +140,18 @@ export function PluginCard({
               Installing...
             </span>
           )}
+          {installed && !installing && needsAuth && !connected && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#d97706' }} title="Authentication required">
+              <AlertTriangle size={12} />
+              <span style={{ fontSize: 10, fontWeight: 600 }}>Not connected</span>
+            </span>
+          )}
+          {installed && !installing && needsAuth && connected && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#16a34a' }} title="Connected">
+              <CheckCircle2 size={12} />
+              <span style={{ fontSize: 10, fontWeight: 600 }}>Connected</span>
+            </span>
+          )}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{description}</div>
       </div>
@@ -180,8 +198,8 @@ export function PluginCard({
                 </span>
               </label>
             )}
-            <Button variant="secondary" size="sm" leftIcon={<Settings size={11} />} onClick={onConfigure} aria-label={`Connect ${name}`}>
-              Connect
+            <Button variant="secondary" size="sm" leftIcon={<Settings size={11} />} onClick={onConfigure} aria-label={`${needsAuth && !connected ? 'Connect' : 'Configure'} ${name}`}>
+              {needsAuth && !connected ? 'Connect' : 'Configure'}
             </Button>
             {onUninstall && (
               <Button variant="danger" size="sm" leftIcon={<Trash2 size={11} />} onClick={onUninstall} aria-label={`Uninstall ${name}`}>

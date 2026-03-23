@@ -8,7 +8,6 @@ import type { User } from "../components/organisms/UserTable/UserTable";
 import type { AgentFormData } from "../components/organisms/AgentForm/AgentForm";
 import type { SkillFormData } from "../components/organisms/SkillForm/SkillForm";
 import type { CustomToolFormData } from "../components/organisms/CustomToolForm/CustomToolForm";
-import type { IntegrationFormData } from "../components/organisms/IntegrationForm/IntegrationForm";
 
 export function SettingsPage() {
   const utils = trpc.useUtils();
@@ -148,23 +147,12 @@ export function SettingsPage() {
 
   const toolOptions = serverTools.map((t) => ({ value: t.id, label: t.name }));
 
-  // ─── Integrations ───────────────────────────────────────────
-  const { data: serverIntegrations = [] } = trpc.integrations.list.useQuery();
-  const createIntegration = trpc.integrations.create.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
-  const updateIntegration = trpc.integrations.update.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
-  const deleteIntegration = trpc.integrations.delete.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
-  const enableIntegration = trpc.integrations.enable.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
-  const disableIntegration = trpc.integrations.disable.useMutation({ onSuccess: () => utils.integrations.list.invalidate() });
-
-  const integrations = serverIntegrations.map((i) => ({
-    id: i.id,
-    name: i.name,
-    description: i.description ?? undefined,
-    type: i.type as "rest" | "oauth2" | "webhook",
-    enabled: i.status === "enabled",
-  }));
-
-  const integrationOptions = serverIntegrations.map((i) => ({ value: i.id, label: i.name }));
+  // ─── Credentials (for plugin connection status) ────────────
+  const { data: allCredentials = [] } = trpc.credentials.list.useQuery();
+  const connectedPlugins = React.useMemo(
+    () => new Set(allCredentials.filter((c) => c.hasValue).map((c) => c.pluginName)),
+    [allCredentials],
+  );
 
   // ─── Plugins ─────────────────────────────────────────────────
   const { data: serverPlugins = [] } = trpc.plugins.list.useQuery();
@@ -218,6 +206,8 @@ export function SettingsPage() {
           toolCount = manifest.tools?.length ?? 0;
         } catch { /* ignore */ }
       }
+      const authType = (p as Record<string, unknown>).authType as string | undefined;
+      const hasAuth = !!authType && authType !== "none";
       return {
         id: p.id,
         name: p.name,
@@ -230,6 +220,8 @@ export function SettingsPage() {
         version: p.version,
         category: p.category ?? undefined,
         toolCount,
+        needsAuth: hasAuth,
+        connected: hasAuth ? connectedPlugins.has(p.pieceName ?? "") : false,
       };
     });
 
@@ -411,40 +403,10 @@ export function SettingsPage() {
     }
   };
 
-  const handleCreateIntegration = (data: IntegrationFormData) => {
-    createIntegration.mutate({
-      name: data.name,
-      description: data.description || undefined,
-      type: data.type,
-      credentials: data.credentials,
-      webhookSecret: data.webhookSecret || undefined,
-    });
-  };
-
-  const handleUpdateIntegration = (id: string, data: IntegrationFormData) => {
-    updateIntegration.mutate({
-      id,
-      name: data.name,
-      description: data.description || undefined,
-      type: data.type,
-      credentials: data.credentials,
-      webhookSecret: data.webhookSecret || undefined,
-    });
-  };
-
-  const handleToggleIntegration = (id: string, enabled: boolean) => {
-    if (enabled) {
-      enableIntegration.mutate({ id });
-    } else {
-      disableIntegration.mutate({ id });
-    }
-  };
-
   const formLoading =
     createAgent.isPending || updateAgent.isPending ||
     createSkill.isPending || updateSkill.isPending ||
-    createTool.isPending || updateTool.isPending ||
-    createIntegration.isPending || updateIntegration.isPending;
+    createTool.isPending || updateTool.isPending;
 
   return (
     <>
@@ -478,17 +440,11 @@ export function SettingsPage() {
         onDeleteSkill={(id) => deleteSkill.mutate({ id })}
         customTools={customTools}
         pieceTools={serverPieceTools}
-        integrationOptions={integrationOptions}
         onCreateTool={handleCreateTool}
         onUpdateTool={handleUpdateTool}
         onDeleteTool={(id) => deleteTool.mutate({ id })}
         onTestTool={handleTestTool}
         testResult={testResult}
-        integrations={integrations}
-        onCreateIntegration={handleCreateIntegration}
-        onUpdateIntegration={handleUpdateIntegration}
-        onDeleteIntegration={(id) => deleteIntegration.mutate({ id })}
-        onToggleIntegration={handleToggleIntegration}
         formLoading={formLoading}
       />
 
