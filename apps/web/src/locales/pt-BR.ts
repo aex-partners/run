@@ -192,6 +192,7 @@ const ptBR = {
   // Database
   database: {
     entities: 'Entidades',
+    noRecords: 'Nenhum registro ainda. Clique em "+ Registro" abaixo ou "Novo" para adicionar.',
     searchPlaceholder: 'Buscar entidades...',
     addField: '+ Campo',
     addRecord: '+ Registro',

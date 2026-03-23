@@ -194,6 +194,7 @@ const en = {
   // Database
   database: {
     entities: 'Entities',
+    noRecords: 'No records yet. Click "+ Record" below or "New" to add one.',
     searchPlaceholder: 'Search entities...',
     addField: '+ Field',
     addRecord: '+ Record',

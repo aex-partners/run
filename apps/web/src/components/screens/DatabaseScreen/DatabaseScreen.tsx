@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { DataGrid, type GridColumn, type GridRow, type RowGroup } from '../../organisms/DataGrid/DataGrid'
 import type { ViewType } from '../../organisms/DataGrid/types'
 import { AIChatBar } from '../../molecules/AIChatBar/AIChatBar'
@@ -93,6 +94,7 @@ export function DatabaseScreen({
   onUpdateEntityField,
   onDeleteEntityField,
 }: DatabaseScreenProps) {
+  const { t } = useTranslation()
   const [entities, setEntities] = useState<DatabaseEntity[]>(entitiesProp)
   const [activeEntityId, setActiveEntityId] = useState<string | undefined>(
     controlledEntityId ?? entitiesProp[0]?.id
@@ -220,7 +222,7 @@ export function DatabaseScreen({
               columns={columns}
               rows={activeRows}
               title={activeEntity?.name || 'Data'}
-              emptyMessage={activeRows.length === 0 ? 'No records yet. Click "+ Record" below or "New" to add one.' : undefined}
+              emptyMessage={activeRows.length === 0 ? t('database.noRecords') : undefined}
               onAddRow={onAddRow}
               onAddColumn={onAddColumn}
               onCellEdit={onCellEdit}
