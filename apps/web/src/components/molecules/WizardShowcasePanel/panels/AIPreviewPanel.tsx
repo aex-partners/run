@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Bot, Cloud, Server, Cpu, HardDrive, Clock, Gauge, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-export type AIProvider = 'openai' | 'ollama' | null
+export type AIProvider = 'openai' | 'ollama' | 'openrouter' | null
 export type OllamaModel = 'qwen3:72b' | 'qwen3:14b' | 'qwen3:8b' | 'llama3.1:8b' | null
 
 export interface AIPreviewPanelProps {
@@ -139,6 +139,37 @@ export function AIPreviewPanel({ provider, ollamaModel }: AIPreviewPanelProps) {
                   <CheckCircle2 size={16} />
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', textAlign: 'left' }}>{t('setup.showcase.ai.fullToolCalling')}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#fff', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
+                  <Gauge size={16} />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', textAlign: 'left' }}>{t('setup.showcase.ai.payPerUse')}</span>
+              </div>
+            </div>
+            <QualityBar percent={100} label="100%" qualityLabel={t('setup.showcase.ai.quality')} />
+          </>
+        )}
+
+        {/* OpenRouter selected */}
+        {provider === 'openrouter' && (
+          <>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{t('setup.showcase.ai.openrouterTitle')}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{t('setup.showcase.ai.openrouterDesc')}</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#fff', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
+                  <Cloud size={16} />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', textAlign: 'left' }}>{t('setup.showcase.ai.multipleModels')}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#fff', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
+                  <CheckCircle2 size={16} />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', textAlign: 'left' }}>{t('setup.showcase.ai.easySetup')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#fff', borderRadius: 10, border: '1px solid var(--border)' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>

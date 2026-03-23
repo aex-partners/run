@@ -186,6 +186,28 @@ export const Step9_AI_Ollama: Story = {
   },
 }
 
+export const Step9_AI_OpenRouter: Story = {
+  name: '9. AI (OpenRouter)',
+  args: {
+    initialStep: 8,
+    openRouterConnected: true,
+    initialData: {
+      name: 'John Doe',
+      email: 'john@acme.com',
+      password: 'Str0ng!Pass',
+      confirmPassword: 'Str0ng!Pass',
+      orgName: 'Acme Corp',
+      niche: 'retail',
+      country: 'BR',
+      language: 'pt-BR',
+      timezone: 'America/Sao_Paulo',
+      onboardingPath: 'default',
+      selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
+      aiProvider: 'openrouter',
+    },
+  },
+}
+
 export const Step10_Plugins: Story = {
   name: '10. Plugins',
   args: {

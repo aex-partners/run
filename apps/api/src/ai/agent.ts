@@ -1,7 +1,6 @@
 import { streamText, generateText, stepCountIs, type CoreMessage } from "ai";
 import { eq, desc, asc } from "drizzle-orm";
-import { model } from "./client.js";
-import { getModel } from "./client.js";
+import { getModel, getNanoModel } from "./client.js";
 import { buildSystemPrompt } from "./prompts.js";
 import {
   createTools,
@@ -193,7 +192,7 @@ async function streamAIResponse(
   signal: AbortSignal,
   systemPrompt: string,
   isOnboarding = false,
-  resolvedModel = model,
+  resolvedModel: Awaited<ReturnType<typeof getModel>>,
   resolvedTools?: Record<string, unknown>,
   customReadOnlyTools?: Set<string>,
   agentId = DEFAULT_AGENT_ID,
@@ -490,9 +489,9 @@ async function autoNameConversation(conversationId: string, db: Database) {
 
     if (!firstMsg) return;
 
-    const { nanoModel } = await import("./client.js");
+    const nano = await getNanoModel();
     const nameResult = await generateText({
-      model: nanoModel,
+      model: nano,
       maxTokens: 30,
       messages: [
         {
@@ -588,7 +587,7 @@ export async function processAIMessage(
       buildSystemPrompt(db, promptOptions),
     ]);
 
-    const resolvedModel = agentConfig?.modelId ? getModel(agentConfig.modelId) : model;
+    const resolvedModel = await getModel(agentConfig?.modelId);
     const resolvedTools = agentConfig?.tools as Record<string, unknown> | undefined;
 
     const resolvedAgentId = agentConfig?.agentId ?? DEFAULT_AGENT_ID;
@@ -680,7 +679,7 @@ export async function processToolConfirmation(
       buildSystemPrompt(db, promptOptions),
     ]);
 
-    const resolvedModel = agentConfig?.modelId ? getModel(agentConfig.modelId) : model;
+    const resolvedModel = await getModel(agentConfig?.modelId);
     const resolvedTools = agentConfig?.tools as Record<string, unknown> | undefined;
 
     // Append the tool result to the context

@@ -1,6 +1,6 @@
 import { generateText, stepCountIs } from "ai";
 import { eq, desc, and, lte } from "drizzle-orm";
-import { model, getModel } from "../ai/client.js";
+import { getModel } from "../ai/client.js";
 import { createWorkerTools } from "../ai/tools.js";
 import { getToolsForAgent, buildCustomTool } from "../ai/tool-registry.js";
 import { messages, tasks, taskLogs, customTools } from "../db/schema/index.js";
@@ -151,7 +151,7 @@ async function runInferenceTask(task: TaskInput, db: Database): Promise<string> 
   }
 
   // Resolve agent configuration
-  let resolvedModel = model;
+  let resolvedModel = await getModel();
   let resolvedTools: Record<string, unknown>;
   let agentPromptAddendum = "";
 
@@ -164,7 +164,7 @@ async function runInferenceTask(task: TaskInput, db: Database): Promise<string> 
   if (task.agentId) {
     try {
       const agentConfig = await getToolsForAgent(task.agentId, ctx, db);
-      resolvedModel = getModel(agentConfig.modelId);
+      resolvedModel = await getModel(agentConfig.modelId);
       resolvedTools = agentConfig.tools as Record<string, unknown>;
       agentPromptAddendum = agentConfig.systemPromptFragments.join("\n\n");
     } catch {

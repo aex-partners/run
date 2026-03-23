@@ -18,10 +18,10 @@ vi.mock("../ai/client.js", async () => {
   const { createTestModel } = await import("../test/mock-model.js");
   const m = createTestModel({ text: "Workflow step done." });
   return {
-    model: m,
-    nanoModel: m,
-    openaiProvider: { chat: () => m },
-    getModel: () => m,
+    getModel: async () => m,
+    getNanoModel: async () => m,
+    getProvider: async () => ({ chat: () => m }),
+    resetProvider: () => {},
   };
 });
 

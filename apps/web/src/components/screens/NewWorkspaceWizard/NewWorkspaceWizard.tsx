@@ -92,6 +92,10 @@ export interface NewWorkspaceWizardProps {
   onConnectEmail?: (provider: 'gmail' | 'outlook') => Promise<string | null>
   /** Email address of currently connected account (if any) */
   connectedEmail?: string | null
+  /** Called when user wants to connect OpenRouter via OAuth. Should return true on success. */
+  onConnectOpenRouter?: () => Promise<boolean>
+  /** Whether OpenRouter is already connected */
+  openRouterConnected?: boolean
   /** Start on a specific step (for Storybook previews) */
   initialStep?: number
   /** Pre-fill form data (for Storybook previews) */
@@ -174,13 +178,15 @@ function clearSavedState() {
   localStorage.removeItem('aex-tour-completed')
 }
 
-export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, connectedEmail, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
+export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, connectedEmail, onConnectOpenRouter, openRouterConnected = false, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
   const { t } = useTranslation()
 
   const STEPS = useMemo(() => STEP_KEYS.map((key) => ({ label: t(key) })), [t])
   const STRENGTH_LABELS = useMemo(() => STRENGTH_LABEL_KEYS.map((key) => t(key)), [t])
 
   const [connectingEmail, setConnectingEmail] = useState(false)
+  const [connectingOpenRouter, setConnectingOpenRouter] = useState(false)
+  const [orConnected, setOrConnected] = useState(openRouterConnected)
   const [accountCreated, setAccountCreated] = useState(false)
   const saved = useMemo(() => loadSavedState(), [])
   const source = saved?.data ?? initialData
@@ -298,12 +304,13 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
       case 8:
         if (!data.aiProvider) errs.aiProvider = t('setup.ai.providerRequired')
         if (data.aiProvider === 'openai' && !data.aiApiKey.trim()) errs.aiApiKey = t('setup.ai.apiKeyRequired')
+        if (data.aiProvider === 'openrouter' && !orConnected) errs.aiProvider = t('setup.ai.openrouter.connectButton')
         if (data.aiProvider === 'ollama' && !data.aiOllamaModel) errs.aiOllamaModel = t('setup.ai.modelRequired')
         break
     }
     setErrors(errs)
     return Object.keys(errs).length === 0
-  }, [step, data])
+  }, [step, data, orConnected])
 
   const handleNext = useCallback(async () => {
     if (!validate()) return
@@ -913,6 +920,14 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
           {/* Provider selection */}
           <div style={{ display: 'flex', gap: 16 }}>
             <OnboardingPathCard
+              title={t('setup.ai.openrouter.title')}
+              description={t('setup.ai.openrouter.description')}
+              icon="Zap"
+              badge={t('setup.showcase.ai.recommended')}
+              selected={data.aiProvider === 'openrouter'}
+              onClick={() => update('aiProvider', data.aiProvider === 'openrouter' ? null : 'openrouter')}
+            />
+            <OnboardingPathCard
               title={t('setup.ai.openai.title')}
               description={t('setup.ai.openai.description')}
               icon="Cloud"
@@ -929,6 +944,38 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
           </div>
           {errors.aiProvider && (
             <span style={{ fontSize: 12, color: 'var(--danger)' }}>{errors.aiProvider}</span>
+          )}
+
+          {/* OpenRouter: OAuth connect */}
+          {data.aiProvider === 'openrouter' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {orConnected ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+                  <Check size={18} color="#16a34a" />
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#15803d' }}>{t('setup.ai.openrouter.connected')}</div>
+                    <div style={{ fontSize: 12, color: '#166534', marginTop: 2 }}>{t('setup.ai.openrouter.connectedHint')}</div>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  onClick={async () => {
+                    if (!onConnectOpenRouter) return
+                    setConnectingOpenRouter(true)
+                    try {
+                      const ok = await onConnectOpenRouter()
+                      if (ok) setOrConnected(true)
+                    } finally {
+                      setConnectingOpenRouter(false)
+                    }
+                  }}
+                  disabled={connectingOpenRouter}
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  {connectingOpenRouter ? t('setup.ai.openrouter.connecting') : t('setup.ai.openrouter.connectButton')}
+                </Button>
+              )}
+            </div>
           )}
 
           {/* OpenAI: API Key input */}

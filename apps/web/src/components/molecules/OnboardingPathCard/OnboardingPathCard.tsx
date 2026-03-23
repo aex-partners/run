@@ -6,6 +6,7 @@ export interface OnboardingPathCardProps {
   description: string
   icon: string
   selected?: boolean
+  badge?: string
   onClick?: () => void
 }
 
@@ -14,6 +15,7 @@ export function OnboardingPathCard({
   description,
   icon,
   selected = false,
+  badge,
   onClick,
 }: OnboardingPathCardProps) {
   const IconComponent = (LucideIcons as Record<string, React.ComponentType<{ size?: number; style?: React.CSSProperties }>>)[icon] || LucideIcons.Package
@@ -55,7 +57,12 @@ export function OnboardingPathCard({
         <IconComponent size={24} style={{ color: selected ? '#fff' : 'var(--text-muted)' }} />
       </div>
       <div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{title}</span>
+          {badge && (
+            <span style={{ fontSize: 10, fontWeight: 600, color: '#fff', background: 'var(--accent)', padding: '2px 8px', borderRadius: 10 }}>{badge}</span>
+          )}
+        </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
           {description}
         </div>

@@ -15,7 +15,7 @@ vi.mock("../ws/index.js", () => ({
 vi.mock("../ai/client.js", async () => {
   const { createTestModel } = await import("../test/mock-model.js");
   const m = createTestModel({ text: "Done." });
-  return { model: m, nanoModel: m, openaiProvider: { chat: () => m }, getModel: () => m };
+  return { getModel: async () => m, getNanoModel: async () => m, getProvider: async () => ({ chat: () => m }), resetProvider: () => {} };
 });
 
 const ENTITY_ID = "ent-wf-extra-001";

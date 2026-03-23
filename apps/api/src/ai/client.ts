@@ -1,17 +1,76 @@
 import { createOpenAI } from "@ai-sdk/openai";
+import { eq } from "drizzle-orm";
 import { env } from "../env.js";
+import { db } from "../db/index.js";
+import { settings } from "../db/schema/index.js";
 
-export const openaiProvider = createOpenAI({
-  apiKey: env.OPENAI_API_KEY,
-  compatibility: "strict",
-});
-export const model = openaiProvider.chat("gpt-4.1");
-export const nanoModel = openaiProvider.chat("gpt-4.1-nano");
+let cachedProvider: ReturnType<typeof createOpenAI> | null = null;
+
+const DEFAULT_MODELS: Record<string, { chat: string; nano: string }> = {
+  openai: { chat: "gpt-4.1", nano: "gpt-4.1-nano" },
+  openrouter: { chat: "openai/gpt-4.1", nano: "openai/gpt-4.1-nano" },
+};
+
+let resolvedProviderType: string = "openai";
+
+async function getAIConfig(): Promise<{ apiKey: string; provider: string }> {
+  // env var takes precedence (backwards-compat / testing)
+  if (env.OPENAI_API_KEY) return { apiKey: env.OPENAI_API_KEY, provider: "openai" };
+
+  const rows = await db
+    .select({ key: settings.key, value: settings.value })
+    .from(settings)
+    .where(eq(settings.key, "ai.apiKey"))
+    .limit(1);
+
+  const [providerRow] = await db
+    .select({ value: settings.value })
+    .from(settings)
+    .where(eq(settings.key, "ai.provider"))
+    .limit(1);
+
+  const apiKey = rows[0]?.value;
+  if (!apiKey) {
+    throw new Error("AI API key not configured. Complete the setup wizard first.");
+  }
+
+  return { apiKey, provider: providerRow?.value ?? "openai" };
+}
+
+export async function getProvider() {
+  if (cachedProvider) return cachedProvider;
+
+  const { apiKey, provider } = await getAIConfig();
+  resolvedProviderType = provider;
+
+  if (provider === "openrouter") {
+    cachedProvider = createOpenAI({
+      apiKey,
+      baseURL: "https://openrouter.ai/api/v1",
+      compatibility: "compatible",
+    });
+  } else {
+    cachedProvider = createOpenAI({ apiKey, compatibility: "strict" });
+  }
+
+  return cachedProvider;
+}
+
+export async function getModel(modelId?: string | null) {
+  const provider = await getProvider();
+  const defaults = DEFAULT_MODELS[resolvedProviderType] ?? DEFAULT_MODELS.openai;
+  return provider.chat(modelId || defaults.chat);
+}
+
+export async function getNanoModel() {
+  const provider = await getProvider();
+  const defaults = DEFAULT_MODELS[resolvedProviderType] ?? DEFAULT_MODELS.openai;
+  return provider.chat(defaults.nano);
+}
 
 /**
- * Get an AI model by ID. Falls back to default gpt-4.1 if null/undefined.
+ * Reset cached provider (e.g. when API key changes in settings).
  */
-export function getModel(modelId?: string | null) {
-  if (!modelId) return model;
-  return openaiProvider.chat(modelId);
+export function resetProvider() {
+  cachedProvider = null;
 }

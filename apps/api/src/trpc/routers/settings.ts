@@ -2,6 +2,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { router, publicProcedure, protectedProcedure } from "../index.js";
 import { entities, settings, conversations, conversationMembers, messages, agents } from "../../db/schema/index.js";
+import { resetProvider } from "../../ai/client.js";
 import { users } from "../../db/schema/auth.js";
 import { getEntitiesForRoutines } from "@aex/shared";
 import { slugify, serializeFields, type EntityField } from "../../db/entity-fields.js";
@@ -42,7 +43,7 @@ export const settingsRouter = router({
         smtpPass: z.string().optional(),
         smtpFrom: z.string().optional(),
         smtpSecure: z.boolean().optional(),
-        aiProvider: z.enum(['openai', 'ollama']).nullable().optional(),
+        aiProvider: z.enum(['openai', 'ollama', 'openrouter']).nullable().optional(),
         aiApiKey: z.string().optional(),
         aiOllamaModel: z.string().nullable().optional(),
       }),
@@ -92,6 +93,9 @@ export const settingsRouter = router({
       if (input.aiProvider !== undefined) await upsert("ai.provider", input.aiProvider);
       if (input.aiApiKey) await upsert("ai.apiKey", input.aiApiKey);
       if (input.aiOllamaModel !== undefined) await upsert("ai.ollamaModel", input.aiOllamaModel);
+
+      // Invalidate cached AI provider so it picks up the new key/provider
+      resetProvider();
 
       // Mark setup as complete
       await upsert("system.setupComplete", "true");
@@ -279,6 +283,49 @@ export const settingsRouter = router({
             updatedAt: new Date(),
           },
         });
+
+      return { success: true };
+    }),
+
+  exchangeOpenRouterCode: protectedProcedure
+    .input(
+      z.object({
+        code: z.string().min(1),
+        codeVerifier: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const res = await fetch("https://openrouter.ai/api/v1/auth/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: input.code,
+          code_verifier: input.codeVerifier,
+          code_challenge_method: "S256",
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`OpenRouter key exchange failed: ${body}`);
+      }
+
+      const { key } = (await res.json()) as { key: string };
+
+      const upsert = async (k: string, v: string) => {
+        await ctx.db
+          .insert(settings)
+          .values({ key: k, value: v })
+          .onConflictDoUpdate({
+            target: settings.key,
+            set: { value: v, updatedAt: new Date() },
+          });
+      };
+
+      await upsert("ai.provider", "openrouter");
+      await upsert("ai.apiKey", key);
+
+      resetProvider();
 
       return { success: true };
     }),
