@@ -8770,7 +8770,7 @@
     "description": "Import and query data from Bling ERP: contacts, products, orders, invoices, financials, and stock.",
     "version": "1.0.0",
     "category": "BUSINESS_INTELLIGENCE",
-    "logoUrl": "https://cdn.bling.com.br/images/bling-logo.svg",
+    "logoUrl": "/logos/bling.svg",
     "auth": {
       "type": "custom_auth"
     },

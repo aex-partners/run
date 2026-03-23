@@ -386,7 +386,7 @@ const triggerSync = createBlingAction({
 
 export const bling: Piece = {
   displayName: "Bling ERP",
-  logoUrl: "https://cdn.bling.com.br/images/bling-logo.svg",
+  logoUrl: "/logos/bling.svg",
   authors: ["AEX"],
   description: "Import and query data from Bling ERP: contacts, products, orders, invoices, financials, and stock.",
   categories: [],
