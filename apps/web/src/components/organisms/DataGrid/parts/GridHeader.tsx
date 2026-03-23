@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import type { GridColumn, SortDirection } from '../types'
 import { ColumnHeaderCell } from './ColumnHeaderCell'
@@ -42,6 +43,7 @@ export function GridHeader({
   onColumnDelete,
   onColumnInsert,
 }: GridHeaderProps) {
+  const { t } = useTranslation()
   return (
     <div
       role="row"
@@ -62,7 +64,7 @@ export function GridHeader({
             if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected
           }}
           onChange={(e) => onSelectAll(e.target.checked)}
-          aria-label="Select all rows"
+          aria-label={t('database.selectAllRows')}
           style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
         />
       </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import type { GridColumn, GridRow } from '../types'
 import { CellRenderer } from '../cells/CellRenderer'
@@ -11,6 +12,7 @@ interface RowDetailPanelProps {
 }
 
 export function RowDetailPanel({ row, rowId, columns, onClose, onCellEdit }: RowDetailPanelProps) {
+  const { t } = useTranslation()
   if (!row) return null
 
   return (
@@ -60,7 +62,7 @@ export function RowDetailPanel({ row, rowId, columns, onClose, onCellEdit }: Row
             display: 'flex',
             color: 'var(--text-muted)',
           }}
-          aria-label="Close detail panel"
+          aria-label={t('database.closeDetailPanel')}
         >
           <X size={16} />
         </button>

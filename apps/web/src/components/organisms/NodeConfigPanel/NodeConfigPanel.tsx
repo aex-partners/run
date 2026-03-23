@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
 import { JsonEditor } from '../../molecules/JsonEditor/JsonEditor'
@@ -39,6 +40,7 @@ export function NodeConfigPanel({
   onSave,
   onClose,
 }: NodeConfigPanelProps) {
+  const { t } = useTranslation()
   const [config, setConfig] = useState<NodeConfigData>({
     taskType: initialData?.taskType ?? 'inference',
     toolName: initialData?.toolName ?? '',
@@ -72,7 +74,7 @@ export function NodeConfigPanel({
         }}
       >
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Node Config</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{t('workflows.nodeConfig')}</div>
           {nodeLabel && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{nodeLabel}</div>}
         </div>
         {onClose && (
@@ -88,7 +90,7 @@ export function NodeConfigPanel({
 
       <div style={{ flex: 1, padding: 16, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
-          <label style={labelStyle}>Task Type</label>
+          <label style={labelStyle}>{t('workflows.taskType')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {(['inference', 'structured'] as const).map((tt) => (
               <button
@@ -117,7 +119,7 @@ export function NodeConfigPanel({
 
         {config.taskType === 'structured' && (
           <div>
-            <label style={labelStyle}>Tool</label>
+            <label style={labelStyle}>{t('workflows.tool')}</label>
             <select
               value={config.toolName ?? ''}
               onChange={(e) => setConfig((c) => ({ ...c, toolName: e.target.value || undefined }))}
@@ -141,7 +143,7 @@ export function NodeConfigPanel({
         )}
 
         <div>
-          <label style={labelStyle}>Agent</label>
+          <label style={labelStyle}>{t('workflows.agent')}</label>
           <select
             value={config.agentId ?? ''}
             onChange={(e) => setConfig((c) => ({ ...c, agentId: e.target.value || undefined }))}
@@ -156,7 +158,7 @@ export function NodeConfigPanel({
               fontFamily: 'inherit',
             }}
           >
-            <option value="">Default agent</option>
+            <option value="">{t('workflows.defaultAgent')}</option>
             {agentOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
@@ -165,7 +167,7 @@ export function NodeConfigPanel({
 
         {config.taskType === 'structured' && (
           <div>
-            <label style={labelStyle}>Tool Input (JSON)</label>
+            <label style={labelStyle}>{t('workflows.toolInputJson')}</label>
             <JsonEditor
               value={config.toolInput}
               onChange={(toolInput) => setConfig((c) => ({ ...c, toolInput }))}

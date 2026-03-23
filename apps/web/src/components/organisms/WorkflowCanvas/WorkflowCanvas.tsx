@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ReactFlow,
   Background,
@@ -64,7 +65,7 @@ function useEditableLabel(
   return { editing, draft, setDraft, inputRef, handleDoubleClick, commit, handleKeyDown }
 }
 
-function DeleteButton({ nodeId, onNodeDelete }: { nodeId: string; onNodeDelete: (id: string) => void }) {
+function DeleteButton({ nodeId, onNodeDelete, deleteLabel }: { nodeId: string; onNodeDelete: (id: string) => void; deleteLabel: string }) {
   return (
     <button
       type="button"
@@ -90,7 +91,7 @@ function DeleteButton({ nodeId, onNodeDelete }: { nodeId: string; onNodeDelete: 
         padding: 0,
         zIndex: 10,
       }}
-      aria-label="Delete node"
+      aria-label={deleteLabel}
     >
       <X size={10} />
     </button>
@@ -106,6 +107,8 @@ function EditableLabel({
   handleKeyDown,
   handleDoubleClick,
   label,
+  editLabel,
+  doubleClickTitle,
   style,
 }: {
   editing: boolean
@@ -116,6 +119,8 @@ function EditableLabel({
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
   handleDoubleClick: () => void
   label: string
+  editLabel: string
+  doubleClickTitle: string
   style?: React.CSSProperties
 }) {
   if (editing) {
@@ -126,7 +131,7 @@ function EditableLabel({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={handleKeyDown}
-        aria-label="Edit node label"
+        aria-label={editLabel}
         style={{
           fontSize: 13,
           fontWeight: 600,
@@ -147,7 +152,7 @@ function EditableLabel({
     <div
       onDoubleClick={handleDoubleClick}
       style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', cursor: 'text', ...style }}
-      title="Double-click to edit"
+      title={doubleClickTitle}
     >
       {label}
     </div>
@@ -157,6 +162,7 @@ function EditableLabel({
 // ─── Node Types ────────────────────────────────────────────────────────────────
 
 function TriggerNode({ id, data }: NodeProps) {
+  const { t } = useTranslation()
   const cb = data as NodeShellCallbacks & Record<string, unknown>
   const [hovered, setHovered] = useState(false)
   const label = String(cb.label ?? '')
@@ -171,7 +177,7 @@ function TriggerNode({ id, data }: NodeProps) {
       style={{ position: 'relative' }}
     >
       {!cb.readOnly && hovered && cb.onNodeDelete && (
-        <DeleteButton nodeId={id} onNodeDelete={cb.onNodeDelete} />
+        <DeleteButton nodeId={id} onNodeDelete={cb.onNodeDelete} deleteLabel={t('workflows.deleteNode')} />
       )}
       <div
         style={{
@@ -212,6 +218,8 @@ function TriggerNode({ id, data }: NodeProps) {
           handleKeyDown={handleKeyDown}
           handleDoubleClick={handleDoubleClick}
           label={label}
+          editLabel={t('workflows.editNodeLabel')}
+          doubleClickTitle={t('workflows.doubleClickToEdit')}
         />
         {cb.description && (
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{String(cb.description)}</div>
@@ -223,6 +231,7 @@ function TriggerNode({ id, data }: NodeProps) {
 }
 
 function ActionNode({ id, data }: NodeProps) {
+  const { t } = useTranslation()
   const cb = data as NodeShellCallbacks & Record<string, unknown>
   const [hovered, setHovered] = useState(false)
   const label = String(cb.label ?? '')
@@ -237,7 +246,7 @@ function ActionNode({ id, data }: NodeProps) {
       style={{ position: 'relative' }}
     >
       {!cb.readOnly && hovered && cb.onNodeDelete && (
-        <DeleteButton nodeId={id} onNodeDelete={cb.onNodeDelete} />
+        <DeleteButton nodeId={id} onNodeDelete={cb.onNodeDelete} deleteLabel={t('workflows.deleteNode')} />
       )}
       <div
         style={{
@@ -279,6 +288,8 @@ function ActionNode({ id, data }: NodeProps) {
           handleKeyDown={handleKeyDown}
           handleDoubleClick={handleDoubleClick}
           label={label}
+          editLabel={t('workflows.editNodeLabel')}
+          doubleClickTitle={t('workflows.doubleClickToEdit')}
         />
         {cb.description && (
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{String(cb.description)}</div>
@@ -313,6 +324,7 @@ function ActionNode({ id, data }: NodeProps) {
 }
 
 function ConditionNode({ id, data }: NodeProps) {
+  const { t } = useTranslation()
   const cb = data as NodeShellCallbacks & Record<string, unknown>
   const [hovered, setHovered] = useState(false)
   const label = String(cb.label ?? '')
@@ -329,7 +341,7 @@ function ConditionNode({ id, data }: NodeProps) {
       style={{ position: 'relative' }}
     >
       {!cb.readOnly && hovered && cb.onNodeDelete && (
-        <DeleteButton nodeId={id} onNodeDelete={cb.onNodeDelete} />
+        <DeleteButton nodeId={id} onNodeDelete={cb.onNodeDelete} deleteLabel={t('workflows.deleteNode')} />
       )}
       <div
         style={{
@@ -371,6 +383,8 @@ function ConditionNode({ id, data }: NodeProps) {
           handleKeyDown={handleKeyDown}
           handleDoubleClick={handleDoubleClick}
           label={label}
+          editLabel={t('workflows.editNodeLabel')}
+          doubleClickTitle={t('workflows.doubleClickToEdit')}
         />
         {cb.description && (
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{String(cb.description)}</div>
@@ -387,6 +401,7 @@ function ConditionNode({ id, data }: NodeProps) {
 }
 
 function NotificationNode({ id, data }: NodeProps) {
+  const { t } = useTranslation()
   const cb = data as NodeShellCallbacks & Record<string, unknown>
   const [hovered, setHovered] = useState(false)
   const label = String(cb.label ?? '')
@@ -401,7 +416,7 @@ function NotificationNode({ id, data }: NodeProps) {
       style={{ position: 'relative' }}
     >
       {!cb.readOnly && hovered && cb.onNodeDelete && (
-        <DeleteButton nodeId={id} onNodeDelete={cb.onNodeDelete} />
+        <DeleteButton nodeId={id} onNodeDelete={cb.onNodeDelete} deleteLabel={t('workflows.deleteNode')} />
       )}
       <div
         style={{
@@ -443,6 +458,8 @@ function NotificationNode({ id, data }: NodeProps) {
           handleKeyDown={handleKeyDown}
           handleDoubleClick={handleDoubleClick}
           label={label}
+          editLabel={t('workflows.editNodeLabel')}
+          doubleClickTitle={t('workflows.doubleClickToEdit')}
         />
         {cb.description && (
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{String(cb.description)}</div>
@@ -482,6 +499,7 @@ export function WorkflowCanvas({
   onNodeDelete,
   onNodeEdit,
 }: WorkflowCanvasProps) {
+  const { t } = useTranslation()
   const [localNodes, setLocalNodes] = useState<Node[]>(nodesProp)
 
   // Sync with prop changes
@@ -571,7 +589,7 @@ export function WorkflowCanvas({
     <div
       ref={containerRef}
       role="img"
-      aria-label="Workflow diagram"
+      aria-label={t('workflows.workflowDiagram')}
       style={{ width: '100%', height: '100%', position: 'relative' }}
     >
       <ReactFlow
@@ -657,7 +675,7 @@ export function WorkflowCanvas({
       {/* Legend */}
       <div
         role="list"
-        aria-label="Node type legend"
+        aria-label={t('workflows.nodeTypeLegend')}
         style={{
           position: 'absolute',
           top: 12,

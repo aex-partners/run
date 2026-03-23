@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft,
   Plus,
@@ -176,6 +177,7 @@ export function EntityManagePanel({
   onUpdateField,
   onDeleteField,
 }: EntityManagePanelProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<Tab>('fields')
   const [editingDescription, setEditingDescription] = useState(false)
   const [descriptionValue, setDescriptionValue] = useState(entityDescription)
@@ -294,7 +296,7 @@ export function EntityManagePanel({
                 opacity: entityDescription ? 1 : 0.6,
               }}
             >
-              {entityDescription || 'Click to add a description...'}
+              {entityDescription || t('database.entityManage.addDescription')}
             </p>
           )}
         </div>
@@ -444,6 +446,7 @@ function FieldsTab({
   onUpdateField,
   onDeleteField,
 }: FieldsTabProps) {
+  const { t } = useTranslation()
   return (
     <div style={{ padding: 24 }}>
       {/* Toolbar */}
@@ -468,7 +471,7 @@ function FieldsTab({
             fontFamily: 'inherit',
           }}
         >
-          <Plus size={13} /> Add Field
+          <Plus size={13} /> {t('database.entityManage.addField')}
         </button>
       </div>
 
@@ -481,10 +484,10 @@ function FieldsTab({
           padding: 16,
           marginBottom: 16,
         }}>
-          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12, color: 'var(--text)' }}>New Field</div>
+          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12, color: 'var(--text)' }}>{t('database.entityManage.newField')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label style={labelStyle}>
-              <span style={labelTextStyle}>Name</span>
+              <span style={labelTextStyle}>{t('database.entityManage.fieldName')}</span>
               <input
                 autoFocus
                 value={newFieldName}
@@ -493,12 +496,12 @@ function FieldsTab({
                   if (e.key === 'Enter') onAddField()
                   if (e.key === 'Escape') onCancelAdd()
                 }}
-                placeholder="Field name"
+                placeholder={t('database.entityManage.fieldName')}
                 style={inputStyle}
               />
             </label>
             <label style={labelStyle}>
-              <span style={labelTextStyle}>Type</span>
+              <span style={labelTextStyle}>{t('database.entityManage.fieldType')}</span>
               <select
                 value={newFieldType}
                 onChange={(e) => onNewFieldTypeChange(e.target.value as EntityFieldType)}
@@ -515,18 +518,18 @@ function FieldsTab({
             </label>
           </div>
           <label style={{ ...labelStyle, marginTop: 12 }}>
-            <span style={labelTextStyle}>Description</span>
+            <span style={labelTextStyle}>{t('database.entityManage.fieldDescription')}</span>
             <input
               value={newFieldDesc}
               onChange={(e) => onNewFieldDescChange(e.target.value)}
-              placeholder="What this field represents..."
+              placeholder={t('database.entityManage.fieldDescriptionPlaceholder')}
               style={inputStyle}
             />
           </label>
 
           {newFieldType === 'formula' && (
             <label style={{ ...labelStyle, marginTop: 12 }}>
-              <span style={labelTextStyle}>Formula</span>
+              <span style={labelTextStyle}>{t('database.entityManage.fieldFormula')}</span>
               <input
                 value={newFieldFormula}
                 onChange={(e) => onNewFieldFormulaChange(e.target.value)}
@@ -549,11 +552,11 @@ function FieldsTab({
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-            <button onClick={onCancelAdd} style={secondaryBtnStyle}>Cancel</button>
+            <button onClick={onCancelAdd} style={secondaryBtnStyle}>{t('cancel')}</button>
             <button onClick={onAddField} disabled={!newFieldName.trim()} style={{
               ...primaryBtnStyle,
               opacity: newFieldName.trim() ? 1 : 0.5,
-            }}>Add Field</button>
+            }}>{t('database.entityManage.addField')}</button>
           </div>
         </div>
       )}
@@ -619,6 +622,7 @@ interface FieldRowProps {
 }
 
 function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, onStopEdit, onUpdate, onDelete }: FieldRowProps) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
   const [editName, setEditName] = useState(field.name)
   const [editDesc, setEditDesc] = useState(field.description || '')
@@ -701,21 +705,21 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
               <button
                 onClick={(e) => { e.stopPropagation(); onStartEdit() }}
                 style={iconBtnStyle}
-                title="Edit field"
+                title={t('database.entityManage.editField')}
               >
                 <Pencil size={12} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(field.name) }}
                 style={iconBtnStyle}
-                title="Copy field name"
+                title={t('database.entityManage.copyFieldName')}
               >
                 <Copy size={12} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete?.(field.id) }}
                 style={{ ...iconBtnStyle, color: 'var(--danger)' }}
-                title="Delete field"
+                title={t('database.entityManage.deleteField')}
               >
                 <Trash2 size={12} />
               </button>
@@ -767,7 +771,7 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label style={labelStyle}>
-              <span style={labelTextStyle}>Name</span>
+              <span style={labelTextStyle}>{t('database.entityManage.fieldName')}</span>
               <input
                 autoFocus
                 value={editName}
@@ -780,7 +784,7 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
               />
             </label>
             <label style={labelStyle}>
-              <span style={labelTextStyle}>Type</span>
+              <span style={labelTextStyle}>{t('database.entityManage.fieldType')}</span>
               <select
                 value={editType}
                 onChange={(e) => setEditType(e.target.value as EntityFieldType)}
@@ -797,17 +801,17 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
             </label>
           </div>
           <label style={{ ...labelStyle, marginTop: 12 }}>
-            <span style={labelTextStyle}>Description</span>
+            <span style={labelTextStyle}>{t('database.entityManage.fieldDescription')}</span>
             <input
               value={editDesc}
               onChange={(e) => setEditDesc(e.target.value)}
-              placeholder="Describe this field..."
+              placeholder={t('database.entityManage.fieldDescriptionPlaceholder')}
               style={inputStyle}
             />
           </label>
           {editType === 'formula' && (
             <label style={{ ...labelStyle, marginTop: 12 }}>
-              <span style={labelTextStyle}>Formula</span>
+              <span style={labelTextStyle}>{t('database.entityManage.fieldFormula')}</span>
               <input
                 value={editFormula}
                 onChange={(e) => setEditFormula(e.target.value)}
@@ -828,8 +832,8 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
             </label>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-            <button onClick={cancelEdit} style={secondaryBtnStyle}>Cancel</button>
-            <button onClick={commitEdit} style={primaryBtnStyle}>Save Changes</button>
+            <button onClick={cancelEdit} style={secondaryBtnStyle}>{t('cancel')}</button>
+            <button onClick={commitEdit} style={primaryBtnStyle}>{t('database.entityManage.saveChanges')}</button>
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { FileItem, type FileItemData } from '../../molecules/FileItem/FileItem'
 import { Button } from '../../atoms/Button/Button'
+import { useTranslation } from 'react-i18next'
 
 export type SortField = 'name' | 'modifiedAt' | 'size' | 'type'
 export type SortDir = 'asc' | 'desc'
@@ -56,6 +57,7 @@ export function FileGrid({
   onFileDelete,
   loading = false,
 }: FileGridProps) {
+  const { t } = useTranslation()
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
@@ -112,7 +114,7 @@ export function FileGrid({
             {currentPath.length > 0 && (
               <button
                 onClick={onNavigateUp}
-                title="Go up"
+                title={t('files.goUp')}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-muted)', marginRight: 4 }}
               >
                 <FolderUp size={16} />
@@ -157,7 +159,7 @@ export function FileGrid({
 
         <button
           onClick={() => handleSort(sortField)}
-          title="Sort"
+          title={t('sort')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-muted)' }}
         >
           <ArrowUpDown size={14} />
@@ -165,7 +167,7 @@ export function FileGrid({
 
         <button
           onClick={onRefresh}
-          title="Refresh"
+          title={t('refresh')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-muted)' }}
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -174,7 +176,7 @@ export function FileGrid({
         <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
           <button
             onClick={() => onViewChange?.('list')}
-            title="List view"
+            title={t('files.listView')}
             style={{
               background: view === 'list' ? 'var(--surface-2)' : 'none',
               border: 'none', cursor: 'pointer', padding: '4px 6px', display: 'flex',
@@ -185,7 +187,7 @@ export function FileGrid({
           </button>
           <button
             onClick={() => onViewChange?.('grid')}
-            title="Grid view"
+            title={t('files.gridView')}
             style={{
               background: view === 'grid' ? 'var(--surface-2)' : 'none',
               border: 'none', cursor: 'pointer', padding: '4px 6px', display: 'flex',
@@ -221,7 +223,7 @@ export function FileGrid({
           >
             Name {sortField === 'name' && (sortDir === 'asc' ? '\u2191' : '\u2193')}
           </span>
-          <span style={{ width: 60, textAlign: 'center' }}>Source</span>
+          <span style={{ width: 60, textAlign: 'center' }}>{t('files.source')}</span>
           <span
             onClick={() => handleSort('size')}
             style={{ width: 80, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}

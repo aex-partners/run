@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Trash2, Copy, ArrowRight, Download, X } from 'lucide-react'
 
 interface BulkActionsBarProps {
@@ -15,6 +16,7 @@ export function BulkActionsBar({
   onExport,
   onClear,
 }: BulkActionsBarProps) {
+  const { t } = useTranslation()
   if (selectedCount === 0) return null
 
   const actionBtnStyle: React.CSSProperties = {
@@ -94,7 +96,7 @@ export function BulkActionsBar({
           color: 'var(--text-muted)',
           padding: '6px 4px',
         }}
-        aria-label="Clear selection"
+        aria-label={t('database.clearSelection')}
       >
         <X size={14} />
       </button>

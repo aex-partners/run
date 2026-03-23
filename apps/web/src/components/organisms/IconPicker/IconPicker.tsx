@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
+import { useTranslation } from 'react-i18next'
 import {
   Database, Users, ShoppingCart, Package, FileText, Briefcase,
   Building2, CreditCard, BarChart3, Calendar, Tag, Star,
@@ -51,6 +52,7 @@ export interface IconPickerProps {
 }
 
 export function IconPicker({ selectedIcon, onSelect, children }: IconPickerProps) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
 
@@ -77,7 +79,7 @@ export function IconPicker({ selectedIcon, onSelect, children }: IconPickerProps
           }}
         >
           <input
-            placeholder="Search icons..."
+            placeholder={t('database.iconPicker.search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{

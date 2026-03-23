@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bot, Send } from 'lucide-react'
 
 export interface AIChatBarProps {
@@ -16,6 +17,7 @@ export function AIChatBar({
   onSend,
   disabled = false,
 }: AIChatBarProps) {
+  const { t } = useTranslation()
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && onSend) {
       onSend()
@@ -55,7 +57,7 @@ export function AIChatBar({
       <button
         onClick={onSend}
         disabled={disabled || !value}
-        aria-label="Send message"
+        aria-label={t('promptInput.sendMessage')}
         style={{
           width: 28,
           height: 28,

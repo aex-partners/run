@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import { Avatar } from '../../atoms/Avatar/Avatar'
 import { Badge } from '../../atoms/Badge/Badge'
@@ -32,6 +33,7 @@ const statusBadgeMap: Record<User['status'], { variant: 'success' | 'neutral' | 
 }
 
 export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onChangeRole, onChangeStatus }: UserTableProps) {
+  const { t } = useTranslation()
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
@@ -106,7 +108,7 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Users</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('settings.users')}</h2>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{users.length} users in the organization</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -172,7 +174,7 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
                     if (el) el.indeterminate = someSelected
                   }}
                   onChange={toggleSelectAll}
-                  aria-label="Select all users"
+                  aria-label={t('settings.selectAllUsers')}
                   style={checkboxStyle}
                 />
               </div>
@@ -214,7 +216,7 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelectRow(user.id)}
-                      aria-label="Select user"
+                      aria-label={t('settings.selectUser')}
                       style={checkboxStyle}
                     />
                   </div>
@@ -265,7 +267,7 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
                       onClick={() => handleStatusClick(user)}
                       aria-label={`Status: ${statusBadgeMap[user.status].label}, click to change`}
                       style={{ cursor: 'pointer', display: 'inline-flex' }}
-                      title="Click to cycle status"
+                      title={t('settings.cycleStatus')}
                     >
                       <Badge variant={statusBadgeMap[user.status].variant}>
                         {statusBadgeMap[user.status].label}
@@ -295,7 +297,7 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
                       <button
                         onClick={() => handleDelete(user.id)}
                         aria-label={`Delete ${user.name}`}
-                        title="Delete user"
+                        title={t('settings.deleteUser')}
                         style={{
                           background: 'none',
                           border: 'none',

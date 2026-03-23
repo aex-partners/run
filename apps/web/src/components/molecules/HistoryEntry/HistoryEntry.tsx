@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle2, XCircle, ChevronRight, RefreshCw } from 'lucide-react'
 
 export interface HistoryEntryProps {
@@ -12,6 +13,7 @@ export interface HistoryEntryProps {
 }
 
 export function HistoryEntry({ timestamp, status, duration, message, details, onExpand, onRetry }: HistoryEntryProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = React.useState(false)
   const detailsId = React.useId()
 
@@ -53,8 +55,8 @@ export function HistoryEntry({ timestamp, status, duration, message, details, on
             <button
               type="button"
               onClick={onRetry}
-              title="Retry"
-              aria-label="Retry"
+              title={t('retry')}
+              aria-label={t('retry')}
               style={{
                 display: 'flex',
                 alignItems: 'center',

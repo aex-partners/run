@@ -146,7 +146,7 @@ export function FormBuilder({
                     type="text"
                     value={settings.title ?? ''}
                     onChange={(e) => onSettingsChange({ ...settings, title: e.target.value || undefined })}
-                    placeholder="Optional title"
+                    placeholder={t('database.forms.builder.formTitle')}
                     style={inputStyle}
                   />
                 </div>
@@ -158,7 +158,7 @@ export function FormBuilder({
                     type="text"
                     value={settings.description ?? ''}
                     onChange={(e) => onSettingsChange({ ...settings, description: e.target.value || undefined })}
-                    placeholder="Optional description"
+                    placeholder={t('database.forms.builder.formDescription')}
                     style={inputStyle}
                   />
                 </div>

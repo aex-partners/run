@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import type { GridColumn, FilterCondition } from '../types'
 
@@ -22,6 +23,7 @@ const operators: { value: FilterOperator; label: string }[] = [
 ]
 
 export function FilterBuilder({ conditions, columns, onAdd, onRemove, onClear }: FilterBuilderProps) {
+  const { t } = useTranslation()
   const [newColumnId, setNewColumnId] = useState(columns[0]?.id ?? '')
   const [newOperator, setNewOperator] = useState<FilterOperator>('contains')
   const [newValue, setNewValue] = useState('')
@@ -105,7 +107,7 @@ export function FilterBuilder({ conditions, columns, onAdd, onRemove, onClear }:
             value={newValue}
             onChange={e => setNewValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
-            placeholder="value"
+            placeholder={t('database.filterOptions.value')}
             style={{
               ...selectStyle,
               flex: 1,

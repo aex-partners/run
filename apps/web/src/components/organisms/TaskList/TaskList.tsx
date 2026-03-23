@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { TaskCard, type TaskStatus } from '../../molecules/TaskCard/TaskCard'
@@ -105,6 +106,7 @@ function TaskGroup({
 }
 
 export function TaskList({ tasks, filter: filterProp, onFilterChange, onCancel, onRetry, onViewLogs }: TaskListProps) {
+  const { t } = useTranslation()
   const [internalFilter, setInternalFilter] = useState<FilterOption>(filterProp ?? 'all')
 
   const activeFilter = filterProp !== undefined ? filterProp : internalFilter
@@ -172,11 +174,11 @@ export function TaskList({ tasks, filter: filterProp, onFilterChange, onCancel, 
             </div>
           ) : (
             <>
-              <TaskGroup title="Running" tasks={running} color="var(--accent)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
-              <TaskGroup title="Pending" tasks={pending} color="var(--warning)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
-              <TaskGroup title="Failed" tasks={failed} color="var(--danger)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
-              <TaskGroup title="Cancelled" tasks={cancelled} color="var(--text-muted)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
-              <TaskGroup title="Completed Today" tasks={completed} color="var(--success)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
+              <TaskGroup title={t('tasks.running')} tasks={running} color="var(--accent)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
+              <TaskGroup title={t('tasks.pending')} tasks={pending} color="var(--warning)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
+              <TaskGroup title={t('tasks.failed')} tasks={failed} color="var(--danger)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
+              <TaskGroup title={t('tasks.cancelled')} tasks={cancelled} color="var(--text-muted)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
+              <TaskGroup title={t('tasks.completedToday')} tasks={completed} color="var(--success)" onCancel={onCancel} onRetry={onRetry} onViewLogs={onViewLogs} />
             </>
           )}
         </ScrollArea.Viewport>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Input } from '../../atoms/Input/Input'
 import { Textarea } from '../../atoms/Textarea/Textarea'
 import { Button } from '../../atoms/Button/Button'
@@ -38,6 +39,7 @@ export function AgentForm({
   onCancel,
   loading = false,
 }: AgentFormProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<AgentFormData>({
     name: initialData?.name ?? '',
     description: initialData?.description ?? '',
@@ -57,68 +59,68 @@ export function AgentForm({
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <label style={labelStyle}>Name</label>
+        <label style={labelStyle}>{t('agents.form.name')}</label>
         <Input
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          placeholder="e.g. Sales Agent"
+          placeholder={t('agents.form.namePlaceholder')}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>Description</label>
+        <label style={labelStyle}>{t('agents.form.description')}</label>
         <Input
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          placeholder="What does this agent do?"
+          placeholder={t('agents.form.descriptionPlaceholder')}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>System Prompt</label>
+        <label style={labelStyle}>{t('agents.form.systemPrompt')}</label>
         <Textarea
           value={form.systemPrompt}
           onChange={(e) => setForm((f) => ({ ...f, systemPrompt: e.target.value }))}
-          placeholder="You are an AI assistant that..."
+          placeholder={t('agents.form.systemPromptPlaceholder')}
           rows={5}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>Model ID</label>
+        <label style={labelStyle}>{t('agents.form.modelId')}</label>
         <Input
           value={form.modelId}
           onChange={(e) => setForm((f) => ({ ...f, modelId: e.target.value }))}
-          placeholder="e.g. gpt-4o (leave empty for default)"
+          placeholder={t('agents.form.modelIdPlaceholder')}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>Skills</label>
+        <label style={labelStyle}>{t('agents.form.skills')}</label>
         <MultiSelect
           options={skillOptions}
           selected={form.skillIds}
           onChange={(skillIds) => setForm((f) => ({ ...f, skillIds }))}
-          placeholder="Select skills..."
+          placeholder={t('agents.form.skillsPlaceholder')}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>Tools</label>
+        <label style={labelStyle}>{t('agents.form.tools')}</label>
         <MultiSelect
           options={toolOptions}
           selected={form.toolIds}
           onChange={(toolIds) => setForm((f) => ({ ...f, toolIds }))}
-          placeholder="Select tools..."
+          placeholder={t('agents.form.toolsPlaceholder')}
         />
       </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
         {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+          <Button type="button" variant="secondary" onClick={onCancel}>{t('cancel')}</Button>
         )}
         <Button type="submit" variant="primary" loading={loading}>
-          {isEdit ? 'Save Changes' : 'Create Agent'}
+          {isEdit ? t('agents.form.saveChanges') : t('agents.form.createAgent')}
         </Button>
       </div>
     </form>

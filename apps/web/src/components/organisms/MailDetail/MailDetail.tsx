@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { Avatar } from '../../atoms/Avatar/Avatar'
 import { Button } from '../../atoms/Button/Button'
+import { useTranslation } from 'react-i18next'
 
 export interface MailAttachment {
   name: string
@@ -166,6 +167,8 @@ export function MailDetail({
   onStar,
   onApplyAiDraft,
 }: MailDetailProps) {
+  const { t } = useTranslation()
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Toolbar */}
@@ -179,16 +182,16 @@ export function MailDetail({
         flexShrink: 0,
       }}>
         {onBack && (
-          <button onClick={onBack} title="Back to list" style={iconBtnStyle}>
+          <button onClick={onBack} title={t('mail.backToList')} style={iconBtnStyle}>
             <ArrowLeft size={18} />
           </button>
         )}
-        <button onClick={onArchive} title="Archive" style={iconBtnStyle}><Archive size={16} /></button>
-        <button onClick={onDelete} title="Delete" style={iconBtnStyle}><Trash2 size={16} /></button>
-        <button title="Mark as unread" style={iconBtnStyle}><MailOpen size={16} /></button>
-        <button title="Snooze" style={iconBtnStyle}><Clock size={16} /></button>
-        <button title="Label" style={iconBtnStyle}><Tag size={16} /></button>
-        <button title="More" style={iconBtnStyle}><MoreHorizontal size={16} /></button>
+        <button onClick={onArchive} title={t('mail.archive')} style={iconBtnStyle}><Archive size={16} /></button>
+        <button onClick={onDelete} title={t('delete')} style={iconBtnStyle}><Trash2 size={16} /></button>
+        <button title={t('mail.markUnread')} style={iconBtnStyle}><MailOpen size={16} /></button>
+        <button title={t('mail.snooze')} style={iconBtnStyle}><Clock size={16} /></button>
+        <button title={t('mail.label')} style={iconBtnStyle}><Tag size={16} /></button>
+        <button title={t('more')} style={iconBtnStyle}><MoreHorizontal size={16} /></button>
         <div style={{ flex: 1 }} />
         {emailPosition && (
           <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 4 }}>{emailPosition}</span>
@@ -250,7 +253,7 @@ export function MailDetail({
         }}>
           <Sparkles size={14} color="var(--accent)" style={{ flexShrink: 0, marginTop: 2 }} />
           <div>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', display: 'block', marginBottom: 2 }}>AI Summary</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', display: 'block', marginBottom: 2 }}>{t('mail.aiSummary')}</span>
             <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>{aiSummary}</span>
           </div>
         </div>
@@ -281,10 +284,10 @@ export function MailDetail({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <Sparkles size={12} color="var(--accent)" />
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>AI Suggested Reply</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>{t('mail.aiSuggestedReply')}</span>
           </div>
           <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5, margin: '0 0 8px' }}>{aiDraft}</p>
-          <Button variant="primary" size="sm" onClick={onApplyAiDraft}>Use this reply</Button>
+          <Button variant="primary" size="sm" onClick={onApplyAiDraft}>{t('mail.useThisReply')}</Button>
         </div>
       )}
 
@@ -298,9 +301,9 @@ export function MailDetail({
         gap: 6,
         flexShrink: 0,
       }}>
-        <Button variant="secondary" size="sm" leftIcon={<Reply size={13} />} onClick={onReply}>Reply</Button>
-        <Button variant="secondary" size="sm" leftIcon={<ReplyAll size={13} />} onClick={onReplyAll}>Reply All</Button>
-        <Button variant="secondary" size="sm" leftIcon={<Forward size={13} />} onClick={onForward}>Forward</Button>
+        <Button variant="secondary" size="sm" leftIcon={<Reply size={13} />} onClick={onReply}>{t('mail.reply')}</Button>
+        <Button variant="secondary" size="sm" leftIcon={<ReplyAll size={13} />} onClick={onReplyAll}>{t('mail.replyAll')}</Button>
+        <Button variant="secondary" size="sm" leftIcon={<Forward size={13} />} onClick={onForward}>{t('mail.forward')}</Button>
       </div>
     </div>
   )

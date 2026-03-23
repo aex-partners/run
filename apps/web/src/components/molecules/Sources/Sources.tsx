@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import * as Collapsible from '@radix-ui/react-collapsible'
 import { Database, ExternalLink, ChevronRight } from 'lucide-react'
 import { Badge } from '../../atoms/Badge/Badge'
@@ -16,6 +17,7 @@ export interface SourcesProps {
 }
 
 export function Sources({ sources, defaultOpen = false }: SourcesProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = React.useState(defaultOpen)
 
   return (
@@ -37,7 +39,7 @@ export function Sources({ sources, defaultOpen = false }: SourcesProps) {
             borderRadius: 6,
           }}
         >
-          <span>Sources</span>
+          <span>{t('sources.title')}</span>
           <Badge variant="neutral" size="sm">{sources.length}</Badge>
           <ChevronRight
             size={12}

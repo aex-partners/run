@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, Key, Globe, User, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
@@ -35,6 +36,7 @@ export function PluginConnectDialog({
   onDisconnect,
   saving = false,
 }: PluginConnectDialogProps) {
+  const { t } = useTranslation()
   // Form state
   const [apiKey, setApiKey] = useState('')
   const [username, setUsername] = useState('')
@@ -136,11 +138,11 @@ export function PluginConnectDialog({
                 </div>
               )}
               <Dialog.Title style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
-                Connect {pluginDisplayName}
+                {t('pluginConnect.connect')} {pluginDisplayName}
               </Dialog.Title>
             </div>
             <Dialog.Close asChild>
-              <button aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex' }}>
+              <button aria-label={t('close')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex' }}>
                 <X size={16} />
               </button>
             </Dialog.Close>
@@ -150,16 +152,16 @@ export function PluginConnectDialog({
           {connected && (
             <div style={{ padding: 16, background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle2 size={18} color="#16a34a" />
-              <span style={{ fontSize: 13, color: '#15803d', fontWeight: 500 }}>Connected</span>
+              <span style={{ fontSize: 13, color: '#15803d', fontWeight: 500 }}>{t('pluginConnect.connected')}</span>
               <div style={{ flex: 1 }} />
-              <Button variant="danger" size="sm" onClick={onDisconnect}>Disconnect</Button>
+              <Button variant="danger" size="sm" onClick={onDisconnect}>{t('pluginConnect.disconnect')}</Button>
             </div>
           )}
 
           {/* No auth needed */}
           {authType === 'none' && !connected && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-              This plugin does not require authentication.
+              {t('pluginConnect.noAuthRequired')}
             </div>
           )}
 
@@ -168,13 +170,13 @@ export function PluginConnectDialog({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
                 <Key size={14} />
-                <span>API Key Authentication</span>
+                <span>{t('pluginConnect.apiKeyAuth')}</span>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>API Key</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{t('pluginConnect.apiKey')}</label>
                 <Input
                   type="password"
-                  placeholder="Enter your API key"
+                  placeholder={t('pluginConnect.apiKeyPlaceholder')}
                   value={apiKey}
                   onChange={(e) => { setApiKey(e.target.value); setError('') }}
                 />
@@ -190,18 +192,18 @@ export function PluginConnectDialog({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
                 <User size={14} />
-                <span>Basic Authentication</span>
+                <span>{t('pluginConnect.basicAuth')}</span>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Username</label>
-                <Input placeholder="Username" value={username} onChange={(e) => { setUsername(e.target.value); setError('') }} />
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{t('pluginConnect.username')}</label>
+                <Input placeholder={t('pluginConnect.usernamePlaceholder')} value={username} onChange={(e) => { setUsername(e.target.value); setError('') }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Password</label>
-                <Input type="password" placeholder="Password" value={password} onChange={(e) => { setPassword(e.target.value); setError('') }} />
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{t('pluginConnect.password')}</label>
+                <Input type="password" placeholder={t('pluginConnect.passwordPlaceholder')} value={password} onChange={(e) => { setPassword(e.target.value); setError('') }} />
               </div>
               <Button variant="primary" onClick={handleSaveBasicAuth} loading={saving}>
-                Connect
+                {t('pluginConnect.connect')}
               </Button>
             </div>
           )}
@@ -211,18 +213,18 @@ export function PluginConnectDialog({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
                 <Globe size={14} />
-                <span>OAuth2 Authentication</span>
+                <span>{t('pluginConnect.oauth2Auth')}</span>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Client ID</label>
-                <Input placeholder="Your app's Client ID" value={oauthClientId} onChange={(e) => { setOauthClientId(e.target.value); setError('') }} />
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{t('pluginConnect.clientId')}</label>
+                <Input placeholder={t('pluginConnect.clientIdPlaceholder')} value={oauthClientId} onChange={(e) => { setOauthClientId(e.target.value); setError('') }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Client Secret</label>
-                <Input type="password" placeholder="Your app's Client Secret" value={oauthClientSecret} onChange={(e) => { setOauthClientSecret(e.target.value); setError('') }} />
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{t('pluginConnect.clientSecret')}</label>
+                <Input type="password" placeholder={t('pluginConnect.clientSecretPlaceholder')} value={oauthClientSecret} onChange={(e) => { setOauthClientSecret(e.target.value); setError('') }} />
               </div>
               <Button variant="primary" onClick={handleOAuth2Connect} loading={connecting}>
-                {connecting ? 'Connecting...' : 'Connect with OAuth2'}
+                {connecting ? t('pluginConnect.connecting') : t('pluginConnect.connectOAuth2')}
               </Button>
             </div>
           )}
@@ -232,14 +234,14 @@ export function PluginConnectDialog({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
                 <Key size={14} />
-                <span>Custom Authentication</span>
+                <span>{t('pluginConnect.customAuth')}</span>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>API Key / Token</label>
-                <Input type="password" placeholder="Enter your credentials" value={apiKey} onChange={(e) => { setApiKey(e.target.value); setError('') }} />
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{t('pluginConnect.apiKeyToken')}</label>
+                <Input type="password" placeholder={t('pluginConnect.credentialsPlaceholder')} value={apiKey} onChange={(e) => { setApiKey(e.target.value); setError('') }} />
               </div>
               <Button variant="primary" onClick={handleSaveSecretText} loading={saving}>
-                Connect
+                {t('pluginConnect.connect')}
               </Button>
             </div>
           )}

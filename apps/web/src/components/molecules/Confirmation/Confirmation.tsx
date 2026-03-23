@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle, XCircle, Clock } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
 import { Badge } from '../../atoms/Badge/Badge'
@@ -29,6 +30,7 @@ export function Confirmation({
   approveLabel = 'Approve',
   rejectLabel = 'Reject',
 }: ConfirmationProps) {
+  const { t } = useTranslation()
   const stableApprove = useCallback(() => {
     if (onApprove) onApprove()
   }, [onApprove])
@@ -75,8 +77,8 @@ export function Confirmation({
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', lineHeight: 1.5 }}>
               {title}
             </span>
-            {state === 'accepted' && <Badge variant="success" size="sm">Approved</Badge>}
-            {state === 'rejected' && <Badge variant="danger" size="sm">Rejected</Badge>}
+            {state === 'accepted' && <Badge variant="success" size="sm">{t('confirmation.approved')}</Badge>}
+            {state === 'rejected' && <Badge variant="danger" size="sm">{t('confirmation.rejected')}</Badge>}
             {state === 'pending' && <Badge variant="neutral" size="sm">Awaiting...</Badge>}
           </div>
         </div>

@@ -87,7 +87,7 @@ export function ForwardModal({ open, onOpenChange, conversations, onConfirm }: F
                   borderRadius: 4,
                   display: 'flex',
                 }}
-                aria-label="Close"
+                aria-label={t('close')}
               >
                 <X size={18} />
               </button>

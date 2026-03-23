@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useNodesState,
   useEdgesState,
@@ -46,6 +47,7 @@ export function WorkflowsScreen({
   onDuplicateWorkflow,
   onGraphChange,
 }: WorkflowsScreenProps) {
+  const { t } = useTranslation()
   const [workflows, setWorkflows] = useState<Workflow[]>(workflowsProp)
   const [activeWorkflowId, setActiveWorkflowId] = useState<string | undefined>(
     controlledId ?? workflowsProp[0]?.id
@@ -236,7 +238,7 @@ export function WorkflowsScreen({
                 fontFamily: 'inherit',
               }}
             >
-              <Clock size={13} /> History
+              <Clock size={13} /> {t('workflows.history')}
             </button>
 
             <button
@@ -256,7 +258,7 @@ export function WorkflowsScreen({
                 fontFamily: 'inherit',
               }}
             >
-              {selectedWf.status === 'active' ? <><Pause size={12} /> Pause</> : <><Play size={12} /> Activate</>}
+              {selectedWf.status === 'active' ? <><Pause size={12} /> {t('pause')}</> : <><Play size={12} /> {t('activate')}</>}
             </button>
 
             {/* More options */}
@@ -272,7 +274,7 @@ export function WorkflowsScreen({
                   borderRadius: 4,
                   display: 'flex',
                 }}
-                aria-label="Workflow options"
+                aria-label={t('workflows.workflowOptions')}
               >
                 <MoreHorizontal size={16} />
               </button>
@@ -363,7 +365,7 @@ export function WorkflowsScreen({
                   flexShrink: 0,
                 }}
               >
-                <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>History</span>
+                <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{t('workflows.history')}</span>
               </div>
               <ScrollArea.Root style={{ flex: 1, overflow: 'hidden' }}>
                 <ScrollArea.Viewport style={{ height: '100%' }}>
@@ -391,7 +393,7 @@ export function WorkflowsScreen({
           }}
         >
           <AIChatBar
-            placeholder="Ask the AI or describe a new workflow..."
+            placeholder={t('ai.workflowPlaceholder')}
             value={aiInput}
             onChange={(e) => setAiInput(e.target.value)}
             onSend={handleAISend}

@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Filter, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react'
 import type { GridColumn, SortConfig as SortConfigType, FilterCondition } from '../types'
 import { SortConfigPanel } from './SortConfig'
@@ -79,6 +80,7 @@ export function GridToolbar({
   onFilterConditionsChange,
   leftSlot,
 }: GridToolbarProps) {
+  const { t } = useTranslation()
   const hasActiveFilters = filterText.length > 0 || filterConditions.length > 0
 
   return (
@@ -117,7 +119,7 @@ export function GridToolbar({
         {/* Tools: Filter, Sort, Group, Columns */}
         <button
           onClick={onFilterToggle}
-          aria-label="Filter"
+          aria-label={t('database.filter')}
           aria-pressed={filterActive}
           style={{
             ...toolbarButtonStyle,
@@ -262,7 +264,7 @@ export function GridToolbar({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               autoFocus
-              placeholder="Search all columns..."
+              placeholder={t('database.searchAllColumns')}
               value={filterText}
               onChange={(e) => onFilterTextChange(e.target.value)}
               aria-label="Search or filter"

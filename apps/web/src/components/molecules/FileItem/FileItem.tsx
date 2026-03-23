@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   File, FileText, FileSpreadsheet, Image, Film, Music, Archive,
   FileCode, Presentation, Star, MoreVertical, Download, FolderOpen,
@@ -75,6 +76,7 @@ export function FileItem(props: FileItemProps) {
     onClick, onDoubleClick, onStar, onSelect, onContextMenu,
     onDownload, onShare, onDelete,
   } = props
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -242,14 +244,14 @@ export function FileItem(props: FileItemProps) {
       <div style={{ display: 'flex', gap: 2, flexShrink: 0, opacity: hovered || menuOpen ? 1 : 0, transition: 'opacity 0.1s', position: 'relative' }}>
         <button
           onClick={(e) => { e.stopPropagation(); onDownload?.(id) }}
-          title="Download"
+          title={t('download')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-muted)' }}
         >
           <Download size={14} />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
-          title="More"
+          title={t('more')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-muted)' }}
         >
           <MoreVertical size={14} />

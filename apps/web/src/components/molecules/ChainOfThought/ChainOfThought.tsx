@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import * as Collapsible from '@radix-ui/react-collapsible'
 import { CheckCircle2, Loader2, Circle, ChevronRight } from 'lucide-react'
 
@@ -41,6 +42,7 @@ function StepIcon({ status }: { status: ChainOfThoughtStep['status'] }) {
 }
 
 export function ChainOfThought({ steps, defaultOpen = false }: ChainOfThoughtProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = React.useState(defaultOpen)
   const completeCount = steps.filter((s) => s.status === 'complete').length
 
@@ -63,7 +65,7 @@ export function ChainOfThought({ steps, defaultOpen = false }: ChainOfThoughtPro
             borderRadius: 6,
           }}
         >
-          <span>Reasoning Steps</span>
+          <span>{t('chainOfThought.title')}</span>
           <span
             style={{
               padding: '1px 6px',

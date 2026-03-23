@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Inbox, Send, FileText, AlertTriangle, Trash2, Star, Tag,
   Search, PenSquare, Plus, Menu, Sparkles,
@@ -87,6 +88,7 @@ export function MailScreen({
   aiDrafting = false,
   loading = false,
 }: MailScreenProps) {
+  const { t } = useTranslation()
   const [internalFolder, setInternalFolder] = useState<MailFolder>('inbox')
   const [internalEmailId, setInternalEmailId] = useState<string | undefined>()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -251,7 +253,7 @@ export function MailScreen({
           <div style={{ padding: '4px 8px', display: 'flex', justifyContent: 'center' }}>
             <button
               onClick={handleCompose}
-              aria-label="Compose"
+              aria-label={t('mail.compose')}
               style={{
                 width: 40,
                 height: 40,
@@ -361,10 +363,10 @@ export function MailScreen({
           <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               <Sparkles size={12} color="var(--accent)" />
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>AI Assistant</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>{t('aiAssistant')}</span>
             </div>
             <input
-              placeholder="Ask AI about emails..."
+              placeholder={t('mail.aiPlaceholder')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                   onAiAction?.(e.currentTarget.value)
@@ -404,7 +406,7 @@ export function MailScreen({
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search emails..."
+            placeholder={t('mail.searchPlaceholder')}
             style={{
               flex: 1,
               border: 'none',

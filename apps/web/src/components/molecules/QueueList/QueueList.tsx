@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import * as Collapsible from '@radix-ui/react-collapsible'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { ChevronRight } from 'lucide-react'
@@ -21,6 +22,7 @@ export interface QueueListProps {
 }
 
 export function QueueList({ sections, defaultOpen = false }: QueueListProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = React.useState(defaultOpen)
   const totalItems = sections.reduce((acc, s) => acc + s.items.length, 0)
 
@@ -43,7 +45,7 @@ export function QueueList({ sections, defaultOpen = false }: QueueListProps) {
             borderRadius: 6,
           }}
         >
-          <span>Queue</span>
+          <span>{t('queue.title')}</span>
           <span
             style={{
               padding: '1px 6px',

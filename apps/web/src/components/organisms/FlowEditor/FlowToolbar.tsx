@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Save, Upload, Play, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useFlowBuilderStore } from "../../../stores/flow-builder-store";
 
 export interface FlowToolbarProps {
@@ -12,6 +13,7 @@ export interface FlowToolbarProps {
 }
 
 export function FlowToolbar({ onBack, onSave, onPublish, onExecute, publishing, executing }: FlowToolbarProps) {
+  const { t } = useTranslation();
   const flowVersion = useFlowBuilderStore((s) => s.flowVersion);
   const saving = useFlowBuilderStore((s) => s.saving);
   const dirty = useFlowBuilderStore((s) => s.dirty);
@@ -70,7 +72,7 @@ export function FlowToolbar({ onBack, onSave, onPublish, onExecute, publishing, 
       <button
         onClick={onBack}
         style={{ ...buttonBase, padding: "6px 8px", border: "none", background: "none", color: "var(--text-muted)" }}
-        aria-label="Back to flows"
+        aria-label={t('workflows.backToFlows')}
       >
         <ArrowLeft size={16} />
       </button>
@@ -113,7 +115,7 @@ export function FlowToolbar({ onBack, onSave, onPublish, onExecute, publishing, 
             borderRadius: 4,
             fontFamily: "inherit",
           }}
-          title="Click to rename"
+          title={t('workflows.clickToRename')}
         >
           {displayName}
         </button>
@@ -137,7 +139,7 @@ export function FlowToolbar({ onBack, onSave, onPublish, onExecute, publishing, 
       </span>
 
       {dirty && (
-        <span style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }}>Unsaved changes</span>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }}>{t('workflows.unsavedChanges')}</span>
       )}
 
       <div style={{ flex: 1 }} />

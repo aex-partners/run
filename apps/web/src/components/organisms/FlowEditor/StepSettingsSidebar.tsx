@@ -9,6 +9,7 @@ import {
   GitBranch,
   Puzzle,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   useFlowBuilderStore,
   collectSteps,
@@ -51,6 +52,7 @@ const sectionStyle: React.CSSProperties = {
 // ---- Trigger Settings Panel ----
 
 function TriggerSettings({ trigger }: { trigger: FlowTrigger }) {
+  const { t } = useTranslation();
   const updateTriggerSettings = useFlowBuilderStore((s) => s.updateTriggerSettings);
   const updateTriggerType = useFlowBuilderStore((s) => s.updateTriggerType);
   const updateStepDisplayName = useFlowBuilderStore((s) => s.updateStepDisplayName);
@@ -58,7 +60,7 @@ function TriggerSettings({ trigger }: { trigger: FlowTrigger }) {
   return (
     <div>
       <div style={sectionStyle}>
-        <label style={labelStyle}>Display Name</label>
+        <label style={labelStyle}>{t('workflows.displayName')}</label>
         <input
           style={inputStyle}
           value={trigger.displayName}
@@ -66,7 +68,7 @@ function TriggerSettings({ trigger }: { trigger: FlowTrigger }) {
         />
       </div>
       <div style={sectionStyle}>
-        <label style={labelStyle}>Trigger Type</label>
+        <label style={labelStyle}>{t('workflows.triggerType')}</label>
         <select
           style={{ ...inputStyle, cursor: "pointer" }}
           value={trigger.type}
@@ -79,19 +81,19 @@ function TriggerSettings({ trigger }: { trigger: FlowTrigger }) {
       {trigger.type === "PIECE" && (
         <>
           <div style={sectionStyle}>
-            <label style={labelStyle}>Plugin Name</label>
+            <label style={labelStyle}>{t('workflows.pluginName')}</label>
             <input
               style={inputStyle}
-              placeholder="e.g. @aex/piece-schedule"
+              placeholder={t('workflows.pluginNamePlaceholder')}
               value={(trigger.settings.pieceName as string) ?? ""}
               onChange={(e) => updateTriggerSettings({ pieceName: e.target.value })}
             />
           </div>
           <div style={sectionStyle}>
-            <label style={labelStyle}>Trigger Name</label>
+            <label style={labelStyle}>{t('workflows.pluginTrigger')}</label>
             <input
               style={inputStyle}
-              placeholder="e.g. every_hour"
+              placeholder={t('workflows.triggerNamePlaceholder')}
               value={(trigger.settings.triggerName as string) ?? ""}
               onChange={(e) => updateTriggerSettings({ triggerName: e.target.value })}
             />
@@ -105,30 +107,31 @@ function TriggerSettings({ trigger }: { trigger: FlowTrigger }) {
 // ---- Piece Action Settings ----
 
 function PieceSettings({ action }: { action: FlowAction }) {
+  const { t } = useTranslation();
   const updateStepSettings = useFlowBuilderStore((s) => s.updateStepSettings);
 
   return (
     <>
       <div style={sectionStyle}>
-        <label style={labelStyle}>Plugin Name</label>
+        <label style={labelStyle}>{t('workflows.pluginName')}</label>
         <input
           style={inputStyle}
-          placeholder="e.g. @aex/piece-http"
+          placeholder={t('workflows.pluginNamePlaceholder')}
           value={(action.settings.pieceName as string) ?? ""}
           onChange={(e) => updateStepSettings(action.name, { pieceName: e.target.value })}
         />
       </div>
       <div style={sectionStyle}>
-        <label style={labelStyle}>Action Name</label>
+        <label style={labelStyle}>{t('workflows.actionName')}</label>
         <input
           style={inputStyle}
-          placeholder="e.g. send_request"
+          placeholder={t('workflows.actionNamePlaceholder')}
           value={(action.settings.actionName as string) ?? ""}
           onChange={(e) => updateStepSettings(action.name, { actionName: e.target.value })}
         />
       </div>
       <div style={sectionStyle}>
-        <label style={labelStyle}>Input (JSON)</label>
+        <label style={labelStyle}>{t('workflows.inputJson')}</label>
         <textarea
           style={{ ...inputStyle, minHeight: 80, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", fontSize: 12 }}
           placeholder='{"url": "https://..."}'
@@ -143,11 +146,12 @@ function PieceSettings({ action }: { action: FlowAction }) {
 // ---- Code Action Settings ----
 
 function CodeSettings({ action }: { action: FlowAction }) {
+  const { t } = useTranslation();
   const updateStepSettings = useFlowBuilderStore((s) => s.updateStepSettings);
 
   return (
     <div style={sectionStyle}>
-      <label style={labelStyle}>Code</label>
+      <label style={labelStyle}>{t('workflows.code')}</label>
       <textarea
         style={{
           ...inputStyle,
@@ -167,11 +171,12 @@ function CodeSettings({ action }: { action: FlowAction }) {
 // ---- Loop Settings ----
 
 function LoopSettings({ action }: { action: FlowAction }) {
+  const { t } = useTranslation();
   const updateStepSettings = useFlowBuilderStore((s) => s.updateStepSettings);
 
   return (
     <div style={sectionStyle}>
-      <label style={labelStyle}>Items Expression</label>
+      <label style={labelStyle}>{t('workflows.itemsExpression')}</label>
       <input
         style={inputStyle}
         placeholder="{{trigger.items}}"
@@ -188,6 +193,7 @@ function LoopSettings({ action }: { action: FlowAction }) {
 // ---- Router Settings ----
 
 function RouterSettings({ action }: { action: FlowAction }) {
+  const { t } = useTranslation();
   const updateStepSettings = useFlowBuilderStore((s) => s.updateStepSettings);
 
   const branches = (action.settings.branches as Array<{ condition: string; name: string }>) ?? [];
@@ -211,7 +217,7 @@ function RouterSettings({ action }: { action: FlowAction }) {
 
   return (
     <div style={sectionStyle}>
-      <label style={labelStyle}>Branches</label>
+      <label style={labelStyle}>{t('workflows.branches')}</label>
       {branches.map((branch, i) => (
         <div key={i} style={{ marginBottom: 8, padding: 8, background: "var(--surface-2, var(--surface))", borderRadius: 6, border: "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
@@ -274,6 +280,7 @@ const ACTION_TYPE_OPTIONS: { value: ActionType; label: string; icon: typeof Code
 ];
 
 function ActionTypeSelector({ action }: { action: FlowAction }) {
+  const { t } = useTranslation();
   const updateStepSettings = useFlowBuilderStore((s) => s.updateStepSettings);
   const flowVersion = useFlowBuilderStore((s) => s.flowVersion);
 
@@ -287,7 +294,7 @@ function ActionTypeSelector({ action }: { action: FlowAction }) {
 
   return (
     <div style={sectionStyle}>
-      <label style={labelStyle}>Step Type</label>
+      <label style={labelStyle}>{t('workflows.stepType')}</label>
       <div style={{ display: "flex", gap: 4 }}>
         {ACTION_TYPE_OPTIONS.map(({ value, label, icon: Icon }) => (
           <button
@@ -335,6 +342,7 @@ function ActionTypeSelector({ action }: { action: FlowAction }) {
 // ---- Main Sidebar Component ----
 
 export function StepSettingsSidebar() {
+  const { t } = useTranslation();
   const selectedStep = useFlowBuilderStore((s) => s.selectedStep);
   const flowVersion = useFlowBuilderStore((s) => s.flowVersion);
   const rightSidebar = useFlowBuilderStore((s) => s.rightSidebar);
@@ -398,7 +406,7 @@ export function StepSettingsSidebar() {
             padding: 2,
             display: "flex",
           }}
-          aria-label="Close settings"
+          aria-label={t('workflows.closeSettings')}
         >
           <X size={16} />
         </button>
@@ -414,7 +422,7 @@ export function StepSettingsSidebar() {
           <>
             {/* Display Name */}
             <div style={sectionStyle}>
-              <label style={labelStyle}>Display Name</label>
+              <label style={labelStyle}>{t('workflows.displayName')}</label>
               <input
                 style={inputStyle}
                 value={action.displayName}
@@ -435,7 +443,7 @@ export function StepSettingsSidebar() {
             <div style={{ ...sectionStyle, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <SkipForward size={14} color="var(--text-muted)" />
-                <span style={{ fontSize: 13, color: "var(--text)" }}>Skip this step</span>
+                <span style={{ fontSize: 13, color: "var(--text)" }}>{t('workflows.skipStep')}</span>
               </div>
               <button
                 onClick={() => updateStepSkip(action.name, !action.skip)}
@@ -449,7 +457,7 @@ export function StepSettingsSidebar() {
                   position: "relative",
                   transition: "background 0.15s",
                 }}
-                aria-label={action.skip ? "Enable step" : "Skip step"}
+                aria-label={action.skip ? t('workflows.enableStep') : t('workflows.skipStep')}
               >
                 <div
                   style={{

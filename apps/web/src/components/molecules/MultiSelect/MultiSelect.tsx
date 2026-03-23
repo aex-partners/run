@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown, X, Search, Check } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 
@@ -24,6 +25,7 @@ export function MultiSelect({
   disabled = false,
   'aria-label': ariaLabel,
 }: MultiSelectProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -172,7 +174,7 @@ export function MultiSelect({
                 ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search..."
+                placeholder={`${t('search')}...`}
                 style={{
                   flex: 1,
                   border: 'none',

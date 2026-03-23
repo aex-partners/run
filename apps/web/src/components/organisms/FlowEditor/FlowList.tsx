@@ -1,4 +1,5 @@
 import { GitBranch, Plus, Trash2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface FlowListItem {
   id: string;
@@ -64,6 +65,7 @@ function RunStatusBadge({ status }: { status: string | null | undefined }) {
 }
 
 export function FlowList({ flows, onSelect, onCreate, onDelete }: FlowListProps) {
+  const { t } = useTranslation();
   if (flows.length === 0) {
     return (
       <div
@@ -134,7 +136,7 @@ export function FlowList({ flows, onSelect, onCreate, onDelete }: FlowListProps)
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <GitBranch size={16} color="var(--accent)" />
-          <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>Flows</span>
+          <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>{t('workflows.flows')}</span>
           <span
             style={{
               fontSize: 11,
@@ -245,7 +247,7 @@ export function FlowList({ flows, onSelect, onCreate, onDelete }: FlowListProps)
                   }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.5"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"; }}
-                  aria-label="Delete flow"
+                  aria-label={t('workflows.deleteFlow')}
                 >
                   <Trash2 size={14} />
                 </button>

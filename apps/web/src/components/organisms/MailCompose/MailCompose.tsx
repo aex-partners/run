@@ -3,6 +3,7 @@ import {
   X, Paperclip, Sparkles, Minimize2, Maximize2,
 } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
+import { useTranslation } from 'react-i18next'
 
 export interface MailComposeProps {
   open: boolean
@@ -31,6 +32,7 @@ export function MailCompose({
   minimized = false,
   onToggleMinimize,
 }: MailComposeProps) {
+  const { t } = useTranslation()
   const [to, setTo] = useState(initialTo)
   const [cc, setCc] = useState('')
   const [subject, setSubject] = useState(initialSubject)
@@ -131,11 +133,11 @@ export function MailCompose({
           {/* Fields */}
           <div style={{ padding: '4px 14px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>To</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>{t('mail.to')}</span>
               <input
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                placeholder="recipient@email.com"
+                placeholder={t('mail.recipientPlaceholder')}
                 style={inputStyle}
               />
               {!showCc && (
@@ -150,22 +152,22 @@ export function MailCompose({
 
             {showCc && (
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>Cc</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>{t('mail.cc')}</span>
                 <input
                   value={cc}
                   onChange={(e) => setCc(e.target.value)}
-                  placeholder="cc@email.com"
+                  placeholder={t('mail.ccPlaceholder')}
                   style={inputStyle}
                 />
               </div>
             )}
 
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>Sub</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', width: 32, flexShrink: 0 }}>{t('mail.subject')}</span>
               <input
                 value={displaySubject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="Subject"
+                placeholder={t('mail.subjectPlaceholder')}
                 style={inputStyle}
               />
             </div>
@@ -175,7 +177,7 @@ export function MailCompose({
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Write your message..."
+            placeholder={t('mail.writePlaceholder')}
             style={{
               flex: 1,
               minHeight: 180,
@@ -205,7 +207,7 @@ export function MailCompose({
               <input
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Describe what you want to write..."
+                placeholder={t('mail.aiDraftPlaceholder')}
                 onKeyDown={(e) => e.key === 'Enter' && handleAiDraft()}
                 style={{
                   flex: 1,
@@ -232,10 +234,10 @@ export function MailCompose({
             gap: 6,
             flexShrink: 0,
           }}>
-            <Button variant="primary" size="sm" onClick={handleSend}>Send</Button>
+            <Button variant="primary" size="sm" onClick={handleSend}>{t('mail.send')}</Button>
             <button
               onClick={() => setShowAiBar(!showAiBar)}
-              title="AI Draft"
+              title={t('mail.aiDraft')}
               style={{
                 background: showAiBar ? 'var(--accent-light)' : 'none',
                 border: showAiBar ? '1px solid var(--accent)' : '1px solid transparent',
@@ -249,7 +251,7 @@ export function MailCompose({
               <Sparkles size={14} />
             </button>
             <button
-              title="Attach file"
+              title={t('mail.attachFile')}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', color: 'var(--text-muted)' }}
             >
               <Paperclip size={14} />
@@ -257,7 +259,7 @@ export function MailCompose({
             <div style={{ flex: 1 }} />
             <button
               onClick={onClose}
-              title="Discard"
+              title={t('mail.discard')}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', color: 'var(--text-muted)' }}
             >
               <X size={14} />

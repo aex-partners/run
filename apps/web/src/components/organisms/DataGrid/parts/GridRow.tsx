@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { MoreHorizontal } from 'lucide-react'
 import type { GridColumn, GridRow as GridRowType } from '../types'
 import { CellRenderer } from '../cells/CellRenderer'
@@ -49,6 +50,7 @@ export function GridRow({
   rowMenuRef,
   getColumnWidth,
 }: GridRowProps) {
+  const { t } = useTranslation()
   return (
     <div
       role="row"
@@ -72,7 +74,7 @@ export function GridRow({
           type="checkbox"
           checked={isSelected}
           onChange={(e) => onSelect(rowId, e.target.checked)}
-          aria-label="Select row"
+          aria-label={t('database.selectRow')}
           style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
         />
       </div>
@@ -131,7 +133,7 @@ export function GridRow({
               e.stopPropagation()
               onRowMenuToggle(rowId)
             }}
-            aria-label="Row actions"
+            aria-label={t('database.rowActions')}
             style={{
               background: 'none',
               border: 'none',

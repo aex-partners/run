@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RefreshCw, CheckCircle2, XCircle, Clock, AlertCircle, X, FileText } from 'lucide-react'
 
 export type TaskStatus = 'running' | 'pending' | 'completed' | 'failed' | 'cancelled'
@@ -66,6 +67,7 @@ const ghostButtonStyle: React.CSSProperties = {
 }
 
 export function TaskCard({ title, description, status, agent, startTime, duration, progress, taskType, toolName, onClick, onCancel, onRetry, onViewLogs }: TaskCardProps) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
   const config = statusConfig[status]
   const agentColor = getAgentColor(agent)
@@ -164,19 +166,19 @@ export function TaskCard({ title, description, status, agent, startTime, duratio
           onClick={(e) => e.stopPropagation()}
         >
           {showLogs && (
-            <button style={ghostButtonStyle} onClick={onViewLogs} aria-label="View logs">
+            <button style={ghostButtonStyle} onClick={onViewLogs} aria-label={t('tasks.viewLogs')}>
               <FileText size={11} />
               Logs
             </button>
           )}
           {showRetry && (
-            <button style={ghostButtonStyle} onClick={onRetry} aria-label="Retry task">
+            <button style={ghostButtonStyle} onClick={onRetry} aria-label={t('tasks.retryTask')}>
               <RefreshCw size={11} />
               Retry
             </button>
           )}
           {showCancel && (
-            <button style={{ ...ghostButtonStyle, borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={onCancel} aria-label="Cancel task">
+            <button style={{ ...ghostButtonStyle, borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={onCancel} aria-label={t('tasks.cancelTask')}>
               <X size={11} />
               Cancel
             </button>

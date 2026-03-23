@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
 import { Avatar } from '../../atoms/Avatar/Avatar'
+import { useTranslation } from 'react-i18next'
 
 export type ShareAccess = 'viewer' | 'editor'
 
@@ -43,6 +44,7 @@ export function FileShareDialog({
   onRemoveUser,
   onChangeAccess,
 }: FileShareDialogProps) {
+  const { t } = useTranslation()
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteAccess, setInviteAccess] = useState<ShareAccess>('viewer')
   const [copied, setCopied] = useState(false)
@@ -121,7 +123,7 @@ export function FileShareDialog({
               <input
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="Enter email address"
+                placeholder={t('files.shareDialog.emailPlaceholder')}
                 onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
                 style={{
                   flex: 1, padding: '8px 10px', borderRadius: 6,
@@ -138,8 +140,8 @@ export function FileShareDialog({
                   color: 'var(--text)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
                 }}
               >
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
+                <option value="viewer">{t('files.shareDialog.viewer')}</option>
+                <option value="editor">{t('files.shareDialog.editor')}</option>
               </select>
               <Button variant="primary" size="sm" onClick={handleInvite}>
                 {inviteFeedback ? 'Invited!' : 'Invite'}
@@ -148,7 +150,7 @@ export function FileShareDialog({
             {inviteFeedback && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                 <Check size={12} color="#059669" />
-                <span style={{ fontSize: 11, color: '#059669' }}>Invitation sent</span>
+                <span style={{ fontSize: 11, color: '#059669' }}>{t('files.invitationSent')}</span>
               </div>
             )}
           </div>
@@ -182,7 +184,7 @@ export function FileShareDialog({
                           fontSize: 11, color: 'var(--text)', fontFamily: 'inherit',
                         }}
                       >
-                        {user.access === 'editor' ? 'Editor' : 'Viewer'}
+                        {user.access === 'editor' ? t('files.shareDialog.editor') : t('files.shareDialog.viewer')}
                         <ChevronDown size={10} />
                       </button>
                       {accessDropdownOpen === user.id && (
@@ -200,7 +202,7 @@ export function FileShareDialog({
                               textAlign: 'left', fontFamily: 'inherit',
                             }}
                           >
-                            Viewer
+                            {t('files.shareDialog.viewer')}
                           </button>
                           <button
                             onClick={() => { onChangeAccess?.(user.id, 'editor'); setAccessDropdownOpen(null) }}
@@ -210,14 +212,14 @@ export function FileShareDialog({
                               textAlign: 'left', fontFamily: 'inherit',
                             }}
                           >
-                            Editor
+                            {t('files.shareDialog.editor')}
                           </button>
                         </div>
                       )}
                     </div>
                     <button
                       onClick={() => onRemoveUser?.(user.id)}
-                      title="Remove"
+                      title={t('remove')}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-muted)' }}
                     >
                       <Trash2 size={13} />
@@ -296,7 +298,7 @@ export function FileShareDialog({
           padding: '12px 20px', borderTop: '1px solid var(--border)',
           display: 'flex', justifyContent: 'flex-end',
         }}>
-          <Button variant="secondary" size="sm" onClick={onClose}>Done</Button>
+          <Button variant="secondary" size="sm" onClick={onClose}>{t('files.shareDialog.done')}</Button>
         </div>
       </div>
     </div>

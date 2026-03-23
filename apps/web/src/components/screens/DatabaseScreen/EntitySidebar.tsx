@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Search, ScrollText, Settings2 } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import type { DatabaseEntity } from './DatabaseScreen'
@@ -41,6 +42,7 @@ export function EntitySidebar({
   onManageEntity,
   onViewLogs,
 }: EntitySidebarProps) {
+  const { t } = useTranslation()
   const [hoveredId, setHoveredId] = React.useState<string | undefined>(undefined)
   const [editingId, setEditingId] = React.useState<string | undefined>(undefined)
   const [editValue, setEditValue] = React.useState('')
@@ -106,7 +108,7 @@ export function EntitySidebar({
           flexShrink: 0,
         }}
       >
-        <span style={{ fontWeight: 600, fontSize: 14 }}>Entities</span>
+        <span style={{ fontWeight: 600, fontSize: 14 }}>{t('database.entities')}</span>
         <button
           onClick={onNewEntity}
           style={{
@@ -137,8 +139,8 @@ export function EntitySidebar({
         >
           <Search size={13} color="var(--text-muted)" />
           <input
-            placeholder="Search entities..."
-            aria-label="Search entities"
+            placeholder={t('database.searchPlaceholder')}
+            aria-label={t('database.searchPlaceholder')}
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
             style={{

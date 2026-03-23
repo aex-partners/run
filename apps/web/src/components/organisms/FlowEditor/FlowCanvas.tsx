@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ReactFlow,
   Background,
@@ -241,6 +242,7 @@ function FlowActionNode({ data }: NodeProps) {
 // ---- End node (just a + button) ----
 
 function FlowEndNode({ data }: NodeProps) {
+  const { t } = useTranslation();
   const addStep = useFlowBuilderStore((s) => s.addStep);
   const d = data as { afterStep: string };
 
@@ -273,7 +275,7 @@ function FlowEndNode({ data }: NodeProps) {
           justifyContent: "center",
           color: "var(--text-muted)",
         }}
-        aria-label="Add step"
+        aria-label={t('workflows.addStep')}
       >
         <Plus size={16} />
       </button>
@@ -284,6 +286,7 @@ function FlowEndNode({ data }: NodeProps) {
 // ---- Custom Edge with Add Button ----
 
 function AddButtonEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data }: EdgeProps) {
+  const { t } = useTranslation();
   const addStep = useFlowBuilderStore((s) => s.addStep);
   const d = data as { afterStep: string } | undefined;
   const [hovered, setHovered] = useState(false);
@@ -338,7 +341,7 @@ function AddButtonEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
             padding: 0,
             transition: "all 0.15s",
           }}
-          aria-label="Add step between"
+          aria-label={t('workflows.addStepBetween')}
         >
           <Plus size={12} />
         </button>

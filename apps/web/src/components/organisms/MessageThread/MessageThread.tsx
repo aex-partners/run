@@ -158,6 +158,7 @@ function injectTypingStyles() {
 }
 
 function TypingIndicator() {
+  const { t } = useTranslation()
   injectTypingStyles()
   return (
     <div
@@ -170,7 +171,7 @@ function TypingIndicator() {
         fontSize: 12,
       }}
     >
-      <span>AI is typing</span>
+      <span>{t('ai.typing')}</span>
       <span style={{ display: 'flex', gap: 3, alignItems: 'center' }} aria-hidden="true">
         {[0, 1, 2].map((i) => (
           <span

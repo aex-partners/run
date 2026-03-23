@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { TaskList, type Task } from '../../organisms/TaskList/TaskList'
 
@@ -31,6 +32,7 @@ export function TasksScreen({
   onRetry,
   onViewLogs,
 }: TasksScreenProps) {
+  const { t } = useTranslation()
   const [activeFilter, setActiveFilter] = useState(initialFilter)
 
   const handleFilterChange = (id: string) => {
@@ -84,7 +86,7 @@ export function TasksScreen({
             flexShrink: 0,
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: 14 }}>Tasks</span>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>{t('tasks.title')}</span>
         </div>
 
         <ScrollArea.Root style={{ flex: 1, overflow: 'hidden' }}>
@@ -160,7 +162,7 @@ export function TasksScreen({
         >
           <div
             style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }}
-            aria-label="Running tasks count"
+            aria-label={t('tasks.runningTasksCount')}
           />
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             {runningCount ?? running.length} running now

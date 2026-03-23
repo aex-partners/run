@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   HardDrive, Star, Clock, Trash2, Share2, Upload, FolderPlus,
   Search, Menu, Sparkles, Mail, MessageSquare, Zap, FileUp,
@@ -89,6 +90,7 @@ export function FilesScreen({
   canDelete,
   loading = false,
 }: FilesScreenProps) {
+  const { t } = useTranslation()
   const [internalCategory, setInternalCategory] = useState<FilesCategory>('all')
   const [internalFileId, setInternalFileId] = useState<string | undefined>()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -313,7 +315,7 @@ export function FilesScreen({
           <div style={{ padding: '4px 8px', display: 'flex', justifyContent: 'center' }}>
             <button
               onClick={onUpload}
-              aria-label="Upload"
+              aria-label={t('files.upload')}
               style={{
                 width: 40, height: 40, borderRadius: 16,
                 background: 'var(--accent)', border: 'none', cursor: 'pointer',
@@ -398,10 +400,10 @@ export function FilesScreen({
           <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               <Sparkles size={12} color="var(--accent)" />
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>AI Assistant</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>{t('aiAssistant')}</span>
             </div>
             <input
-              placeholder="Ask AI about files..."
+              placeholder={t('files.aiPlaceholder')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                   const query = e.currentTarget.value.trim()
@@ -438,7 +440,7 @@ export function FilesScreen({
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search files..."
+            placeholder={t('files.searchPlaceholder')}
             style={{
               flex: 1, border: 'none', background: 'transparent',
               color: 'var(--text)', fontSize: 14, fontFamily: 'inherit', outline: 'none',

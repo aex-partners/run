@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
 import type { FileSource } from '../../molecules/FileItem/FileItem'
+import { useTranslation } from 'react-i18next'
 
 export interface FilePreviewProps {
   id: string
@@ -75,6 +76,7 @@ export function FilePreview({
   onOpenSource,
   onToggleAiIndex,
 }: FilePreviewProps) {
+  const { t } = useTranslation()
   const iconBtnStyle: React.CSSProperties = {
     background: 'none',
     border: 'none',
@@ -99,20 +101,20 @@ export function FilePreview({
         gap: 2,
         flexShrink: 0,
       }}>
-        <button onClick={onClose} title="Back" style={iconBtnStyle}>
+        <button onClick={onClose} title={t('back')} style={iconBtnStyle}>
           <ArrowLeft size={18} />
         </button>
         {!isFolder && (
-          <button onClick={onDownload} title="Download" style={iconBtnStyle}><Download size={16} /></button>
+          <button onClick={onDownload} title={t('download')} style={iconBtnStyle}><Download size={16} /></button>
         )}
-        <button onClick={onShare} title="Share" style={iconBtnStyle}><Share2 size={16} /></button>
-        <button onClick={onDelete} title="Delete" style={iconBtnStyle}><Trash2 size={16} /></button>
+        <button onClick={onShare} title={t('share')} style={iconBtnStyle}><Share2 size={16} /></button>
+        <button onClick={onDelete} title={t('delete')} style={iconBtnStyle}><Trash2 size={16} /></button>
         <button onClick={onStar} title={starred ? 'Unstar' : 'Star'} style={iconBtnStyle}>
           <Star size={16} fill={starred ? '#f59e0b' : 'none'} color={starred ? '#f59e0b' : 'var(--text-muted)'} />
         </button>
         <div style={{ flex: 1 }} />
         {!isFolder && (
-          <button onClick={() => window.open(`/api/files/${id}/download`, '_blank')} title="Open in new tab" style={iconBtnStyle}>
+          <button onClick={() => window.open(`/api/files/${id}/download`, '_blank')} title={t('files.openInNewTab')} style={iconBtnStyle}>
             <ExternalLink size={16} />
           </button>
         )}
@@ -230,7 +232,7 @@ export function FilePreview({
           <DetailRow label="Modified" value={modifiedAt} />
           {modifiedBy && <DetailRow label="By" value={modifiedBy} />}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            <span style={{ color: 'var(--text-muted)', width: 70, flexShrink: 0 }}>Source</span>
+            <span style={{ color: 'var(--text-muted)', width: 70, flexShrink: 0 }}>{t('files.source')}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text)' }}>
               {SOURCE_ICONS[source]} {SOURCE_LABELS[source]}
             </span>

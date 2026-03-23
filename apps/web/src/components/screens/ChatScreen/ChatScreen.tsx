@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bot, Users, Search, Sparkles, MessageSquarePlus, Database, ListTodo } from 'lucide-react'
 import { Avatar } from '../../atoms/Avatar/Avatar'
 import { ConversationList, type Conversation } from '../../organisms/ConversationList/ConversationList'
@@ -74,6 +75,7 @@ export function ChatScreen({
   activeAgent,
   onSetAgent,
 }: ChatScreenProps) {
+  const { t } = useTranslation()
   const [conversations, setConversations] = useState<Conversation[]>(conversationsProp)
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(
     controlledId ?? conversationsProp[0]?.id
@@ -219,7 +221,7 @@ export function ChatScreen({
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
                   style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, borderRadius: 4, display: 'flex' }}
-                  aria-label="Search in conversation"
+                  aria-label={t('chat.searchConversation')}
                 >
                   <Search size={18} />
                 </button>
@@ -236,7 +238,7 @@ export function ChatScreen({
                     borderRadius: 4,
                     display: 'flex',
                   }}
-                  aria-label="Toggle tasks"
+                  aria-label={t('chat.toggleTasks')}
                 >
                   <ListTodo size={18} />
                 </button>
@@ -255,7 +257,7 @@ export function ChatScreen({
                         borderRadius: 4,
                         display: 'flex',
                       }}
-                      aria-label="Select agent"
+                      aria-label={t('agents.selectAgent')}
                     >
                       <Bot size={18} />
                     </button>
@@ -328,7 +330,7 @@ export function ChatScreen({
               </div>
             </>
           ) : (
-            <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>Select a conversation</span>
+            <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{t('chat.selectConversation')}</span>
           )}
         </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Search } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { WorkflowItem } from '../../molecules/WorkflowItem/WorkflowItem'
@@ -20,6 +21,7 @@ export interface WorkflowSidebarProps {
 }
 
 export function WorkflowSidebar({ workflows: workflowsProp, activeId, onSelect, onNew, onToggleStatus, onDelete }: WorkflowSidebarProps) {
+  const { t } = useTranslation()
   const [workflows, setWorkflows] = useState<Workflow[]>(workflowsProp)
   const [searchText, setSearchText] = useState('')
 
@@ -60,10 +62,10 @@ export function WorkflowSidebar({ workflows: workflowsProp, activeId, onSelect, 
           flexShrink: 0,
         }}
       >
-        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>Workflows</span>
+        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{t('workflows.title')}</span>
         <button
           onClick={onNew}
-          aria-label="Create new workflow"
+          aria-label={t('workflows.createNewWorkflow')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -92,10 +94,10 @@ export function WorkflowSidebar({ workflows: workflowsProp, activeId, onSelect, 
           />
           <input
             type="text"
-            placeholder="Search workflows..."
+            placeholder={t('workflows.searchWorkflows')}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            aria-label="Search workflows"
+            aria-label={t('workflows.searchWorkflows')}
             style={{
               width: '100%',
               padding: '5px 8px 5px 26px',
@@ -112,7 +114,7 @@ export function WorkflowSidebar({ workflows: workflowsProp, activeId, onSelect, 
         </div>
       </div>
 
-      <ScrollArea.Root role="region" aria-label="Workflows list" style={{ flex: 1, overflow: 'hidden' }}>
+      <ScrollArea.Root role="region" aria-label={t('workflows.workflowsList')} style={{ flex: 1, overflow: 'hidden' }}>
         <ScrollArea.Viewport style={{ height: '100%', padding: '8px 0' }}>
           {filtered.length === 0 ? (
             <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>

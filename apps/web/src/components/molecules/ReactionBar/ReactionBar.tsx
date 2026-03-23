@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 
 export interface ReactionBarProps {
@@ -13,6 +14,7 @@ const extraEmojis = [
 ]
 
 export function ReactionBar({ onReact }: ReactionBarProps) {
+  const { t } = useTranslation()
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
 
@@ -88,7 +90,7 @@ export function ReactionBar({ onReact }: ReactionBarProps) {
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)' }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
-          aria-label="More reactions"
+          aria-label={t('more')}
         >
           <Plus size={16} />
         </button>

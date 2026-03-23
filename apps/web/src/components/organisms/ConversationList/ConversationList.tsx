@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Search, Users, UserPlus } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { ConversationItem } from '../../molecules/ConversationItem/ConversationItem'
@@ -51,6 +52,7 @@ export function ConversationList({
   onFavorite,
   onMute,
 }: ConversationListProps) {
+  const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterType>('all')
   const [localConversations, setLocalConversations] = useState<Conversation[]>(conversations)
@@ -116,7 +118,7 @@ export function ConversationList({
   return (
     <div
       role="region"
-      aria-label="Conversations"
+      aria-label={t('chat.conversations')}
       style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
     >
       {/* Header */}
@@ -134,7 +136,7 @@ export function ConversationList({
         <div ref={menuRef} style={{ position: 'relative' }} data-tour="new-conversation">
           <button
             onClick={() => setMenuOpen((prev) => !prev)}
-            aria-label="New conversation"
+            aria-label={t('chat.newConversation')}
             style={{
               background: 'none',
               border: 'none',
@@ -204,8 +206,8 @@ export function ConversationList({
           <input
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search..."
-            aria-label="Search conversations"
+            placeholder={t('chat.searchPlaceholder')}
+            aria-label={t('chat.searchPlaceholder')}
             style={{
               background: 'none',
               border: 'none',

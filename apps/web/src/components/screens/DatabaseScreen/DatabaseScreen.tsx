@@ -305,7 +305,7 @@ export function DatabaseScreen({
             }}
           >
             <AIChatBar
-              placeholder="Ask the AI about this data..."
+              placeholder={t('ai.dataPlaceholder')}
               value={aiInput}
               onChange={(e) => setAiInput(e.target.value)}
               onSend={handleAISend}

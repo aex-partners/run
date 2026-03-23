@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Users, Puzzle, Shield, Building2, ChevronRight, Bot, Sparkles, Wrench, Plug, Plus, Search } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import * as Dialog from '@radix-ui/react-dialog'
@@ -199,7 +200,7 @@ const navItems: { id: SettingsSection; label: string; icon: React.ReactNode }[] 
 ]
 
 // Dialog wrapper
-function FormDialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+function FormDialog({ open, onClose, title, closeLabel, children }: { open: boolean; onClose: () => void; title: string; closeLabel: string; children: React.ReactNode }) {
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
@@ -214,7 +215,7 @@ function FormDialog({ open, onClose, title, children }: { open: boolean; onClose
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <Dialog.Title style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{title}</Dialog.Title>
             <Dialog.Close asChild>
-              <button aria-label="Close" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex' }}>
+              <button aria-label={closeLabel} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex' }}>
                 <X size={16} />
               </button>
             </Dialog.Close>
@@ -227,7 +228,7 @@ function FormDialog({ open, onClose, title, children }: { open: boolean; onClose
 }
 
 // Section header with "New" button
-function SectionHeader({ title, subtitle, onNew }: { title: string; subtitle?: string; onNew?: () => void }) {
+function SectionHeader({ title, subtitle, onNew, newLabel }: { title: string; subtitle?: string; onNew?: () => void; newLabel: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
       <div>
@@ -235,13 +236,14 @@ function SectionHeader({ title, subtitle, onNew }: { title: string; subtitle?: s
         {subtitle && <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>{subtitle}</p>}
       </div>
       {onNew && (
-        <Button variant="primary" size="sm" leftIcon={<Plus size={13} />} onClick={onNew}>New</Button>
+        <Button variant="primary" size="sm" leftIcon={<Plus size={13} />} onClick={onNew}>{newLabel}</Button>
       )}
     </div>
   )
 }
 
 export function SettingsScreen(props: SettingsScreenProps) {
+  const { t } = useTranslation()
   const {
     users, installedPlugins, marketplacePlugins, companyInfo,
     activeSection: controlledSection, onSectionChange, onEditUser, onDeleteUser, onChangeRole, onChangeStatus, onInviteUser,
@@ -448,7 +450,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           <div style={{ padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Plugins</h2>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('settings.plugins')}</h2>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>Extend RUN with plugins that provide tools and integrations.</p>
               </div>
               {onSyncPluginRegistry && (
@@ -495,7 +497,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                   </div>
                 ) : (
                   <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                    No plugins installed yet. Browse the <button onClick={() => setPluginTab('marketplace')} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: 0 }}>Marketplace</button> to find integrations.
+                    {t('settings.noPluginsInstalled')} <button onClick={() => setPluginTab('marketplace')} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: 0 }}>{t('settings.marketplace')}</button> {t('settings.noPluginsInstalledSuffix')}
                   </div>
                 )}
               </>
@@ -516,7 +518,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                       <input
                         type="text"
-                        placeholder="Search plugins..."
+                        placeholder={t('settings.searchPlugins')}
                         value={pluginSearch}
                         onChange={(e) => setPluginSearch(e.target.value)}
                         style={{
@@ -589,7 +591,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       case 'agents':
         return (
           <div style={{ padding: '24px' }}>
-            <SectionHeader title="Agents" subtitle="Manage AI agents with custom prompts, skills, and tools." onNew={onCreateAgent ? () => openCreate('agent') : undefined} />
+            <SectionHeader title={t('agents.title')} subtitle={t('settings.agentsSubtitle')} onNew={onCreateAgent ? () => openCreate('agent') : undefined} newLabel={t('new')} />
             {agents.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No agents created yet.</div>
             ) : (
@@ -615,7 +617,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       case 'skills':
         return (
           <div style={{ padding: '24px' }}>
-            <SectionHeader title="Skills" subtitle="Group tools and prompts into reusable skill sets." onNew={onCreateSkill ? () => openCreate('skill') : undefined} />
+            <SectionHeader title={t('skills.title')} subtitle={t('settings.skillsSubtitle')} onNew={onCreateSkill ? () => openCreate('skill') : undefined} newLabel={t('new')} />
             {skills.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No skills created yet.</div>
             ) : (
@@ -640,12 +642,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
       case 'tools':
         return (
           <div style={{ padding: '24px' }}>
-            <SectionHeader title="Tools" subtitle="Tools that agents can use to interact with external systems." onNew={onCreateTool ? () => openCreate('tool') : undefined} />
+            <SectionHeader title={t('customTools.title')} subtitle={t('settings.toolsSubtitle')} onNew={onCreateTool ? () => openCreate('tool') : undefined} newLabel={t('new')} />
 
             {/* Custom tools */}
             {customTools.length > 0 && (
               <div style={{ marginBottom: 28 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Custom Tools</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>{t('customTools.title')}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {customTools.map((t) => (
                     <CustomToolCard
@@ -667,14 +669,14 @@ export function SettingsScreen(props: SettingsScreenProps) {
             {/* Piece plugin tools */}
             {pieceTools.length > 0 && (
               <div>
-                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Plugin Tools</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>{t('settings.pluginTools')}</h3>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
                   {/* Search */}
                   <div style={{ position: 'relative', flex: 1 }}>
                     <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input
                       type="text"
-                      placeholder="Search tools..."
+                      placeholder={t('settings.searchTools')}
                       value={toolSearch}
                       onChange={(e) => setToolSearch(e.target.value)}
                       style={{
@@ -696,7 +698,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       outline: 'none', cursor: 'pointer',
                     }}
                   >
-                    <option value="all">All plugins</option>
+                    <option value="all">{t('settings.allPlugins')}</option>
                     {pieceToolPlugins.map((name) => (
                       <option key={name} value={name}>{name}</option>
                     ))}
@@ -757,7 +759,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       case 'integrations':
         return (
           <div style={{ padding: '24px' }}>
-            <SectionHeader title="Integrations" subtitle="Connect RUN to external services and APIs." onNew={onCreateIntegration ? () => openCreate('integration') : undefined} />
+            <SectionHeader title={t('integrations.title')} subtitle={t('settings.integrationsSubtitle')} onNew={onCreateIntegration ? () => openCreate('integration') : undefined} newLabel={t('new')} />
             {integrations.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No integrations configured yet.</div>
             ) : (
@@ -783,7 +785,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
         return (
           <div style={{ padding: '24px' }}>
             <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Permissions</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('settings.permissions')}</h2>
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage role-based access controls. Administrator permissions are fixed and cannot be changed.</p>
             </div>
             <div style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'auto' }}>
@@ -826,7 +828,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
         return (
           <div style={{ padding: '24px' }}>
             <div style={{ marginBottom: 24 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Company</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('settings.company')}</h2>
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Organization information. Click a field to edit it.</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -863,7 +865,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       />
                     ) : (
                       <span style={{ fontSize: 13, color: isReadOnly ? 'var(--text-muted)' : 'var(--text)', flex: 1 }}>
-                        {value || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Not set</span>}
+                        {value || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('notSet')}</span>}
                       </span>
                     )}
                     {!isEditing && !isReadOnly && <ChevronRight size={14} color="var(--text-muted)" />}
@@ -872,7 +874,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
               })}
             </div>
             <div style={{ marginTop: 20 }}>
-              <Button variant="primary" onClick={handleSaveCompany}>Save changes</Button>
+              <Button variant="primary" onClick={handleSaveCompany}>{t('saveChanges')}</Button>
             </div>
           </div>
         )
@@ -884,7 +886,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       {/* Sidebar */}
       <aside style={{ width: 240, minWidth: 240, background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '16px 12px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-          <span style={{ fontWeight: 600, fontSize: 14 }}>Settings</span>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>{t('settings.title')}</span>
         </div>
         <div style={{ padding: '8px 0' }}>
           {navItems.map((item) => (
@@ -919,7 +921,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       </ScrollArea.Root>
 
       {/* Dialogs */}
-      <FormDialog open={dialogType === 'agent'} onClose={closeDialog} title={editId ? 'Edit Agent' : 'New Agent'}>
+      <FormDialog open={dialogType === 'agent'} onClose={closeDialog} title={editId ? t('agents.editAgent') : t('agents.newAgent')} closeLabel={t('close')}>
         <AgentForm
           initialData={editId ? (() => {
             const a = agents.find((x) => x.id === editId)
@@ -944,7 +946,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
         />
       </FormDialog>
 
-      <FormDialog open={dialogType === 'skill'} onClose={closeDialog} title={editId ? 'Edit Skill' : 'New Skill'}>
+      <FormDialog open={dialogType === 'skill'} onClose={closeDialog} title={editId ? t('skills.editSkill') : t('skills.newSkill')} closeLabel={t('close')}>
         <SkillForm
           initialData={editId ? (() => {
             const s = skills.find((x) => x.id === editId)
@@ -962,7 +964,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
         />
       </FormDialog>
 
-      <FormDialog open={dialogType === 'tool'} onClose={closeDialog} title={editId ? 'Edit Tool' : 'New Tool'}>
+      <FormDialog open={dialogType === 'tool'} onClose={closeDialog} title={editId ? t('customTools.editTool') : t('customTools.newTool')} closeLabel={t('close')}>
         <CustomToolForm
           initialData={editId ? (() => {
             const t = customTools.find((x) => x.id === editId)
@@ -981,7 +983,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
         />
       </FormDialog>
 
-      <FormDialog open={dialogType === 'integration'} onClose={closeDialog} title={editId ? 'Edit Integration' : 'New Integration'}>
+      <FormDialog open={dialogType === 'integration'} onClose={closeDialog} title={editId ? t('integrations.editIntegration') : t('integrations.newIntegration')} closeLabel={t('close')}>
         <IntegrationForm
           initialData={editId ? (() => {
             const i = integrations.find((x) => x.id === editId)

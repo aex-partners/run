@@ -2,6 +2,7 @@ import React from 'react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { MailItem, type MailItemProps } from '../../molecules/MailItem/MailItem'
 import { Archive, Trash2, MailOpen, MailX, Tag, RefreshCw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export interface MailListProps {
   emails: Omit<MailItemProps, 'onClick' | 'onStar' | 'onSelect'>[]
@@ -34,6 +35,7 @@ export function MailList({
   onRefresh,
   loading = false,
 }: MailListProps) {
+  const { t } = useTranslation()
   const hasSelection = selectedIds.size > 0
   const allSelected = emails.length > 0 && selectedIds.size === emails.length
 
@@ -64,7 +66,7 @@ export function MailList({
           type="checkbox"
           checked={allSelected}
           onChange={(e) => onSelectAll?.(e.target.checked)}
-          aria-label="Select all"
+          aria-label={t('mail.selectAll')}
           style={{ width: 14, height: 14, accentColor: 'var(--accent)', cursor: 'pointer', marginRight: 8 }}
         />
 
@@ -73,19 +75,19 @@ export function MailList({
             <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 8 }}>
               {selectedIds.size} selected
             </span>
-            <button onClick={onArchive} title="Archive" style={toolbarButtonStyle}>
+            <button onClick={onArchive} title={t('mail.archive')} style={toolbarButtonStyle}>
               <Archive size={14} />
             </button>
-            <button onClick={onDelete} title="Delete" style={toolbarButtonStyle}>
+            <button onClick={onDelete} title={t('delete')} style={toolbarButtonStyle}>
               <Trash2 size={14} />
             </button>
-            <button onClick={onMarkRead} title="Mark as read" style={toolbarButtonStyle}>
+            <button onClick={onMarkRead} title={t('mail.markRead')} style={toolbarButtonStyle}>
               <MailOpen size={14} />
             </button>
-            <button onClick={onMarkUnread} title="Mark as unread" style={toolbarButtonStyle}>
+            <button onClick={onMarkUnread} title={t('mail.markUnread')} style={toolbarButtonStyle}>
               <MailX size={14} />
             </button>
-            <button title="Label" style={toolbarButtonStyle}>
+            <button title={t('mail.label')} style={toolbarButtonStyle}>
               <Tag size={14} />
             </button>
           </>
@@ -93,7 +95,7 @@ export function MailList({
           <>
             <button
               onClick={onRefresh}
-              title="Refresh"
+              title={t('refresh')}
               style={{
                 ...toolbarButtonStyle,
                 animation: loading ? 'spin 1s linear infinite' : undefined,

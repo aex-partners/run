@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Input } from '../../atoms/Input/Input'
 import { Textarea } from '../../atoms/Textarea/Textarea'
 import { Button } from '../../atoms/Button/Button'
@@ -58,6 +59,7 @@ export function IntegrationForm({
   oauthUrl,
   loading = false,
 }: IntegrationFormProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<IntegrationFormData>({
     name: initialData?.name ?? '',
     description: initialData?.description ?? '',
@@ -81,26 +83,26 @@ export function IntegrationForm({
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <label style={labelStyle}>Name</label>
+        <label style={labelStyle}>{t('integrations.form.name')}</label>
         <Input
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          placeholder="e.g. WhatsApp Business"
+          placeholder={t('integrations.form.namePlaceholder')}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>Description</label>
+        <label style={labelStyle}>{t('integrations.form.description')}</label>
         <Textarea
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          placeholder="What does this integration connect to?"
+          placeholder={t('integrations.form.descriptionPlaceholder')}
           rows={2}
         />
       </div>
 
       <div>
-        <label style={labelStyle}>Type</label>
+        <label style={labelStyle}>{t('integrations.form.type')}</label>
         <div style={{ display: 'flex', gap: 8 }}>
           {typeOptions.map((tt) => (
             <button
@@ -165,7 +167,7 @@ export function IntegrationForm({
 
       {form.type === 'webhook' && (
         <div>
-          <label style={labelStyle}>Webhook Secret</label>
+          <label style={labelStyle}>{t('integrations.form.webhookSecret')}</label>
           <CredentialField
             value={form.webhookSecret ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, webhookSecret: e.target.value }))}
@@ -176,10 +178,10 @@ export function IntegrationForm({
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
         {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+          <Button type="button" variant="secondary" onClick={onCancel}>{t('cancel')}</Button>
         )}
         <Button type="submit" variant="primary" loading={loading}>
-          {isEdit ? 'Save Changes' : 'Create Integration'}
+          {isEdit ? t('integrations.form.saveChanges') : t('integrations.form.createIntegration')}
         </Button>
       </div>
     </form>

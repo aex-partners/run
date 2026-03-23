@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import { Badge } from '../../atoms/Badge/Badge'
 
@@ -17,6 +18,7 @@ export interface EntityRowProps {
 }
 
 export function EntityRow({ cells, selected = false, onSelect, onDelete }: EntityRowProps) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
 
   const renderCell = (cell: EntityCell, index: number) => {
@@ -74,7 +76,7 @@ export function EntityRow({ cells, selected = false, onSelect, onDelete }: Entit
           type="checkbox"
           checked={selected}
           onChange={(e) => onSelect?.(e.target.checked)}
-          aria-label="Select row"
+          aria-label={t('database.selectRow')}
           style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
         />
       </div>
@@ -96,8 +98,8 @@ export function EntityRow({ cells, selected = false, onSelect, onDelete }: Entit
         {hovered && onDelete && (
           <button
             onClick={onDelete}
-            title="Delete"
-            aria-label="Delete row"
+            title={t('delete')}
+            aria-label={t('database.deleteRow')}
             style={{
               background: 'none',
               border: 'none',

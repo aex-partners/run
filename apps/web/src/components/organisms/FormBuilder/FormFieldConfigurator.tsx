@@ -41,7 +41,7 @@ export function FormFieldConfigurator({ field, onChange }: FormFieldConfigurator
           type="text"
           value={field.placeholder ?? ''}
           onChange={(e) => onChange({ ...field, placeholder: e.target.value || undefined })}
-          placeholder="Enter placeholder text..."
+          placeholder={t('database.forms.builder.placeholder')}
           style={inputStyle}
         />
       </div>
@@ -54,7 +54,7 @@ export function FormFieldConfigurator({ field, onChange }: FormFieldConfigurator
           type="text"
           value={field.helpText ?? ''}
           onChange={(e) => onChange({ ...field, helpText: e.target.value || undefined })}
-          placeholder="Enter help text..."
+          placeholder={t('database.forms.builder.helpText')}
           style={inputStyle}
         />
       </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, Pause, Play, Trash2 } from 'lucide-react'
 
 export interface WorkflowItemProps {
@@ -27,6 +28,7 @@ const iconButtonStyle: React.CSSProperties = {
 }
 
 export function WorkflowItem({ name, trigger, status, active = false, onClick, onToggleStatus, onDelete }: WorkflowItemProps) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
 
   const showToggle = !!onToggleStatus && (active || hovered)
@@ -121,7 +123,7 @@ export function WorkflowItem({ name, trigger, status, active = false, onClick, o
             <button
               style={{ ...iconButtonStyle, borderColor: 'var(--danger)', color: 'var(--danger)' }}
               onClick={(e) => { e.stopPropagation(); onDelete?.() }}
-              aria-label="Delete workflow"
+              aria-label={t('workflows.deleteWorkflow')}
             >
               <Trash2 size={11} />
             </button>
