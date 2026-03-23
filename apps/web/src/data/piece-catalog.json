@@ -5726,6 +5726,20 @@
     "source": "piece"
   },
   {
+    "id": "aex-plugin-pagbank",
+    "name": "PagBank",
+    "pieceName": "",
+    "displayName": "PagBank",
+    "description": "Brazilian payment gateway: PIX, boleto, credit card payments, order management, and refunds via PagBank API v4.",
+    "version": "1.0.0",
+    "category": "PAYMENT_PROCESSING",
+    "logoUrl": "",
+    "auth": {
+      "type": "secret_text"
+    },
+    "source": "registry"
+  },
+  {
     "id": "piece-pandadoc",
     "name": "PandaDoc",
     "pieceName": "@activepieces/piece-pandadoc",
