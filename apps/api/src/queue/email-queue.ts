@@ -1,17 +1,24 @@
 import { Queue } from "bullmq";
 import { redisConnection } from "./connection.js";
+import type { SendMailOptions } from "../email/provider.js";
 
-export const emailSyncQueue = new Queue("email-sync", { connection: redisConnection });
+export interface EmailJobData extends SendMailOptions {
+  accountId: string;
+  storeSent?: boolean;
+}
 
-export async function enqueueEmailSync(accountId: string, delayMs?: number) {
-  await emailSyncQueue.add(
-    "sync-email",
-    { accountId },
+export const emailQueue = new Queue("email-send", { connection: redisConnection });
+
+/** Enqueue an email to be sent via SMTP in the background. */
+export async function enqueueEmail(options: EmailJobData) {
+  await emailQueue.add(
+    "send-email",
+    options,
     {
-      jobId: `email-sync-${accountId}`,
-      ...(delayMs && delayMs > 0 ? { delay: delayMs } : {}),
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5_000 },
       removeOnComplete: true,
-      removeOnFail: 5,
+      removeOnFail: 10,
     },
   );
 }

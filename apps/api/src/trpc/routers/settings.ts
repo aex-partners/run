@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { router, publicProcedure, protectedProcedure } from "../index.js";
 import { entities, settings, conversations, conversationMembers, messages, agents, emailAccounts, mailAccountMembers } from "../../db/schema/index.js";
 import { resetProvider } from "../../ai/client.js";
@@ -207,25 +207,37 @@ export const settingsRouter = router({
 
       // Email: create a mail account for the owner if SMTP credentials were provided
       if (input.emailProvider === "smtp" && input.smtpHost && input.smtpUser && input.smtpPass && input.smtpFrom) {
-        const accountId = crypto.randomUUID();
-        await ctx.db.insert(emailAccounts).values({
-          id: accountId,
-          displayName: input.orgName,
-          emailAddress: input.smtpFrom,
-          fromName: input.orgName,
-          smtpHost: input.smtpHost,
-          smtpPort: parseInt(input.smtpPort || "587", 10),
-          smtpUser: input.smtpUser,
-          smtpPass: input.smtpPass,
-          smtpSecure: input.smtpSecure ? 1 : 0,
-          isShared: 0,
-          ownerId: ctx.session.user.id,
-        });
-        await ctx.db.insert(mailAccountMembers).values({
-          accountId,
-          userId: ctx.session.user.id,
-          canSend: 1,
-        });
+        // Fix #10: skip if an account with same email already exists for this user
+        const [existing] = await ctx.db
+          .select({ id: emailAccounts.id })
+          .from(emailAccounts)
+          .where(and(
+            eq(emailAccounts.emailAddress, input.smtpFrom),
+            eq(emailAccounts.ownerId, ctx.session.user.id),
+          ))
+          .limit(1);
+
+        if (!existing) {
+          const accountId = crypto.randomUUID();
+          await ctx.db.insert(emailAccounts).values({
+            id: accountId,
+            displayName: input.orgName,
+            emailAddress: input.smtpFrom,
+            fromName: input.orgName,
+            smtpHost: input.smtpHost,
+            smtpPort: parseInt(input.smtpPort || "587", 10),
+            smtpUser: input.smtpUser,
+            smtpPass: input.smtpPass,
+            smtpSecure: input.smtpSecure ? 1 : 0,
+            isShared: 0,
+            ownerId: ctx.session.user.id,
+          });
+          await ctx.db.insert(mailAccountMembers).values({
+            accountId,
+            userId: ctx.session.user.id,
+            canSend: 1,
+          });
+        }
       }
 
       // AI settings

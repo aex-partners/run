@@ -386,17 +386,29 @@ export const fileShares = pgTable("file_shares", {
 
 export const emailAccounts = pgTable("email_accounts", {
   id: text("id").primaryKey(),
-  integrationId: text("integration_id").notNull().references(() => integrations.id, { onDelete: "cascade" }),
+  displayName: text("display_name").notNull(),
   emailAddress: text("email_address").notNull(),
-  displayName: text("display_name"),
-  provider: text("provider", { enum: ["gmail", "outlook"] }).notNull(),
-  syncStatus: text("sync_status", { enum: ["idle", "syncing", "error"] }).notNull().default("idle"),
-  lastSyncAt: timestamp("last_sync_at"),
-  syncCursor: text("sync_cursor"),
-  ownerId: text("owner_id").notNull().references(() => users.id),
+  fromName: text("from_name"),
+  smtpHost: text("smtp_host").notNull(),
+  smtpPort: integer("smtp_port").notNull().default(587),
+  smtpUser: text("smtp_user").notNull(),
+  smtpPass: text("smtp_pass").notNull(),
+  smtpSecure: integer("smtp_secure").notNull().default(1),
+  isShared: integer("is_shared").notNull().default(0),
+  ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const mailAccountMembers = pgTable("mail_account_members", {
+  accountId: text("account_id").notNull().references(() => emailAccounts.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  canSend: integer("can_send").notNull().default(1),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.accountId, table.userId] }),
+  index("mail_account_members_user_id_idx").on(table.userId),
+]);
 
 export const emails = pgTable("emails", {
   id: text("id").primaryKey(),

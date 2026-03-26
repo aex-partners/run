@@ -1,104 +1,339 @@
 import { z } from "zod";
-import { eq, desc, and, sql, ilike, or } from "drizzle-orm";
+import { eq, desc, and, sql, ilike, or, inArray } from "drizzle-orm";
 import { router, protectedProcedure } from "../index.js";
-import { emailAccounts, emails, emailAttachments, emailLabels, integrations } from "../../db/schema/index.js";
+import { emails, emailAttachments, emailLabels, emailAccounts, mailAccountMembers } from "../../db/schema/index.js";
 import { broadcast } from "../../ws/index.js";
-import { generateAuthUrl } from "../../integrations/oauth.js";
-import { encryptCredentials, decryptCredentials } from "../../integrations/crypto.js";
 
-const GMAIL_SCOPES = [
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/gmail.send",
-  "https://www.googleapis.com/auth/gmail.modify",
-];
+/** Get IDs of accounts the user can access. Cached per-request via closure. */
+async function getUserAccountIds(db: Parameters<typeof eq>[0] extends never ? never : any, userId: string): Promise<string[]> {
+  const { getAccessibleAccountsForUser } = await import("../../email/provider.js");
+  const accounts = await getAccessibleAccountsForUser(db, userId);
+  return accounts.map((a) => a.id);
+}
 
-const OUTLOOK_SCOPES = [
-  "https://graph.microsoft.com/Mail.ReadWrite",
-  "https://graph.microsoft.com/Mail.Send",
-  "offline_access",
-];
-
-function getOAuthConfig(provider: "gmail" | "outlook") {
-  if (provider === "gmail") {
-    return {
-      authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
-      tokenUrl: "https://oauth2.googleapis.com/token",
-      clientId: process.env.GMAIL_CLIENT_ID || "",
-      clientSecret: process.env.GMAIL_CLIENT_SECRET || "",
-      scopes: GMAIL_SCOPES,
-      redirectUri: `${process.env.APP_URL || "http://localhost:3000"}/api/auth/email/callback`,
-    };
-  }
-  return {
-    authUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-    tokenUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-    clientId: process.env.OUTLOOK_CLIENT_ID || "",
-    clientSecret: process.env.OUTLOOK_CLIENT_SECRET || "",
-    scopes: OUTLOOK_SCOPES,
-    redirectUri: `${process.env.APP_URL || "http://localhost:3000"}/api/auth/email/callback`,
-  };
+/** Verify an email belongs to one of the user's accounts. Returns the email row or null. */
+async function verifyEmailAccess(db: any, emailId: string, accountIds: string[]) {
+  if (accountIds.length === 0) return null;
+  const [email] = await db
+    .select()
+    .from(emails)
+    .where(
+      and(
+        eq(emails.id, emailId),
+        inArray(emails.accountId, accountIds),
+      ),
+    )
+    .limit(1);
+  return email ?? null;
 }
 
 export const emailsRouter = router({
-  accounts: router({
+  /** Check if the current user has at least one mail account. */
+  isConfigured: protectedProcedure
+    .query(async ({ ctx }) => {
+      const ids = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      return { configured: ids.length > 0 };
+    }),
+
+  // ---------------------------------------------------------------------------
+  // Mail accounts sub-router
+  // ---------------------------------------------------------------------------
+
+  mailAccounts: router({
+    /** List all mail accounts the current user has access to (owned + shared). */
     list: protectedProcedure
       .query(async ({ ctx }) => {
-        return ctx.db
-          .select()
-          .from(emailAccounts)
-          .where(eq(emailAccounts.ownerId, ctx.session.user.id));
+        const { getAccessibleAccountsForUser } = await import("../../email/provider.js");
+        const accounts = await getAccessibleAccountsForUser(ctx.db, ctx.session.user.id);
+        return accounts.map((a) => ({
+          id: a.id,
+          displayName: a.displayName,
+          emailAddress: a.emailAddress,
+          fromName: a.fromName,
+          smtpHost: a.smtpHost,
+          smtpPort: a.smtpPort,
+          smtpSecure: a.smtpSecure === 1,
+          isShared: a.isShared === 1,
+          isOwner: a.ownerId === ctx.session.user.id,
+        }));
       }),
 
-    connect: protectedProcedure
+    /** Get server-level SMTP defaults (for pre-filling forms). */
+    getDefaults: protectedProcedure
+      .query(async ({ ctx }) => {
+        const { getSmtpDefaults } = await import("../../email/provider.js");
+        return await getSmtpDefaults(ctx.db);
+      }),
+
+    /** Create a new mail account for the current user. */
+    create: protectedProcedure
       .input(z.object({
-        provider: z.enum(["gmail", "outlook"]),
-        returnTo: z.string().optional(),
+        displayName: z.string().min(1),
+        emailAddress: z.string().email(),
+        fromName: z.string().optional(),
+        smtpHost: z.string().min(1),
+        smtpPort: z.number().int().min(1).max(65535).default(587),
+        smtpUser: z.string().min(1),
+        smtpPass: z.string().min(1),
+        smtpSecure: z.boolean().default(true),
+        isShared: z.boolean().default(false),
       }))
       .mutation(async ({ ctx, input }) => {
-        const config = getOAuthConfig(input.provider);
-        const { signOAuthState } = await import("../../utils/oauth-state.js");
-        const state = signOAuthState({
-          provider: input.provider,
-          userId: ctx.session.user.id,
-          returnTo: input.returnTo,
+        const accountId = crypto.randomUUID();
+
+        await ctx.db.insert(emailAccounts).values({
+          id: accountId,
+          displayName: input.displayName,
+          emailAddress: input.emailAddress,
+          fromName: input.fromName || null,
+          smtpHost: input.smtpHost,
+          smtpPort: input.smtpPort,
+          smtpUser: input.smtpUser,
+          smtpPass: input.smtpPass,
+          smtpSecure: input.smtpSecure ? 1 : 0,
+          isShared: input.isShared ? 1 : 0,
+          ownerId: ctx.session.user.id,
         });
 
-        const authUrl = generateAuthUrl(config, state);
-        // Add access_type=offline for Gmail to get refresh token
-        const finalUrl = input.provider === "gmail"
-          ? `${authUrl}&access_type=offline&prompt=consent`
-          : authUrl;
+        await ctx.db.insert(mailAccountMembers).values({
+          accountId,
+          userId: ctx.session.user.id,
+          canSend: 1,
+        });
 
-        return { authUrl: finalUrl };
+        return { id: accountId };
       }),
 
-    disconnect: protectedProcedure
-      .input(z.object({ accountId: z.string() }))
+    /** Update a mail account (owner only). */
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        displayName: z.string().min(1).optional(),
+        emailAddress: z.string().email().optional(),
+        fromName: z.string().optional(),
+        smtpHost: z.string().min(1).optional(),
+        smtpPort: z.number().int().min(1).max(65535).optional(),
+        smtpUser: z.string().min(1).optional(),
+        smtpPass: z.string().min(1).optional(),
+        smtpSecure: z.boolean().optional(),
+        isShared: z.boolean().optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
         const [account] = await ctx.db
-          .select()
+          .select({ ownerId: emailAccounts.ownerId })
+          .from(emailAccounts)
+          .where(eq(emailAccounts.id, input.id))
+          .limit(1);
+        if (!account) return { error: "Account not found" };
+        if (account.ownerId !== ctx.session.user.id) return { error: "Only the account owner can edit it" };
+
+        const { id, ...updates } = input;
+        const setValues: Record<string, unknown> = { updatedAt: new Date() };
+        if (updates.displayName !== undefined) setValues.displayName = updates.displayName;
+        if (updates.emailAddress !== undefined) setValues.emailAddress = updates.emailAddress;
+        if (updates.fromName !== undefined) setValues.fromName = updates.fromName || null;
+        if (updates.smtpHost !== undefined) setValues.smtpHost = updates.smtpHost;
+        if (updates.smtpPort !== undefined) setValues.smtpPort = updates.smtpPort;
+        if (updates.smtpUser !== undefined) setValues.smtpUser = updates.smtpUser;
+        if (updates.smtpPass !== undefined) setValues.smtpPass = updates.smtpPass;
+        if (updates.smtpSecure !== undefined) setValues.smtpSecure = updates.smtpSecure ? 1 : 0;
+        if (updates.isShared !== undefined) setValues.isShared = updates.isShared ? 1 : 0;
+
+        await ctx.db.update(emailAccounts).set(setValues).where(eq(emailAccounts.id, id));
+        return { success: true };
+      }),
+
+    /** Delete a mail account (owner only). Cascades to emails and members. */
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const [account] = await ctx.db
+          .select({ ownerId: emailAccounts.ownerId })
+          .from(emailAccounts)
+          .where(eq(emailAccounts.id, input.id))
+          .limit(1);
+        if (!account) return { error: "Account not found" };
+        if (account.ownerId !== ctx.session.user.id) return { error: "Only the account owner can delete it" };
+
+        await ctx.db.delete(emailAccounts).where(eq(emailAccounts.id, input.id));
+        return { success: true };
+      }),
+
+    /** Add a user as member of a shared mail account. */
+    addMember: protectedProcedure
+      .input(z.object({
+        accountId: z.string(),
+        userId: z.string(),
+        canSend: z.boolean().default(true),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const [account] = await ctx.db
+          .select({ ownerId: emailAccounts.ownerId, isShared: emailAccounts.isShared })
           .from(emailAccounts)
           .where(eq(emailAccounts.id, input.accountId))
           .limit(1);
         if (!account) return { error: "Account not found" };
+        if (account.ownerId !== ctx.session.user.id) return { error: "Only the account owner can manage members" };
+        if (account.isShared !== 1) return { error: "Account is not shared" };
 
-        // Delete emails, labels, and account
-        await ctx.db.delete(emailAccounts).where(eq(emailAccounts.id, input.accountId));
-        // Delete linked integration
-        await ctx.db.delete(integrations).where(eq(integrations.id, account.integrationId));
+        await ctx.db
+          .insert(mailAccountMembers)
+          .values({
+            accountId: input.accountId,
+            userId: input.userId,
+            canSend: input.canSend ? 1 : 0,
+          })
+          .onConflictDoUpdate({
+            target: [mailAccountMembers.accountId, mailAccountMembers.userId],
+            set: { canSend: input.canSend ? 1 : 0 },
+          });
 
-        broadcast({ type: "email_account_disconnected", accountId: input.accountId });
         return { success: true };
       }),
 
-    sync: protectedProcedure
-      .input(z.object({ accountId: z.string() }))
+    /** Remove a user from a shared mail account. */
+    removeMember: protectedProcedure
+      .input(z.object({
+        accountId: z.string(),
+        userId: z.string(),
+      }))
       .mutation(async ({ ctx, input }) => {
-        const { enqueueEmailSync } = await import("../../queue/email-queue.js");
-        await enqueueEmailSync(input.accountId);
-        return { queued: true };
+        const [account] = await ctx.db
+          .select({ ownerId: emailAccounts.ownerId })
+          .from(emailAccounts)
+          .where(eq(emailAccounts.id, input.accountId))
+          .limit(1);
+        if (!account) return { error: "Account not found" };
+        if (account.ownerId !== ctx.session.user.id) return { error: "Only the account owner can manage members" };
+        if (input.userId === account.ownerId) return { error: "Cannot remove the owner from the account" };
+
+        await ctx.db
+          .delete(mailAccountMembers)
+          .where(
+            and(
+              eq(mailAccountMembers.accountId, input.accountId),
+              eq(mailAccountMembers.userId, input.userId),
+            ),
+          );
+        return { success: true };
+      }),
+
+    /** Verify SMTP connection for given credentials. */
+    verify: protectedProcedure
+      .input(z.object({
+        host: z.string(),
+        port: z.number(),
+        user: z.string(),
+        pass: z.string(),
+        from: z.string(),
+        secure: z.boolean(),
+      }))
+      .mutation(async ({ input }) => {
+        const { verifySmtpConfig } = await import("../../email/provider.js");
+        return verifySmtpConfig(input);
       }),
   }),
+
+  // ---------------------------------------------------------------------------
+  // Send / Reply
+  // ---------------------------------------------------------------------------
+
+  /** Send an email from a specific mail account. */
+  send: protectedProcedure
+    .input(z.object({
+      accountId: z.string(),
+      to: z.string(),
+      cc: z.string().optional(),
+      subject: z.string(),
+      body: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { userCanSendFrom, sendMailFromAccount, getAccountSmtpConfig } = await import("../../email/provider.js");
+      const { storeSentEmail } = await import("../../email/sync.js");
+
+      const canSend = await userCanSendFrom(ctx.db, ctx.session.user.id, input.accountId);
+      if (!canSend) return { error: "You don't have permission to send from this account." };
+
+      const config = await getAccountSmtpConfig(ctx.db, input.accountId);
+      if (!config) return { error: "Mail account not found." };
+
+      const toAddresses = input.to.split(",").map((e) => e.trim()).filter(Boolean);
+      const ccAddresses = input.cc ? input.cc.split(",").map((e) => e.trim()).filter(Boolean) : [];
+
+      const result = await sendMailFromAccount(ctx.db, input.accountId, {
+        to: toAddresses,
+        cc: ccAddresses,
+        subject: input.subject,
+        bodyHtml: input.body,
+      });
+
+      const emailId = await storeSentEmail(ctx.db, {
+        accountId: input.accountId,
+        fromName: config.fromName || config.from,
+        fromEmail: config.from,
+        to: toAddresses,
+        cc: ccAddresses,
+        subject: input.subject,
+        bodyHtml: input.body,
+        messageId: result.messageId,
+      });
+
+      broadcast({ type: "email_sent" });
+      return { success: true, id: emailId };
+    }),
+
+  /** Reply to an email from a specific mail account. */
+  reply: protectedProcedure
+    .input(z.object({
+      accountId: z.string(),
+      emailId: z.string(),
+      body: z.string(),
+      replyAll: z.boolean().optional().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      const original = await verifyEmailAccess(ctx.db, input.emailId, accountIds);
+      if (!original) return { error: "Email not found" };
+
+      const { userCanSendFrom, sendMailFromAccount, getAccountSmtpConfig } = await import("../../email/provider.js");
+      const { storeSentEmail } = await import("../../email/sync.js");
+
+      const canSend = await userCanSendFrom(ctx.db, ctx.session.user.id, input.accountId);
+      if (!canSend) return { error: "You don't have permission to send from this account." };
+
+      const config = await getAccountSmtpConfig(ctx.db, input.accountId);
+      if (!config) return { error: "Mail account not found." };
+
+      const toAddresses = [original.fromEmail];
+      const ccAddresses = input.replyAll ? safeParseJson(original.cc) as string[] : [];
+      const replySubject = `Re: ${original.subject}`;
+
+      await sendMailFromAccount(ctx.db, input.accountId, {
+        to: toAddresses,
+        cc: ccAddresses,
+        subject: replySubject,
+        bodyHtml: input.body,
+        inReplyTo: original.externalId,
+      });
+
+      // Fix #8: store reply in sent folder
+      await storeSentEmail(ctx.db, {
+        accountId: input.accountId,
+        fromName: config.fromName || config.from,
+        fromEmail: config.from,
+        to: toAddresses,
+        cc: ccAddresses,
+        subject: replySubject,
+        bodyHtml: input.body,
+      });
+
+      broadcast({ type: "email_sent" });
+      return { success: true };
+    }),
+
+  // ---------------------------------------------------------------------------
+  // List / Read (all scoped to user's accounts)
+  // ---------------------------------------------------------------------------
 
   list: protectedProcedure
     .input(
@@ -111,19 +346,17 @@ export const emailsRouter = router({
       }).optional().default({}),
     )
     .query(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (accountIds.length === 0) return [];
+
       const conditions = [];
 
+      // Fix #1: validate supplied accountId belongs to user
       if (input.accountId) {
+        if (!accountIds.includes(input.accountId)) return [];
         conditions.push(eq(emails.accountId, input.accountId));
       } else {
-        // Get all accounts for current user
-        const accounts = await ctx.db
-          .select({ id: emailAccounts.id })
-          .from(emailAccounts)
-          .where(eq(emailAccounts.ownerId, ctx.session.user.id));
-        if (accounts.length === 0) return [];
-        const accountIds = accounts.map((a) => a.id);
-        conditions.push(sql`${emails.accountId} IN (${sql.join(accountIds.map(id => sql`${id}`), sql`, `)})`);
+        conditions.push(inArray(emails.accountId, accountIds));
       }
 
       if (input.folder === "starred") {
@@ -154,6 +387,7 @@ export const emailsRouter = router({
 
       return rows.map((row) => ({
         id: row.id,
+        accountId: row.accountId,
         from: row.fromName,
         fromEmail: row.fromEmail,
         subject: row.subject,
@@ -169,14 +403,12 @@ export const emailsRouter = router({
       }));
     }),
 
+  // Fix #3: all per-email actions verify ownership
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const [email] = await ctx.db
-        .select()
-        .from(emails)
-        .where(eq(emails.id, input.id))
-        .limit(1);
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      const email = await verifyEmailAccess(ctx.db, input.id, accountIds);
       if (!email) return null;
 
       const attachments = await ctx.db
@@ -184,7 +416,6 @@ export const emailsRouter = router({
         .from(emailAttachments)
         .where(eq(emailAttachments.emailId, input.id));
 
-      // Mark as read
       if (email.read === 0) {
         await ctx.db
           .update(emails)
@@ -207,10 +438,18 @@ export const emailsRouter = router({
   getThread: protectedProcedure
     .input(z.object({ threadId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (accountIds.length === 0) return [];
+
       const rows = await ctx.db
         .select()
         .from(emails)
-        .where(eq(emails.threadId, input.threadId))
+        .where(
+          and(
+            eq(emails.threadId, input.threadId),
+            inArray(emails.accountId, accountIds),
+          ),
+        )
         .orderBy(emails.date);
 
       return rows.map((row) => ({
@@ -226,124 +465,15 @@ export const emailsRouter = router({
       }));
     }),
 
-  send: protectedProcedure
-    .input(z.object({
-      accountId: z.string(),
-      to: z.string(),
-      cc: z.string().optional(),
-      subject: z.string(),
-      body: z.string(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const [account] = await ctx.db
-        .select()
-        .from(emailAccounts)
-        .where(eq(emailAccounts.id, input.accountId))
-        .limit(1);
-      if (!account) return { error: "Account not found" };
-
-      const [integration] = await ctx.db
-        .select()
-        .from(integrations)
-        .where(eq(integrations.id, account.integrationId))
-        .limit(1);
-      if (!integration) return { error: "Integration not found" };
-
-      const credentials = decryptCredentials(integration.credentials);
-      const { getProvider } = await import("../../email/provider.js");
-      const provider = getProvider(account.provider);
-
-      const toAddresses = input.to.split(",").map((e) => e.trim()).filter(Boolean);
-      const ccAddresses = input.cc ? input.cc.split(",").map((e) => e.trim()).filter(Boolean) : [];
-
-      const result = await provider.sendMessage(credentials.accessToken as string, {
-        from: account.emailAddress,
-        fromName: account.displayName || undefined,
-        to: toAddresses,
-        cc: ccAddresses,
-        subject: input.subject,
-        bodyHtml: input.body,
-      });
-
-      // Store in sent folder locally
-      const emailId = crypto.randomUUID();
-      await ctx.db.insert(emails).values({
-        id: emailId,
-        accountId: account.id,
-        externalId: result.id || emailId,
-        fromName: account.displayName || account.emailAddress,
-        fromEmail: account.emailAddress,
-        to: JSON.stringify(toAddresses),
-        cc: JSON.stringify(ccAddresses),
-        subject: input.subject,
-        preview: input.body.slice(0, 200).replace(/<[^>]+>/g, ""),
-        bodyHtml: input.body,
-        folder: "sent",
-        read: 1,
-        date: new Date(),
-      });
-
-      broadcast({ type: "email_sent" });
-      return { success: true, id: emailId };
-    }),
-
-  reply: protectedProcedure
-    .input(z.object({
-      emailId: z.string(),
-      body: z.string(),
-      replyAll: z.boolean().optional().default(false),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const [original] = await ctx.db
-        .select()
-        .from(emails)
-        .where(eq(emails.id, input.emailId))
-        .limit(1);
-      if (!original) return { error: "Email not found" };
-
-      const [account] = await ctx.db
-        .select()
-        .from(emailAccounts)
-        .where(eq(emailAccounts.id, original.accountId))
-        .limit(1);
-      if (!account) return { error: "Account not found" };
-
-      const [integration] = await ctx.db
-        .select()
-        .from(integrations)
-        .where(eq(integrations.id, account.integrationId))
-        .limit(1);
-      if (!integration) return { error: "Integration not found" };
-
-      const credentials = decryptCredentials(integration.credentials);
-      const { getProvider } = await import("../../email/provider.js");
-      const provider = getProvider(account.provider);
-
-      const toAddresses = [original.fromEmail];
-      const ccAddresses = input.replyAll ? safeParseJson(original.cc) as string[] : [];
-
-      await provider.sendMessage(credentials.accessToken as string, {
-        from: account.emailAddress,
-        fromName: account.displayName || undefined,
-        to: toAddresses,
-        cc: ccAddresses,
-        subject: `Re: ${original.subject}`,
-        bodyHtml: input.body,
-        inReplyTo: original.externalId,
-      });
-
-      broadcast({ type: "email_sent" });
-      return { success: true };
-    }),
+  // ---------------------------------------------------------------------------
+  // Actions (all verify ownership)
+  // ---------------------------------------------------------------------------
 
   star: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const [email] = await ctx.db
-        .select({ starred: emails.starred })
-        .from(emails)
-        .where(eq(emails.id, input.id))
-        .limit(1);
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      const email = await verifyEmailAccess(ctx.db, input.id, accountIds);
       if (!email) return { error: "Email not found" };
 
       const newStarred = email.starred === 1 ? 0 : 1;
@@ -357,8 +487,12 @@ export const emailsRouter = router({
   markRead: protectedProcedure
     .input(z.object({ ids: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (accountIds.length === 0) return { success: true };
       for (const id of input.ids) {
-        await ctx.db.update(emails).set({ read: 1 }).where(eq(emails.id, id));
+        await ctx.db.update(emails).set({ read: 1 }).where(
+          and(eq(emails.id, id), inArray(emails.accountId, accountIds)),
+        );
       }
       return { success: true };
     }),
@@ -366,8 +500,12 @@ export const emailsRouter = router({
   markUnread: protectedProcedure
     .input(z.object({ ids: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (accountIds.length === 0) return { success: true };
       for (const id of input.ids) {
-        await ctx.db.update(emails).set({ read: 0 }).where(eq(emails.id, id));
+        await ctx.db.update(emails).set({ read: 0 }).where(
+          and(eq(emails.id, id), inArray(emails.accountId, accountIds)),
+        );
       }
       return { success: true };
     }),
@@ -375,8 +513,12 @@ export const emailsRouter = router({
   archive: protectedProcedure
     .input(z.object({ ids: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (accountIds.length === 0) return { success: true };
       for (const id of input.ids) {
-        await ctx.db.delete(emails).where(eq(emails.id, id));
+        await ctx.db.delete(emails).where(
+          and(eq(emails.id, id), inArray(emails.accountId, accountIds)),
+        );
       }
       return { success: true };
     }),
@@ -384,30 +526,30 @@ export const emailsRouter = router({
   delete: protectedProcedure
     .input(z.object({ ids: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (accountIds.length === 0) return { success: true };
       for (const id of input.ids) {
-        await ctx.db
-          .update(emails)
-          .set({ folder: "trash" })
-          .where(eq(emails.id, id));
+        await ctx.db.update(emails).set({ folder: "trash" }).where(
+          and(eq(emails.id, id), inArray(emails.accountId, accountIds)),
+        );
       }
       return { success: true };
     }),
 
+  // Fix #2: validate accountId in folderCounts
   folderCounts: protectedProcedure
     .input(z.object({ accountId: z.string().optional() }).optional().default({}))
     .query(async ({ ctx, input }) => {
-      let accountFilter = sql`1=1`;
-      if (input.accountId) {
-        accountFilter = eq(emails.accountId, input.accountId);
-      } else {
-        const accounts = await ctx.db
-          .select({ id: emailAccounts.id })
-          .from(emailAccounts)
-          .where(eq(emailAccounts.ownerId, ctx.session.user.id));
-        if (accounts.length === 0) return { inbox: 0, sent: 0, drafts: 0, spam: 0, trash: 0, starred: 0 };
-        const ids = accounts.map((a) => a.id);
-        accountFilter = sql`${emails.accountId} IN (${sql.join(ids.map(id => sql`${id}`), sql`, `)})`;
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (accountIds.length === 0) return { inbox: 0, sent: 0, drafts: 0, spam: 0, trash: 0, starred: 0 };
+
+      // Validate supplied accountId
+      if (input.accountId && !accountIds.includes(input.accountId)) {
+        return { inbox: 0, sent: 0, drafts: 0, spam: 0, trash: 0, starred: 0 };
       }
+
+      const ids = input.accountId ? [input.accountId] : accountIds;
+      const accountFilter = sql`account_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})`;
 
       const [result] = await ctx.db.execute(sql`
         SELECT
@@ -431,10 +573,16 @@ export const emailsRouter = router({
       };
     }),
 
+  // ---------------------------------------------------------------------------
+  // Labels (Fix #4: verify account access)
+  // ---------------------------------------------------------------------------
+
   labels: router({
     list: protectedProcedure
       .input(z.object({ accountId: z.string() }))
       .query(async ({ ctx, input }) => {
+        const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+        if (!accountIds.includes(input.accountId)) return [];
         return ctx.db
           .select()
           .from(emailLabels)
@@ -448,6 +596,9 @@ export const emailsRouter = router({
         color: z.string().default("#6b7280"),
       }))
       .mutation(async ({ ctx, input }) => {
+        const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+        if (!accountIds.includes(input.accountId)) return { error: "Account not found" };
+
         const id = crypto.randomUUID();
         const [label] = await ctx.db
           .insert(emailLabels)
@@ -459,19 +610,31 @@ export const emailsRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        // Verify the label's account belongs to the user
+        const [label] = await ctx.db
+          .select({ accountId: emailLabels.accountId })
+          .from(emailLabels)
+          .where(eq(emailLabels.id, input.id))
+          .limit(1);
+        if (!label) return { error: "Label not found" };
+
+        const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+        if (!accountIds.includes(label.accountId)) return { error: "Not authorized" };
+
         await ctx.db.delete(emailLabels).where(eq(emailLabels.id, input.id));
         return { success: true };
       }),
   }),
 
+  // ---------------------------------------------------------------------------
+  // AI features (verify ownership)
+  // ---------------------------------------------------------------------------
+
   aiSummary: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const [email] = await ctx.db
-        .select()
-        .from(emails)
-        .where(eq(emails.id, input.id))
-        .limit(1);
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      const email = await verifyEmailAccess(ctx.db, input.id, accountIds);
       if (!email) return { error: "Email not found" };
 
       const bodyText = email.bodyText || email.bodyHtml?.replace(/<[^>]+>/g, "") || "";
@@ -495,11 +658,8 @@ export const emailsRouter = router({
   aiDraft: protectedProcedure
     .input(z.object({ id: z.string(), prompt: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      const [email] = await ctx.db
-        .select()
-        .from(emails)
-        .where(eq(emails.id, input.id))
-        .limit(1);
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      const email = await verifyEmailAccess(ctx.db, input.id, accountIds);
       if (!email) return { error: "Email not found" };
 
       const bodyText = email.bodyText || email.bodyHtml?.replace(/<[^>]+>/g, "") || "";

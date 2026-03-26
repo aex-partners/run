@@ -15,7 +15,6 @@ import {
   agents,
   files,
   emails,
-  emailAccounts,
   plugins,
 } from "../db/schema/index.js";
 import {
@@ -1100,28 +1099,27 @@ export function createTools(ctx: ToolContext) {
     // --- Email tools ---
 
     list_emails: tool({
-      description: "List emails from the user's connected email account. Can filter by folder (inbox, sent, drafts, spam, trash, starred) and search.",
+      description: "List emails from the user's mail accounts. Can filter by account, folder, and search.",
       inputSchema: z.object({
+        account_id: z.string().optional().describe("Filter by specific mail account ID"),
         folder: z.enum(["inbox", "sent", "drafts", "spam", "trash", "starred"]).optional().describe("Email folder (default: inbox)"),
         search: z.string().optional().describe("Search in subject, sender, or preview"),
         limit: z.number().optional().describe("Max results (default 10)"),
       }),
-      execute: async ({ folder, search, limit }) => {
+      execute: async ({ account_id, folder, search, limit }) => {
+        const { getAccessibleAccountsForUser } = await import("../email/provider.js");
+        const accounts = await getAccessibleAccountsForUser(ctx.db, ctx.userId);
+        if (accounts.length === 0) return { error: "No mail accounts configured." };
+
         const maxResults = limit || 10;
         const conditions = [];
 
-        // Get user's email accounts
-        const accounts = await ctx.db
-          .select({ id: emailAccounts.id })
-          .from(emailAccounts)
-          .where(eq(emailAccounts.ownerId, ctx.userId));
-
-        if (accounts.length === 0) {
-          return { error: "No email account connected. The user needs to connect their email first in Settings." };
+        if (account_id) {
+          conditions.push(eq(emails.accountId, account_id));
+        } else {
+          const ids = accounts.map((a) => a.id);
+          conditions.push(sql`${emails.accountId} IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})`);
         }
-
-        const accountIds = accounts.map((a) => a.id);
-        conditions.push(sql`${emails.accountId} IN (${sql.join(accountIds.map(id => sql`${id}`), sql`, `)})`);
 
         const targetFolder = folder || "inbox";
         if (targetFolder === "starred") {
@@ -1141,11 +1139,11 @@ export function createTools(ctx: ToolContext) {
           );
         }
 
-        const { and: andFn } = await import("drizzle-orm");
-        const { desc: descFn } = await import("drizzle-orm");
+        const { and: andFn, desc: descFn } = await import("drizzle-orm");
         const rows = await ctx.db
           .select({
             id: emails.id,
+            accountId: emails.accountId,
             from: emails.fromName,
             fromEmail: emails.fromEmail,
             subject: emails.subject,
@@ -1165,6 +1163,7 @@ export function createTools(ctx: ToolContext) {
           count: rows.length,
           emails: rows.map((e) => ({
             id: e.id,
+            accountId: e.accountId,
             from: `${e.from} <${e.fromEmail}>`,
             subject: e.subject,
             preview: e.preview,
@@ -1177,28 +1176,28 @@ export function createTools(ctx: ToolContext) {
     }),
 
     search_emails: tool({
-      description: "Full-text search across all emails in the user's connected accounts",
+      description: "Full-text search across the user's mail accounts",
       inputSchema: z.object({
         query: z.string().describe("Search query"),
+        account_id: z.string().optional().describe("Filter by specific mail account ID"),
         limit: z.number().optional().describe("Max results (default 10)"),
       }),
-      execute: async ({ query, limit }) => {
+      execute: async ({ query, account_id, limit }) => {
+        const { getAccessibleAccountsForUser } = await import("../email/provider.js");
+        const accounts = await getAccessibleAccountsForUser(ctx.db, ctx.userId);
+        if (accounts.length === 0) return { error: "No mail accounts configured." };
+
         const maxResults = limit || 10;
-        const accounts = await ctx.db
-          .select({ id: emailAccounts.id })
-          .from(emailAccounts)
-          .where(eq(emailAccounts.ownerId, ctx.userId));
-
-        if (accounts.length === 0) {
-          return { error: "No email account connected." };
-        }
-
-        const accountIds = accounts.map((a) => a.id);
         const { and: andFn, or: orFn, desc: descFn } = await import("drizzle-orm");
+
+        const accountCondition = account_id
+          ? eq(emails.accountId, account_id)
+          : sql`${emails.accountId} IN (${sql.join(accounts.map((a) => sql`${a.id}`), sql`, `)})`;
 
         const rows = await ctx.db
           .select({
             id: emails.id,
+            accountId: emails.accountId,
             from: emails.fromName,
             fromEmail: emails.fromEmail,
             subject: emails.subject,
@@ -1208,7 +1207,7 @@ export function createTools(ctx: ToolContext) {
           })
           .from(emails)
           .where(andFn(
-            sql`${emails.accountId} IN (${sql.join(accountIds.map(id => sql`${id}`), sql`, `)})`,
+            accountCondition,
             orFn(
               ilike(emails.subject, `%${query}%`),
               ilike(emails.fromName, `%${query}%`),
@@ -1224,6 +1223,7 @@ export function createTools(ctx: ToolContext) {
           count: rows.length,
           results: rows.map((e) => ({
             id: e.id,
+            accountId: e.accountId,
             from: `${e.from} <${e.fromEmail}>`,
             subject: e.subject,
             preview: e.preview,
@@ -1235,52 +1235,70 @@ export function createTools(ctx: ToolContext) {
     }),
 
     send_email: tool({
-      description: "Send an email via the user's connected email account. This is a mutating action that requires user confirmation.",
+      description: "Send an email via SMTP from one of the user's mail accounts. If account_id is not provided, lists available accounts so you can ask the user which one to use. This is a mutating action that requires user confirmation.",
       inputSchema: z.object({
+        account_id: z.string().optional().describe("Mail account ID to send from. Omit to list available accounts first."),
         to: z.string().describe("Recipient email address(es), comma-separated"),
         subject: z.string().describe("Email subject"),
         body: z.string().describe("Email body (can include HTML)"),
         cc: z.string().optional().describe("CC recipients, comma-separated"),
       }),
-      execute: async ({ to, subject, body, cc }) => {
-        const accounts = await ctx.db
-          .select()
-          .from(emailAccounts)
-          .where(eq(emailAccounts.ownerId, ctx.userId))
-          .limit(1);
+      execute: async ({ account_id, to, subject, body, cc }) => {
+        const { getAccessibleAccountsForUser, userCanSendFrom, sendMailFromAccount, getAccountSmtpConfig } = await import("../email/provider.js");
+        const { storeSentEmail } = await import("../email/sync.js");
 
+        const accounts = await getAccessibleAccountsForUser(ctx.db, ctx.userId);
         if (accounts.length === 0) {
-          return { error: "No email account connected. The user needs to connect their email first." };
+          return { error: "No mail accounts configured. The user needs to add one in Settings > Email." };
         }
 
-        const account = accounts[0];
-        const { integrations: integrationsTable } = await import("../db/schema/index.js");
-        const [integration] = await ctx.db
-          .select()
-          .from(integrationsTable)
-          .where(eq(integrationsTable.id, account.integrationId))
-          .limit(1);
+        // Auto-select if only one account, otherwise require selection
+        let selectedAccountId = account_id;
+        if (!selectedAccountId) {
+          if (accounts.length === 1) {
+            selectedAccountId = accounts[0].id;
+          } else {
+            return {
+              needs_account_selection: true,
+              accounts: accounts.map((a) => ({
+                id: a.id,
+                name: a.displayName,
+                email: a.emailAddress,
+                shared: a.isShared === 1,
+              })),
+              message: "The user has multiple mail accounts. Ask them which account to send from before calling this tool again with account_id.",
+            };
+          }
+        }
 
-        if (!integration) return { error: "Integration not found" };
+        const canSend = await userCanSendFrom(ctx.db, ctx.userId, selectedAccountId);
+        if (!canSend) return { error: "The user does not have permission to send from this account." };
 
-        const { decryptCredentials } = await import("../integrations/crypto.js");
-        const credentials = decryptCredentials(integration.credentials);
-        const { getProvider } = await import("../email/provider.js");
-        const provider = getProvider(account.provider);
+        const config = await getAccountSmtpConfig(ctx.db, selectedAccountId);
+        if (!config) return { error: "Mail account not found." };
 
         const toAddresses = to.split(",").map((e) => e.trim()).filter(Boolean);
         const ccAddresses = cc ? cc.split(",").map((e) => e.trim()).filter(Boolean) : [];
 
-        await provider.sendMessage(credentials.accessToken as string, {
-          from: account.emailAddress,
-          fromName: account.displayName || undefined,
+        const result = await sendMailFromAccount(ctx.db, selectedAccountId, {
           to: toAddresses,
           cc: ccAddresses,
           subject,
           bodyHtml: body,
         });
 
-        return { sent: true, to: toAddresses, subject };
+        await storeSentEmail(ctx.db, {
+          accountId: selectedAccountId,
+          fromName: config.fromName || config.from,
+          fromEmail: config.from,
+          to: toAddresses,
+          cc: ccAddresses,
+          subject,
+          bodyHtml: body,
+          messageId: result.messageId,
+        });
+
+        return { sent: true, from: config.from, to: toAddresses, subject, messageId: result.messageId };
       },
     }),
 

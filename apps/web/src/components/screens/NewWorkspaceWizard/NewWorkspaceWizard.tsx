@@ -68,8 +68,8 @@ export interface NewWorkspaceWizardData {
   onboardingPath: OnboardingPath
   // Routines
   selectedRoutines: string[]
-  // Email
-  emailProvider: 'gmail' | 'outlook' | 'smtp' | null
+  // Email (SMTP only — self-hosted)
+  emailProvider: 'smtp' | null
   smtpHost: string
   smtpPort: string
   smtpUser: string
@@ -88,10 +88,6 @@ export interface NewWorkspaceWizardProps {
   onSubmit?: (data: NewWorkspaceWizardData) => void
   /** Called when leaving step 0 to create and authenticate the user account. */
   onCreateAccount?: (name: string, email: string, password: string) => Promise<void>
-  /** Called when user wants to connect Gmail/Outlook. Should return the connected email address or null. */
-  onConnectEmail?: (provider: 'gmail' | 'outlook') => Promise<string | null>
-  /** Email address of currently connected account (if any) */
-  connectedEmail?: string | null
   /** Called when user wants to connect OpenRouter via OAuth. Should return true on success. */
   onConnectOpenRouter?: () => Promise<boolean>
   /** Whether OpenRouter is already connected */
@@ -178,13 +174,12 @@ function clearSavedState() {
   localStorage.removeItem('aex-tour-completed')
 }
 
-export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, connectedEmail, onConnectOpenRouter, openRouterConnected = false, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
+export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectOpenRouter, openRouterConnected = false, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
   const { t } = useTranslation()
 
   const STEPS = useMemo(() => STEP_KEYS.map((key) => ({ label: t(key) })), [t])
   const STRENGTH_LABELS = useMemo(() => STRENGTH_LABEL_KEYS.map((key) => t(key)), [t])
 
-  const [connectingEmail, setConnectingEmail] = useState(false)
   const [connectingOpenRouter, setConnectingOpenRouter] = useState(false)
   const [orConnected, setOrConnected] = useState(openRouterConnected)
   const [accountCreated, setAccountCreated] = useState(false)
@@ -771,65 +766,16 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectEmail, 
       {/* Step 7: Email */}
       {step === 7 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-          {/* Provider selection */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <OnboardingPathCard
-              title={t('setup.email.gmail.title')}
-              description={t('setup.email.gmail.description')}
-              icon="Mail"
-              selected={data.emailProvider === 'gmail'}
-              onClick={() => update('emailProvider', data.emailProvider === 'gmail' ? null : 'gmail')}
+          {/* Enable/disable toggle */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--text)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={data.emailProvider === 'smtp'}
+              onChange={(e) => update('emailProvider', e.target.checked ? 'smtp' : null)}
+              style={{ accentColor: 'var(--accent)' }}
             />
-            <OnboardingPathCard
-              title={t('setup.email.outlook.title')}
-              description={t('setup.email.outlook.description')}
-              icon="Mail"
-              selected={data.emailProvider === 'outlook'}
-              onClick={() => update('emailProvider', data.emailProvider === 'outlook' ? null : 'outlook')}
-            />
-            <OnboardingPathCard
-              title={t('setup.email.smtp.title')}
-              description={t('setup.email.smtp.description')}
-              icon="Server"
-              selected={data.emailProvider === 'smtp'}
-              onClick={() => update('emailProvider', data.emailProvider === 'smtp' ? null : 'smtp')}
-            />
-          </div>
-
-          {/* Gmail / Outlook connect */}
-          {(data.emailProvider === 'gmail' || data.emailProvider === 'outlook') && (
-            <div style={{ padding: 20, background: 'var(--accent-light)', borderRadius: 10, border: '1px solid var(--accent)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {connectedEmail ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>
-                    {t('setup.email.connected')} <strong>{connectedEmail}</strong>
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5, margin: 0 }}>
-                    {t('setup.email.oauthNote')}
-                  </p>
-                  <Button
-                    variant="primary"
-                    loading={connectingEmail}
-                    onClick={async () => {
-                      if (!onConnectEmail) return
-                      setConnectingEmail(true)
-                      try {
-                        await onConnectEmail(data.emailProvider as 'gmail' | 'outlook')
-                      } finally {
-                        setConnectingEmail(false)
-                      }
-                    }}
-                  >
-                    {connectingEmail ? t('setup.email.connecting') : t('setup.email.connectButton', { provider: data.emailProvider === 'gmail' ? 'Gmail' : 'Outlook' })}
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
+            {t('setup.email.enableSmtp')}
+          </label>
 
           {/* SMTP form */}
           {data.emailProvider === 'smtp' && (

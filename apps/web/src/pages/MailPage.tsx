@@ -1,35 +1,39 @@
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
-import { MailScreen, type MailFolder, type MailEmail } from "../components/screens/MailScreen/MailScreen";
+import { MailScreen, type MailFolder, type MailEmail, type MailAccount } from "../components/screens/MailScreen/MailScreen";
 
 export function MailPage() {
   const [activeFolder, setActiveFolder] = useState<MailFolder>("inbox");
   const [activeEmailId, setActiveEmailId] = useState<string | undefined>();
+  const [activeAccountId, setActiveAccountId] = useState<string | undefined>();
   const [aiDrafting, setAiDrafting] = useState(false);
 
-  const accountsQuery = trpc.emails.accounts.list.useQuery();
-  const hasAccount = (accountsQuery.data?.length ?? 0) > 0;
-  const accountId = accountsQuery.data?.[0]?.id;
+  const accountsQuery = trpc.emails.mailAccounts.list.useQuery();
+  const accounts: MailAccount[] = (accountsQuery.data ?? []).map((a) => ({
+    id: a.id,
+    displayName: a.displayName,
+    emailAddress: a.emailAddress,
+    isShared: a.isShared,
+    isOwner: a.isOwner,
+  }));
+  const hasAccount = accounts.length > 0;
+
+  // Default to first account
+  const selectedAccountId = activeAccountId ?? accounts[0]?.id;
 
   const emailsQuery = trpc.emails.list.useQuery(
-    { accountId, folder: activeFolder },
-    { enabled: hasAccount },
+    { accountId: selectedAccountId, folder: activeFolder },
+    { enabled: hasAccount && !!selectedAccountId },
   );
   const countsQuery = trpc.emails.folderCounts.useQuery(
-    { accountId },
-    { enabled: hasAccount },
-  );
-  const labelsQuery = trpc.emails.labels.list.useQuery(
-    { accountId: accountId! },
-    { enabled: !!accountId },
+    { accountId: selectedAccountId },
+    { enabled: hasAccount && !!selectedAccountId },
   );
 
-  const connectMut = trpc.emails.accounts.connect.useMutation({
-    onSuccess: (data) => {
-      if (data.authUrl) window.location.href = data.authUrl;
-    },
+  const createAccountMut = trpc.emails.mailAccounts.create.useMutation({
+    onSuccess: () => accountsQuery.refetch(),
   });
-  const syncMut = trpc.emails.accounts.sync.useMutation({
+  const sendMut = trpc.emails.send.useMutation({
     onSuccess: () => emailsQuery.refetch(),
   });
   const starMut = trpc.emails.star.useMutation({
@@ -46,9 +50,6 @@ export function MailPage() {
   });
   const deleteMut = trpc.emails.delete.useMutation({
     onSuccess: () => { emailsQuery.refetch(); countsQuery.refetch(); },
-  });
-  const sendMut = trpc.emails.send.useMutation({
-    onSuccess: () => emailsQuery.refetch(),
   });
   const aiDraftMut = trpc.emails.aiDraft.useMutation({
     onSettled: () => setAiDrafting(false),
@@ -73,34 +74,38 @@ export function MailPage() {
   return (
     <MailScreen
       emails={emailsList}
-      labels={(labelsQuery.data ?? []).map((l) => ({
-        id: l.id,
-        name: l.name,
-        color: l.color,
-      }))}
+      accounts={accounts}
+      activeAccountId={selectedAccountId}
       activeFolder={activeFolder}
       activeEmailId={activeEmailId}
       folderCounts={countsQuery.data}
       hasAccount={hasAccount}
-      connectedEmail={accountsQuery.data?.[0]?.emailAddress}
-      onConnectOAuth={(provider) => connectMut.mutateAsync({ provider })}
       loading={emailsQuery.isLoading}
       aiDrafting={aiDrafting}
+      onAccountChange={setActiveAccountId}
+      onAddAccount={(config) => {
+        // Derive a readable display name from the email (e.g. "user@corp.com" -> "User")
+        const namePart = config.from.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        createAccountMut.mutate({
+          displayName: namePart,
+          emailAddress: config.from,
+          smtpHost: config.host,
+          smtpPort: parseInt(config.port, 10),
+          smtpUser: config.user,
+          smtpPass: config.pass,
+          smtpSecure: config.secure,
+        });
+      }}
       onFolderChange={(folder) => {
         setActiveFolder(folder);
         setActiveEmailId(undefined);
       }}
       onEmailClick={setActiveEmailId}
       onEmailStar={(id) => starMut.mutate({ id })}
-      onCompose={() => {
-        if (!hasAccount) {
-          connectMut.mutate({ provider: "gmail" });
-        }
-      }}
       onSend={(data) => {
-        if (!accountId) return;
+        if (!selectedAccountId) return;
         sendMut.mutate({
-          accountId,
+          accountId: selectedAccountId,
           to: data.to,
           cc: data.cc || undefined,
           subject: data.subject,
@@ -112,7 +117,6 @@ export function MailPage() {
       onMarkRead={(ids) => markReadMut.mutate({ ids })}
       onMarkUnread={(ids) => markUnreadMut.mutate({ ids })}
       onRefresh={() => {
-        if (accountId) syncMut.mutate({ accountId });
         emailsQuery.refetch();
         countsQuery.refetch();
       }}

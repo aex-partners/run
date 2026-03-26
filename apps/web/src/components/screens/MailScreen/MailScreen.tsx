@@ -28,16 +28,25 @@ export interface MailEmail extends Omit<MailItemProps, 'onClick' | 'onStar' | 'o
   aiDraft?: string
 }
 
+export interface MailAccount {
+  id: string
+  displayName: string
+  emailAddress: string
+  isShared: boolean
+  isOwner: boolean
+}
+
 export interface MailScreenProps {
   emails: MailEmail[]
+  accounts?: MailAccount[]
+  activeAccountId?: string
   labels?: MailLabel[]
   activeFolder?: MailFolder
   activeEmailId?: string
   folderCounts?: Partial<Record<MailFolder, number>>
   hasAccount?: boolean
-  connectedEmail?: string
-  onConnectOAuth?: (provider: 'gmail' | 'outlook') => Promise<void> | void
-  onSmtpSubmit?: (config: { host: string; port: string; user: string; pass: string; from: string; secure: boolean }) => void
+  onAccountChange?: (accountId: string) => void
+  onAddAccount?: (config: { host: string; port: string; user: string; pass: string; from: string; secure: boolean }) => void
   onFolderChange?: (folder: MailFolder) => void
   onEmailClick?: (id: string) => void
   onEmailStar?: (id: string) => void
@@ -71,14 +80,15 @@ const SIDEBAR_COLLAPSED = 56
 
 export function MailScreen({
   emails,
+  accounts = [],
+  activeAccountId,
   labels = [],
   activeFolder: controlledFolder,
   activeEmailId: controlledEmailId,
   folderCounts = {},
   hasAccount = true,
-  connectedEmail,
-  onConnectOAuth,
-  onSmtpSubmit,
+  onAccountChange,
+  onAddAccount,
   onFolderChange,
   onEmailClick,
   onEmailStar,
@@ -245,9 +255,7 @@ export function MailScreen({
             </p>
           </div>
           <EmailSetup
-            onConnectOAuth={onConnectOAuth}
-            connectedEmail={connectedEmail}
-            onSmtpSubmit={onSmtpSubmit}
+            onSmtpSubmit={onAddAccount}
           />
         </div>
       </div>
@@ -325,6 +333,33 @@ export function MailScreen({
             >
               <PenSquare size={18} />
             </button>
+          </div>
+        )}
+
+        {/* Account switcher */}
+        {sidebarExpanded && accounts.length > 1 && (
+          <div style={{ padding: '4px 12px 8px' }}>
+            <select
+              value={activeAccountId || ''}
+              onChange={(e) => onAccountChange?.(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: 'var(--surface-2)',
+                color: 'var(--text)',
+                fontSize: 12,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.displayName} ({a.emailAddress})
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

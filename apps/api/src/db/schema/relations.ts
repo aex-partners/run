@@ -19,6 +19,7 @@ import {
   files,
   fileShares,
   emailAccounts,
+  mailAccountMembers,
   emails,
   emailAttachments,
   emailLabels,
@@ -29,6 +30,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   conversationMembers: many(conversationMembers),
   messages: many(messages),
+  mailAccountMembers: many(mailAccountMembers),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -153,10 +155,15 @@ export const fileSharesRelations = relations(fileShares, ({ one }) => ({
 }));
 
 export const emailAccountsRelations = relations(emailAccounts, ({ one, many }) => ({
-  integration: one(integrations, { fields: [emailAccounts.integrationId], references: [integrations.id] }),
   owner: one(users, { fields: [emailAccounts.ownerId], references: [users.id] }),
+  members: many(mailAccountMembers),
   emails: many(emails),
   labels: many(emailLabels),
+}));
+
+export const mailAccountMembersRelations = relations(mailAccountMembers, ({ one }) => ({
+  account: one(emailAccounts, { fields: [mailAccountMembers.accountId], references: [emailAccounts.id] }),
+  user: one(users, { fields: [mailAccountMembers.userId], references: [users.id] }),
 }));
 
 export const emailsRelations = relations(emails, ({ one, many }) => ({

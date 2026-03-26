@@ -3,26 +3,15 @@ import { NewWorkspaceWizard, type NewWorkspaceWizardData } from "../components/s
 import { trpc } from "../lib/trpc";
 import { startOpenRouterOAuth, getStoredCodeVerifier, clearStoredCodeVerifier, OPENROUTER_CONNECTED_KEY } from "../lib/openrouter-oauth";
 
-const EMAIL_CONNECTED_KEY = "aex-email-connected";
-
 export function SetupPage() {
   const [error, setError] = useState("");
-  const [connectedEmail, setConnectedEmail] = useState<string | null>(null);
   const [openRouterConnected, setOpenRouterConnected] = useState(false);
   const completeSetup = trpc.settings.completeSetup.useMutation();
-  const connectEmail = trpc.emails.accounts.connect.useMutation();
   const exchangeOpenRouter = trpc.settings.exchangeOpenRouterCode.useMutation();
-  const emailAccounts = trpc.emails.accounts.list.useQuery(undefined, {
-    enabled: false,
-  });
 
   // Listen for OAuth popup completing via localStorage
   useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === EMAIL_CONNECTED_KEY && e.newValue) {
-        setConnectedEmail(e.newValue);
-        localStorage.removeItem(EMAIL_CONNECTED_KEY);
-      }
       if (e.key === OPENROUTER_CONNECTED_KEY && e.newValue === "1") {
         setOpenRouterConnected(true);
         localStorage.removeItem(OPENROUTER_CONNECTED_KEY);
@@ -30,20 +19,6 @@ export function SetupPage() {
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
-  }, []);
-
-  // If this page loads with ?email_connected=1, it's inside the OAuth popup
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("email_connected") === "1") {
-      emailAccounts.refetch().then((res) => {
-        const email = res.data?.[0]?.emailAddress;
-        if (email) {
-          localStorage.setItem(EMAIL_CONNECTED_KEY, email);
-        }
-        window.close();
-      });
-    }
   }, []);
 
   // Handle OpenRouter OAuth callback: ?code=xxx (runs inside the popup)
@@ -100,35 +75,6 @@ export function SetupPage() {
       throw new Error("Failed to sign in after account creation");
     }
   }, []);
-
-  const handleConnectEmail = useCallback(async (provider: "gmail" | "outlook") => {
-    const result = await connectEmail.mutateAsync({
-      provider,
-      returnTo: "/setup?email_connected=1",
-    });
-
-    const popup = window.open(
-      result.authUrl,
-      "aex-email-oauth",
-      "width=500,height=700,left=200,top=100"
-    );
-
-    return new Promise<string | null>((resolve) => {
-      const interval = setInterval(() => {
-        const email = localStorage.getItem(EMAIL_CONNECTED_KEY);
-        if (email) {
-          clearInterval(interval);
-          localStorage.removeItem(EMAIL_CONNECTED_KEY);
-          setConnectedEmail(email);
-          resolve(email);
-        }
-        if (popup?.closed) {
-          clearInterval(interval);
-          resolve(null);
-        }
-      }, 500);
-    });
-  }, [connectEmail]);
 
   const handleConnectOpenRouter = useCallback(async () => {
     const callbackUrl = `${window.location.origin}/setup`;
@@ -210,8 +156,6 @@ export function SetupPage() {
       <NewWorkspaceWizard
         onSubmit={handleSubmit}
         onCreateAccount={handleCreateAccount}
-        onConnectEmail={handleConnectEmail}
-        connectedEmail={connectedEmail}
         onConnectOpenRouter={handleConnectOpenRouter}
         openRouterConnected={openRouterConnected}
       />

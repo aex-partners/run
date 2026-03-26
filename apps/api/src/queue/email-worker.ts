@@ -1,38 +1,50 @@
 import { Worker } from "bullmq";
 import { redisConnection } from "./connection.js";
+import type { EmailJobData } from "./email-queue.js";
 
-const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
-export function startEmailSyncWorker() {
+export function startEmailWorker() {
   const worker = new Worker(
-    "email-sync",
+    "email-send",
     async (job) => {
-      const { accountId } = job.data as { accountId: string };
+      const { accountId, storeSent, ...options } = job.data as EmailJobData;
       const { db } = await import("../db/index.js");
-      const { syncEmailAccount } = await import("../email/sync.js");
-      const { enqueueEmailSync } = await import("./email-queue.js");
+      const { getAccountSmtpConfig, sendMailWithConfig } = await import("../email/provider.js");
 
-      try {
-        console.log(`[email-sync] Syncing account ${accountId}`);
-        const result = await syncEmailAccount(db, accountId);
-        console.log(`[email-sync] Done: ${result.newCount} new emails`);
-      } catch (error) {
-        console.error(`[email-sync] Error syncing account ${accountId}:`, error);
+      // Fix #7: single DB fetch, reuse config for both send and store
+      const config = await getAccountSmtpConfig(db, accountId);
+      if (!config) {
+        console.warn(`[email] Account ${accountId} not found, skipping`);
+        return;
       }
 
-      // Re-enqueue for continuous polling
-      await enqueueEmailSync(accountId, SYNC_INTERVAL_MS);
+      console.log(`[email] Sending to ${options.to.join(", ")}: ${options.subject}`);
+      const result = await sendMailWithConfig(config, options);
+      console.log(`[email] Sent: ${result.messageId} (accepted: ${result.accepted.length}, rejected: ${result.rejected.length})`);
+
+      if (storeSent !== false) {
+        const { storeSentEmail } = await import("../email/sync.js");
+        await storeSentEmail(db, {
+          accountId,
+          fromName: options.fromName || config.fromName || config.from,
+          fromEmail: config.from,
+          to: options.to,
+          cc: options.cc,
+          subject: options.subject,
+          bodyHtml: options.bodyHtml,
+          messageId: result.messageId,
+        });
+      }
     },
     {
       connection: redisConnection,
-      concurrency: 2,
+      concurrency: 5,
     },
   );
 
   worker.on("failed", (job, err) => {
-    console.error(`[email-sync] Job ${job?.id} failed:`, err.message);
+    console.error(`[email] Job ${job?.id} failed:`, err.message);
   });
 
-  console.log("[email-sync] Worker started");
+  console.log("[email] SMTP worker started");
   return worker;
 }

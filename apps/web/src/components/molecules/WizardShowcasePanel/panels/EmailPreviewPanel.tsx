@@ -1,48 +1,19 @@
 import { useMemo } from 'react'
-import { Mail, Shield, Send, Server, RefreshCw } from 'lucide-react'
+import { Mail, Shield, Send, Server } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 export interface EmailPreviewPanelProps {
-  provider: 'gmail' | 'outlook' | 'smtp' | null
+  provider: 'smtp' | null
 }
 
 export function EmailPreviewPanel({ provider }: EmailPreviewPanelProps) {
   const { t } = useTranslation()
 
-  const PROVIDER_CONFIG = useMemo(() => ({
-    gmail: {
-      color: '#EA4335',
-      title: 'Gmail',
-      description: t('setup.showcase.email.gmailDesc'),
-      features: [
-        { icon: <Mail size={16} />, label: t('setup.showcase.email.oauthSync') },
-        { icon: <Send size={16} />, label: t('setup.showcase.email.sendReceive') },
-        { icon: <RefreshCw size={16} />, label: t('setup.showcase.email.autoRefresh') },
-      ],
-    },
-    outlook: {
-      color: '#0078D4',
-      title: 'Outlook',
-      description: t('setup.showcase.email.outlookDesc'),
-      features: [
-        { icon: <Mail size={16} />, label: t('setup.showcase.email.oauthSync') },
-        { icon: <Send size={16} />, label: t('setup.showcase.email.sendReceive') },
-        { icon: <RefreshCw size={16} />, label: t('setup.showcase.email.autoRefresh') },
-      ],
-    },
-    smtp: {
-      color: 'var(--accent)',
-      title: 'SMTP',
-      description: t('setup.showcase.email.smtpDesc'),
-      features: [
-        { icon: <Send size={16} />, label: t('setup.showcase.email.smtpSend') },
-        { icon: <Shield size={16} />, label: t('setup.showcase.email.tlsEncryption') },
-        { icon: <Server size={16} />, label: t('setup.showcase.email.anyProvider') },
-      ],
-    },
-  }), [t])
-
-  const config = provider ? PROVIDER_CONFIG[provider] : null
+  const smtpFeatures = useMemo(() => [
+    { icon: <Send size={16} />, label: t('setup.showcase.email.smtpSend') },
+    { icon: <Shield size={16} />, label: t('setup.showcase.email.tlsEncryption') },
+    { icon: <Server size={16} />, label: t('setup.showcase.email.anyProvider') },
+  ], [t])
 
   return (
     <div
@@ -62,7 +33,7 @@ export function EmailPreviewPanel({ provider }: EmailPreviewPanelProps) {
           <Mail size={32} color="#fff" />
         </div>
 
-        {!config ? (
+        {!provider ? (
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{t('setup.showcase.email.title')}</div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{t('setup.showcase.email.description')}</div>
@@ -70,11 +41,11 @@ export function EmailPreviewPanel({ provider }: EmailPreviewPanelProps) {
         ) : (
           <>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>{config.title}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{config.description}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>SMTP</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{t('setup.showcase.email.smtpDesc')}</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-              {config.features.map((f, i) => (
+              {smtpFeatures.map((f, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#fff', borderRadius: 10, border: '1px solid var(--border)' }}>
                   <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
                     {f.icon}
