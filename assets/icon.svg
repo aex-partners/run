@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 159 173" width="159" height="173">
-  <polygon fill="#EA580C" points="27.07 0 0 0 52.19 86.37 0 172.73 27.07 172.73 79.26 86.37 27.07 0" />
-  <polygon fill="#111827" points="122.55 59.35 158.41 0 131.34 0 109.01 36.95 122.55 59.35" />
-  <polygon fill="#111827" points="109.01 135.78 131.34 172.73 158.41 172.73 122.55 113.39 109.01 135.78" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="48" fill="#ffffff" />
+  <g transform="translate(48, 42) scale(1)">
+    <polygon fill="#EA580C" points="27.07 0 0 0 52.19 86.37 0 172.73 27.07 172.73 79.26 86.37 27.07 0" />
+    <polygon fill="#111827" points="122.55 59.35 158.41 0 131.34 0 109.01 36.95 122.55 59.35" />
+    <polygon fill="#111827" points="109.01 135.78 131.34 172.73 158.41 172.73 122.55 113.39 109.01 135.78" />
+  </g>
 </svg>
