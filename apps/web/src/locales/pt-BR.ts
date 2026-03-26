@@ -464,6 +464,17 @@ const ptBR = {
         other: 'Outro',
         system: 'Sistema',
       },
+      statusOptions: {
+        todo: 'A Fazer',
+        in_progress: 'Em Progresso',
+        done: 'Concluído',
+      },
+      priorityOptions: {
+        critical: 'Crítica',
+        high: 'Alta',
+        medium: 'Média',
+        low: 'Baixa',
+      },
       relationshipTypes: {
         one_to_one: '1:1',
         one_to_many: '1:N',

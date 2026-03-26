@@ -466,6 +466,17 @@ const en = {
         other: 'Other',
         system: 'System',
       },
+      statusOptions: {
+        todo: 'To Do',
+        in_progress: 'In Progress',
+        done: 'Done',
+      },
+      priorityOptions: {
+        critical: 'Critical',
+        high: 'High',
+        medium: 'Medium',
+        low: 'Low',
+      },
       relationshipTypes: {
         one_to_one: '1:1',
         one_to_many: '1:N',

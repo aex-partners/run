@@ -383,16 +383,16 @@ export function EntityManagePanel({
                 setNewFieldType(type)
                 if (type === 'status' && newFieldOptions.length === 0) {
                   setNewFieldOptions([
-                    { value: 'todo', label: 'To Do', color: '#6b7280' },
-                    { value: 'in_progress', label: 'In Progress', color: '#d97706' },
-                    { value: 'done', label: 'Done', color: '#16a34a' },
+                    { value: 'todo', label: t('database.entityManage.statusOptions.todo'), color: '#6b7280' },
+                    { value: 'in_progress', label: t('database.entityManage.statusOptions.in_progress'), color: '#d97706' },
+                    { value: 'done', label: t('database.entityManage.statusOptions.done'), color: '#16a34a' },
                   ])
                 } else if (type === 'priority' && newFieldOptions.length === 0) {
                   setNewFieldOptions([
-                    { value: 'critical', label: 'Critical', color: '#dc2626' },
-                    { value: 'high', label: 'High', color: '#ea580c' },
-                    { value: 'medium', label: 'Medium', color: '#d97706' },
-                    { value: 'low', label: 'Low', color: '#2563eb' },
+                    { value: 'critical', label: t('database.entityManage.priorityOptions.critical'), color: '#dc2626' },
+                    { value: 'high', label: t('database.entityManage.priorityOptions.high'), color: '#ea580c' },
+                    { value: 'medium', label: t('database.entityManage.priorityOptions.medium'), color: '#d97706' },
+                    { value: 'low', label: t('database.entityManage.priorityOptions.low'), color: '#2563eb' },
                   ])
                 } else if (!['select', 'multiselect', 'status', 'priority'].includes(type)) {
                   setNewFieldOptions([])
@@ -1203,11 +1203,6 @@ function DetailItem({ label, value, mono }: { label: string; value: string; mono
 
 function RelationshipsTab({ relationships }: { relationships: EntityRelationship[] }) {
   const { t } = useTranslation()
-  const typeLabels: Record<string, string> = {
-    one_to_one: '1:1',
-    one_to_many: '1:N',
-    many_to_many: 'N:N',
-  }
 
   return (
     <div style={{ padding: 24 }}>
@@ -1252,7 +1247,7 @@ function RelationshipsTab({ relationships }: { relationships: EntityRelationship
               flexShrink: 0,
             }}>
               <ArrowRight size={12} />
-              {typeLabels[rel.type] || rel.type}
+              {t(`database.entityManage.relationshipTypes.${rel.type}`, { defaultValue: rel.type })}
             </div>
 
             {/* Target */}
