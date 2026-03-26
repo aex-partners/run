@@ -11,7 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { DatabaseScreen, type DatabaseEntity } from "../components/screens/DatabaseScreen/DatabaseScreen";
 import type { GridColumn, GridRow } from "../components/organisms/DataGrid/DataGrid";
-import type { EntityField as ManagePanelField } from "../components/organisms/EntityManagePanel/EntityManagePanel";
+import type { EntityField as ManagePanelField, EntityRelationship, EntityVersion } from "../components/organisms/EntityManagePanel/EntityManagePanel";
 import type { EntityFieldType as SharedFieldType } from "@aex/shared";
 
 // The backend EntityField shape (from tRPC response)
@@ -383,6 +383,75 @@ export function DatabasePage() {
     return { [activeEntityId]: fields.map(fieldToManagePanel) };
   }, [activeEntityId, fields]);
 
+  const entityManageRelationships = useMemo<Record<string, EntityRelationship[]>>(() => {
+    if (!activeEntityId || !fields.length) return {};
+
+    const relationships: EntityRelationship[] = [];
+    const entityName = entities.find(e => e.id === activeEntityId)?.name ?? "";
+
+    for (const field of fields) {
+      if (field.type === "relationship" && field.relationshipEntityName) {
+        relationships.push({
+          id: field.id,
+          name: field.name,
+          type: "one_to_many",
+          sourceEntityId: activeEntityId,
+          sourceEntityName: entityName,
+          sourceFieldId: field.id,
+          sourceFieldName: field.name,
+          targetEntityId: field.relationshipEntityId ?? "",
+          targetEntityName: field.relationshipEntityName,
+        });
+      }
+      if (field.type === "lookup" && field.relationshipEntityName) {
+        relationships.push({
+          id: field.id,
+          name: `${field.name} (lookup)`,
+          type: "one_to_many",
+          sourceEntityId: activeEntityId,
+          sourceEntityName: entityName,
+          sourceFieldId: field.id,
+          sourceFieldName: field.name,
+          targetEntityId: field.relationshipEntityId ?? "",
+          targetEntityName: field.relationshipEntityName,
+        });
+      }
+      if (field.type === "rollup" && field.relationshipEntityName) {
+        relationships.push({
+          id: field.id,
+          name: `${field.name} (rollup)`,
+          type: "one_to_many",
+          sourceEntityId: activeEntityId,
+          sourceEntityName: entityName,
+          sourceFieldId: field.id,
+          sourceFieldName: field.name,
+          targetEntityId: field.relationshipEntityId ?? "",
+          targetEntityName: field.relationshipEntityName,
+        });
+      }
+    }
+
+    return { [activeEntityId]: relationships };
+  }, [activeEntityId, fields, entities]);
+
+  const entityManageVersions = useMemo<Record<string, EntityVersion[]>>(() => {
+    if (!activeEntityId || !entityDetail.data) return {};
+
+    const entity = entityDetail.data;
+    const versions: EntityVersion[] = [
+      {
+        id: "v1",
+        version: 1,
+        createdAt: entity.createdAt ? new Date(entity.createdAt).toLocaleDateString("pt-BR") : "Data desconhecida",
+        createdBy: "Sistema",
+        changes: "Schema inicial criado",
+        fieldCount: fields.length,
+      },
+    ];
+
+    return { [activeEntityId]: versions };
+  }, [activeEntityId, entityDetail.data, fields.length]);
+
   const entityDescriptions = useMemo<Record<string, string>>(() => {
     if (!activeEntityId || !entityDetail.data?.description) return {};
     return { [activeEntityId]: entityDetail.data.description };
@@ -540,6 +609,8 @@ export function DatabasePage() {
         onAISend={handleAISend}
         entityFields={fields}
         entityManageFields={entityManageFields}
+        entityManageRelationships={entityManageRelationships}
+        entityManageVersions={entityManageVersions}
         entityDescriptions={entityDescriptions}
         onUpdateEntityDescription={handleUpdateEntityDescription}
         onAddEntityField={handleManageAddField}

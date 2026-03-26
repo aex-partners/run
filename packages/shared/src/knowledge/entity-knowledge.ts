@@ -88,7 +88,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Title", type: "text", required: true, hint: "Short description of the opportunity" },
       { name: "Value", type: "currency", currencyCode: "BRL", hint: "Expected revenue amount" },
       { name: "Stage", type: "status", options: [{ value: "Prospecting", label: "Prospecting", color: "#6b7280" }, { value: "Qualification", label: "Qualification", color: "#d97706" }, { value: "Proposal", label: "Proposal", color: "#2563eb" }, { value: "Negotiation", label: "Negotiation", color: "#d97706" }, { value: "Closed Won", label: "Closed Won", color: "#16a34a" }, { value: "Closed Lost", label: "Closed Lost", color: "#dc2626" }], hint: "Pipeline stage" },
-      { name: "Contact", type: "text", hint: "Primary contact name or customer" },
+      { name: "Customer", type: "relationship", relationshipEntity: "Customers", hint: "Customer linked to this deal" },
       { name: "Expected Close", type: "date", hint: "When we expect to close this deal" },
       { name: "Notes", type: "long_text", hint: "Deal notes, meeting summaries, next steps" },
     ],
@@ -108,7 +108,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Customers", "Orders", "Deals"],
     fields: [
       { name: "Number", type: "text", required: true, hint: "Quote reference number" },
-      { name: "Client", type: "text", required: true, hint: "Client or company name" },
+      { name: "Customer", type: "relationship", relationshipEntity: "Customers", required: true, hint: "Client or company name" },
       { name: "Date", type: "date", required: true, hint: "Issue date" },
       { name: "Valid Until", type: "date", hint: "Expiration date" },
       { name: "Total", type: "currency", currencyCode: "BRL", hint: "Total quoted amount" },
@@ -155,7 +155,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Customers", "Quotations", "Inventory", "Receivables", "Commissions"],
     fields: [
       { name: "Number", type: "text", required: true, hint: "Order reference number" },
-      { name: "Customer", type: "text", required: true, hint: "Customer name" },
+      { name: "Customer", type: "relationship", relationshipEntity: "Customers", required: true, hint: "Customer name" },
       { name: "Date", type: "date", required: true, hint: "Order date" },
       { name: "Total", type: "currency", currencyCode: "BRL", hint: "Order total amount" },
       { name: "Status", type: "status", options: [{ value: "Pending", label: "Pending", color: "#d97706" }, { value: "Processing", label: "Processing", color: "#2563eb" }, { value: "Shipped", label: "Shipped", color: "#2563eb" }, { value: "Delivered", label: "Delivered", color: "#16a34a" }, { value: "Cancelled", label: "Cancelled", color: "#dc2626" }], hint: "Fulfillment status" },
@@ -176,8 +176,8 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     category: "sales",
     relatedEntities: ["Deals", "Orders", "Employees", "Payroll"],
     fields: [
-      { name: "Salesperson", type: "text", required: true, hint: "Name of the salesperson" },
-      { name: "Deal", type: "text", hint: "Related deal or order reference" },
+      { name: "Salesperson", type: "relationship", relationshipEntity: "Employees", required: true, hint: "Name of the salesperson" },
+      { name: "Deal", type: "relationship", relationshipEntity: "Deals", hint: "Related deal or order reference" },
       { name: "Amount", type: "currency", currencyCode: "BRL", required: true, hint: "Commission amount" },
       { name: "Rate", type: "number", hint: "Commission rate percentage" },
       { name: "Date", type: "date", hint: "Commission date" },
@@ -203,7 +203,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Customers", "Orders", "Cash Flow"],
     fields: [
       { name: "Invoice", type: "text", required: true, hint: "Invoice number" },
-      { name: "Customer", type: "text", required: true, hint: "Customer name" },
+      { name: "Customer", type: "relationship", relationshipEntity: "Customers", required: true, hint: "Customer name" },
       { name: "Amount", type: "currency", currencyCode: "BRL", required: true, hint: "Total invoice amount" },
       { name: "Due Date", type: "date", required: true, hint: "Payment due date" },
       { name: "Status", type: "status", options: [{ value: "Open", label: "Open", color: "#6b7280" }, { value: "Partial", label: "Partial", color: "#d97706" }, { value: "Paid", label: "Paid", color: "#16a34a" }, { value: "Overdue", label: "Overdue", color: "#dc2626" }], hint: "Payment status" },
@@ -226,7 +226,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Suppliers", "Purchase Orders", "Cash Flow"],
     fields: [
       { name: "Bill", type: "text", required: true, hint: "Bill or invoice number" },
-      { name: "Vendor", type: "text", required: true, hint: "Vendor or supplier name" },
+      { name: "Vendor", type: "relationship", relationshipEntity: "Suppliers", required: true, hint: "Vendor or supplier name" },
       { name: "Amount", type: "currency", currencyCode: "BRL", required: true, hint: "Total bill amount" },
       { name: "Due Date", type: "date", required: true, hint: "Payment due date" },
       { name: "Status", type: "status", options: [{ value: "Open", label: "Open", color: "#6b7280" }, { value: "Partial", label: "Partial", color: "#d97706" }, { value: "Paid", label: "Paid", color: "#16a34a" }, { value: "Overdue", label: "Overdue", color: "#dc2626" }], hint: "Payment status" },
@@ -338,7 +338,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     category: "inventory",
     relatedEntities: ["Products", "Purchase Orders", "Orders", "Warehouses"],
     fields: [
-      { name: "Product", type: "text", required: true, hint: "Product name" },
+      { name: "Product", type: "relationship", relationshipEntity: "Products", required: true, hint: "Product name" },
       { name: "SKU", type: "text", hint: "Stock keeping unit code" },
       { name: "Quantity", type: "number", required: true, hint: "Current stock quantity" },
       { name: "Min Stock", type: "number", hint: "Minimum stock level (alert threshold)" },
@@ -362,7 +362,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Suppliers", "Inventory", "Payables"],
     fields: [
       { name: "Number", type: "text", required: true, hint: "PO reference number" },
-      { name: "Supplier", type: "text", required: true, hint: "Supplier name" },
+      { name: "Supplier", type: "relationship", relationshipEntity: "Suppliers", required: true, hint: "Supplier name" },
       { name: "Date", type: "date", required: true, hint: "Order date" },
       { name: "Total", type: "currency", currencyCode: "BRL", hint: "Total order amount" },
       { name: "Status", type: "status", options: [{ value: "Draft", label: "Draft", color: "#6b7280" }, { value: "Sent", label: "Sent", color: "#2563eb" }, { value: "Confirmed", label: "Confirmed", color: "#2563eb" }, { value: "Received", label: "Received", color: "#16a34a" }, { value: "Cancelled", label: "Cancelled", color: "#dc2626" }], hint: "Order status" },
@@ -492,7 +492,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     category: "hr",
     relatedEntities: ["Employees", "Payroll"],
     fields: [
-      { name: "Employee", type: "text", required: true, hint: "Employee name" },
+      { name: "Employee", type: "relationship", relationshipEntity: "Employees", required: true, hint: "Employee name" },
       { name: "Date", type: "date", required: true, hint: "Work date" },
       { name: "Clock In", type: "text", hint: "Clock-in time (HH:MM)" },
       { name: "Clock Out", type: "text", hint: "Clock-out time (HH:MM)" },
@@ -515,7 +515,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     category: "hr",
     relatedEntities: ["Employees", "Attendance", "Commissions"],
     fields: [
-      { name: "Employee", type: "text", required: true, hint: "Employee name" },
+      { name: "Employee", type: "relationship", relationshipEntity: "Employees", required: true, hint: "Employee name" },
       { name: "Period", type: "text", required: true, hint: "Pay period (e.g. March 2026)" },
       { name: "Base Salary", type: "currency", currencyCode: "BRL", required: true, hint: "Gross salary amount" },
       { name: "Deductions", type: "currency", currencyCode: "BRL", hint: "Total deductions (taxes, benefits)" },
@@ -537,7 +537,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     category: "hr",
     relatedEntities: ["Employees", "Attendance"],
     fields: [
-      { name: "Employee", type: "text", required: true, hint: "Employee name" },
+      { name: "Employee", type: "relationship", relationshipEntity: "Employees", required: true, hint: "Employee name" },
       { name: "Type", type: "select", options: [{ value: "Vacation", label: "Vacation" }, { value: "Sick", label: "Sick" }, { value: "Personal", label: "Personal" }, { value: "Maternity", label: "Maternity" }, { value: "Other", label: "Other" }], hint: "Leave type" },
       { name: "Start Date", type: "date", required: true, hint: "First day of leave" },
       { name: "End Date", type: "date", required: true, hint: "Last day of leave" },
@@ -605,7 +605,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Customers", "Employees", "Tickets"],
     fields: [
       { name: "Name", type: "text", required: true, hint: "Project name" },
-      { name: "Client", type: "text", hint: "Client this project is for" },
+      { name: "Client", type: "relationship", relationshipEntity: "Customers", hint: "Client this project is for" },
       { name: "Start Date", type: "date", hint: "Project start" },
       { name: "Deadline", type: "date", hint: "Project deadline" },
       { name: "Budget", type: "currency", currencyCode: "BRL", hint: "Total project budget" },
@@ -628,7 +628,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Customers", "Projects", "Employees"],
     fields: [
       { name: "Title", type: "text", required: true, hint: "Short description of the issue" },
-      { name: "Customer", type: "text", hint: "Customer who reported it" },
+      { name: "Customer", type: "relationship", relationshipEntity: "Customers", hint: "Customer who reported it" },
       { name: "Priority", type: "priority", options: [{ value: "Low", label: "Low", color: "#2563eb" }, { value: "Medium", label: "Medium", color: "#d97706" }, { value: "High", label: "High", color: "#ea580c" }, { value: "Critical", label: "Critical", color: "#dc2626" }], hint: "Urgency level" },
       { name: "Status", type: "status", options: [{ value: "Open", label: "Open", color: "#6b7280" }, { value: "In Progress", label: "In Progress", color: "#d97706" }, { value: "Waiting", label: "Waiting", color: "#d97706" }, { value: "Resolved", label: "Resolved", color: "#16a34a" }, { value: "Closed", label: "Closed", color: "#16a34a" }], hint: "Resolution status" },
       { name: "Assigned To", type: "text", hint: "Person responsible" },

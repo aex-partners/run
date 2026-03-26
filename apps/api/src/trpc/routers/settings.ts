@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { router, publicProcedure, protectedProcedure } from "../index.js";
-import { entities, settings, conversations, conversationMembers, messages, agents } from "../../db/schema/index.js";
+import { entities, settings, conversations, conversationMembers, messages, agents, emailAccounts, mailAccountMembers } from "../../db/schema/index.js";
 import { resetProvider } from "../../ai/client.js";
 import { users } from "../../db/schema/auth.js";
 import { getEntitiesForRoutines, translateEntity } from "@aex/shared";
@@ -156,7 +156,7 @@ export const settingsRouter = router({
         invites: z.array(z.string()).optional(),
         onboardingPath: z.string().nullable().optional(),
         selectedRoutines: z.array(z.string()).optional(),
-        emailProvider: z.enum(['gmail', 'outlook', 'smtp']).nullable().optional(),
+        emailProvider: z.enum(['smtp']).nullable().optional(),
         smtpHost: z.string().optional(),
         smtpPort: z.string().optional(),
         smtpUser: z.string().optional(),
@@ -200,14 +200,33 @@ export const settingsRouter = router({
       if (input.selectedRoutines !== undefined) await upsert("onboarding.selectedRoutines", input.selectedRoutines);
       if (input.invites !== undefined) await upsert("onboarding.pendingInvites", input.invites);
 
-      // Email settings
-      if (input.emailProvider !== undefined) await upsert("mail.provider", input.emailProvider);
+      // Email: save server defaults to settings (host, port, secure only)
       if (input.smtpHost) await upsert("mail.smtp.host", input.smtpHost);
       if (input.smtpPort) await upsert("mail.smtp.port", input.smtpPort);
-      if (input.smtpUser) await upsert("mail.smtp.user", input.smtpUser);
-      if (input.smtpPass) await upsert("mail.smtp.pass", input.smtpPass);
-      if (input.smtpFrom) await upsert("mail.smtp.from", input.smtpFrom);
       if (input.smtpSecure !== undefined) await upsert("mail.smtp.secure", input.smtpSecure);
+
+      // Email: create a mail account for the owner if SMTP credentials were provided
+      if (input.emailProvider === "smtp" && input.smtpHost && input.smtpUser && input.smtpPass && input.smtpFrom) {
+        const accountId = crypto.randomUUID();
+        await ctx.db.insert(emailAccounts).values({
+          id: accountId,
+          displayName: input.orgName,
+          emailAddress: input.smtpFrom,
+          fromName: input.orgName,
+          smtpHost: input.smtpHost,
+          smtpPort: parseInt(input.smtpPort || "587", 10),
+          smtpUser: input.smtpUser,
+          smtpPass: input.smtpPass,
+          smtpSecure: input.smtpSecure ? 1 : 0,
+          isShared: 0,
+          ownerId: ctx.session.user.id,
+        });
+        await ctx.db.insert(mailAccountMembers).values({
+          accountId,
+          userId: ctx.session.user.id,
+          canSend: 1,
+        });
+      }
 
       // AI settings
       if (input.aiProvider !== undefined) await upsert("ai.provider", input.aiProvider);
@@ -242,7 +261,9 @@ export const settingsRouter = router({
             slug: slugify(f.name),
             type: f.type,
             required: f.required ?? false,
-            ...(f.options ? { options: f.options } : {}),
+            ...(f.options && f.options.length > 0 ? { options: f.options } : {}),
+            ...(f.currencyCode ? { currencyCode: f.currencyCode } : {}),
+            ...(f.relationshipEntity ? { relationshipEntityName: f.relationshipEntity } : {}),
           }));
 
           // Build ai_context: the aiContext + related entities info (always English for AI)
