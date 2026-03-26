@@ -8,8 +8,6 @@ const envSchema = z.object({
   BETTER_AUTH_URL: z.string().url(),
   CORS_ORIGIN: z.string().url(),
   ENCRYPTION_KEY: z.string().optional(),
-  BLING_CLIENT_ID: z.string().optional(),
-  BLING_CLIENT_SECRET: z.string().optional(),
 });
 
 function loadEnv() {
