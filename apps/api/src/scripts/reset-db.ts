@@ -45,8 +45,8 @@ await sql.end();
 
 console.log("All tables and types dropped.");
 
-console.log("Pushing schema...");
-execSync("npx drizzle-kit push --force", { cwd: apiDir, stdio: "inherit" });
+console.log("Running migrations...");
+execSync("npx drizzle-kit migrate", { cwd: apiDir, stdio: "inherit" });
 
 console.log("Database reset complete. Ready for onboarding at /setup.");
 process.exit(0);
