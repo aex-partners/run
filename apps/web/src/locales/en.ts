@@ -486,6 +486,7 @@ const en = {
       selectFunction: 'Select function',
       fieldAiPrompt: 'AI Prompt',
       aiPromptHint: 'Use {field_name} to reference other fields',
+      aiPromptPlaceholder: 'Describe what the AI should generate for this field...',
       fieldMaxRating: 'Max Rating',
       fieldDecimalPlaces: 'Decimal Places',
       configureAfterSave: 'Configure after saving the field',

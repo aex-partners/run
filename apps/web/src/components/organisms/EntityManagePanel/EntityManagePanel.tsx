@@ -581,7 +581,7 @@ function FieldConfigSection({
           <textarea
             value={aiPrompt}
             onChange={(e) => onAiPromptChange(e.target.value)}
-            placeholder={t('database.entityManage.fieldDescriptionPlaceholder')}
+            placeholder={t('database.entityManage.aiPromptPlaceholder')}
             rows={3}
             style={{
               ...inputStyle,
@@ -894,7 +894,7 @@ function FieldsTab({
 
         {fields.length === 0 && !showAddField && (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-            No fields defined yet. Click "Add Field" to create one.
+            {t('database.entityManage.noFields')}
           </div>
         )}
       </div>
@@ -1202,6 +1202,7 @@ function DetailItem({ label, value, mono }: { label: string; value: string; mono
 // ─── Relationships Tab ──────────────────────────────────────────────────────
 
 function RelationshipsTab({ relationships }: { relationships: EntityRelationship[] }) {
+  const { t } = useTranslation()
   const typeLabels: Record<string, string> = {
     one_to_one: '1:1',
     one_to_many: '1:N',
@@ -1211,12 +1212,12 @@ function RelationshipsTab({ relationships }: { relationships: EntityRelationship
   return (
     <div style={{ padding: 24 }}>
       <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-        {relationships.length} {relationships.length === 1 ? 'relationship' : 'relationships'}
+        {relationships.length} {t('database.entityManage.relationships').toLowerCase()}
       </div>
 
       {relationships.length === 0 && (
         <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-          No relationships defined. Relationships are created when you add a Relationship, Lookup, or Rollup field.
+          {t('database.entityManage.noRelationships')}
         </div>
       )}
 
@@ -1283,15 +1284,16 @@ function RelationshipsTab({ relationships }: { relationships: EntityRelationship
 // ─── Versions Tab ───────────────────────────────────────────────────────────
 
 function VersionsTab({ versions }: { versions: EntityVersion[] }) {
+  const { t } = useTranslation()
   return (
     <div style={{ padding: 24 }}>
       <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-        {versions.length} {versions.length === 1 ? 'version' : 'versions'}
+        {versions.length} {t('database.entityManage.versions').toLowerCase()}
       </div>
 
       {versions.length === 0 && (
         <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-          No version history yet. Changes to entity schema will be tracked here.
+          {t('database.entityManage.noVersions')}
         </div>
       )}
 
@@ -1351,7 +1353,7 @@ function VersionsTab({ versions }: { versions: EntityVersion[] }) {
                     color: 'var(--accent)',
                     fontWeight: 500,
                   }}>
-                    Current
+                    {t('database.entityManage.current')}
                   </span>
                 )}
               </div>

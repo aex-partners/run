@@ -484,6 +484,7 @@ const ptBR = {
       selectFunction: 'Selecionar função',
       fieldAiPrompt: 'Prompt de IA',
       aiPromptHint: 'Use {field_name} para referenciar outros campos',
+      aiPromptPlaceholder: 'Descreva o que a IA deve gerar para este campo...',
       fieldMaxRating: 'Avaliação Máxima',
       fieldDecimalPlaces: 'Casas Decimais',
       configureAfterSave: 'Configure após salvar o campo',
