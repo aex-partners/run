@@ -489,6 +489,7 @@ const en = {
       fieldMaxRating: 'Max Rating',
       fieldDecimalPlaces: 'Decimal Places',
       configureAfterSave: 'Configure after saving the field',
+      fieldDescriptionPlaceholder: 'Add a description for this field...',
     },
     entityDelete: {
       title: 'Delete entity',
