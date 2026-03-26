@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "files" (
   "ai_indexed" integer NOT NULL DEFAULT 0,
   "public_token" text UNIQUE,
   "deleted_at" timestamp,
-  "owner_id" text NOT NULL REFERENCES "user"("id"),
+  "owner_id" text NOT NULL REFERENCES "users"("id"),
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS "files_source_idx" ON "files" ("source");
 CREATE TABLE IF NOT EXISTS "file_shares" (
   "id" text PRIMARY KEY NOT NULL,
   "file_id" text NOT NULL REFERENCES "files"("id") ON DELETE CASCADE,
-  "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "access" text NOT NULL DEFAULT 'viewer',
   "created_at" timestamp DEFAULT now() NOT NULL
 );
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS "email_accounts" (
   "sync_status" text NOT NULL DEFAULT 'idle',
   "last_sync_at" timestamp,
   "sync_cursor" text,
-  "owner_id" text NOT NULL REFERENCES "user"("id"),
+  "owner_id" text NOT NULL REFERENCES "users"("id"),
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL
 );

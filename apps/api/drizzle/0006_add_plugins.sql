@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS "plugins" (
 );
 --> statement-breakpoint
 DO $$ BEGIN
-  ALTER TABLE "plugins" ADD CONSTRAINT "plugins_installed_by_user_id_fk" FOREIGN KEY ("installed_by") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;
+  ALTER TABLE "plugins" ADD CONSTRAINT "plugins_installed_by_user_id_fk" FOREIGN KEY ("installed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
