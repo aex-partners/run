@@ -54,52 +54,20 @@ export type EntityFieldType =
   | 'updated_by'
   | 'ai'
 
-export const FIELD_TYPE_LABELS: Record<EntityFieldType, string> = {
-  text: 'Text',
-  long_text: 'Long Text',
-  number: 'Number',
-  decimal: 'Decimal',
-  currency: 'Currency',
-  percent: 'Percent',
-  date: 'Date',
-  datetime: 'Date & Time',
-  checkbox: 'Checkbox',
-  select: 'Select',
-  multiselect: 'Multi-select',
-  status: 'Status',
-  priority: 'Priority',
-  email: 'Email',
-  url: 'URL',
-  phone: 'Phone',
-  person: 'Person',
-  relationship: 'Relationship',
-  lookup: 'Lookup',
-  rollup: 'Rollup',
-  formula: 'Formula',
-  autonumber: 'Auto Number',
-  attachment: 'Attachment',
-  rating: 'Rating',
-  duration: 'Duration',
-  json: 'JSON',
-  rich_text: 'Rich Text',
-  barcode: 'Barcode',
-  created_at: 'Created At',
-  updated_at: 'Updated At',
-  created_by: 'Created By',
-  updated_by: 'Updated By',
-  ai: 'AI',
+export function getFieldTypeLabel(t: (key: string) => string, type: EntityFieldType): string {
+  return t(`database.entityManage.fieldTypes.${type}`)
 }
 
-const FIELD_TYPE_GROUPS: { label: string; types: EntityFieldType[] }[] = [
-  { label: 'Basic', types: ['text', 'long_text', 'rich_text', 'number', 'decimal', 'checkbox'] },
-  { label: 'Date & Time', types: ['date', 'datetime', 'duration'] },
-  { label: 'Selection', types: ['select', 'multiselect', 'status', 'priority', 'rating'] },
-  { label: 'Numeric', types: ['currency', 'percent', 'autonumber'] },
-  { label: 'Contact', types: ['email', 'url', 'phone', 'person'] },
-  { label: 'Relational', types: ['relationship', 'lookup', 'rollup'] },
-  { label: 'Computed', types: ['formula', 'ai'] },
-  { label: 'Other', types: ['attachment', 'json', 'barcode'] },
-  { label: 'System', types: ['created_at', 'updated_at', 'created_by', 'updated_by'] },
+const FIELD_TYPE_GROUP_KEYS: { groupKey: string; types: EntityFieldType[] }[] = [
+  { groupKey: 'basic', types: ['text', 'long_text', 'rich_text', 'number', 'decimal', 'checkbox'] },
+  { groupKey: 'dateTime', types: ['date', 'datetime', 'duration'] },
+  { groupKey: 'selection', types: ['select', 'multiselect', 'status', 'priority', 'rating'] },
+  { groupKey: 'numeric', types: ['currency', 'percent', 'autonumber'] },
+  { groupKey: 'contact', types: ['email', 'url', 'phone', 'person'] },
+  { groupKey: 'relational', types: ['relationship', 'lookup', 'rollup'] },
+  { groupKey: 'computed', types: ['formula', 'ai'] },
+  { groupKey: 'other', types: ['attachment', 'json', 'barcode'] },
+  { groupKey: 'system', types: ['created_at', 'updated_at', 'created_by', 'updated_by'] },
 ]
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
@@ -250,9 +218,9 @@ export function EntityManagePanel({
   }
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
-    { key: 'fields', label: 'Fields', icon: <Table2 size={14} />, count: fields.length },
-    { key: 'relationships', label: 'Relationships', icon: <Link2 size={14} />, count: relationships.length },
-    { key: 'versions', label: 'Versions', icon: <History size={14} />, count: versions.length },
+    { key: 'fields', label: t('database.entityManage.fields'), icon: <Table2 size={14} />, count: fields.length },
+    { key: 'relationships', label: t('database.entityManage.relationships'), icon: <Link2 size={14} />, count: relationships.length },
+    { key: 'versions', label: t('database.entityManage.versions'), icon: <History size={14} />, count: versions.length },
   ]
 
   return (
@@ -300,7 +268,7 @@ export function EntityManagePanel({
                     setEditingDescription(false)
                   }
                 }}
-                placeholder="Add a description..."
+                placeholder={t('database.entityManage.addDescription')}
                 style={{
                   flex: 1,
                   fontSize: 12,
@@ -495,6 +463,7 @@ function FieldConfigSection({
   relationshipEntityName,
   onRelationshipEntityNameChange,
 }: FieldConfigSectionProps) {
+  const { t } = useTranslation()
   const needsOptions = ['select', 'multiselect', 'status', 'priority'].includes(type)
 
   if (needsOptions) {
@@ -527,7 +496,7 @@ function FieldConfigSection({
 
     return (
       <div style={{ marginTop: 12 }}>
-        <span style={labelTextStyle}>Options</span>
+        <span style={labelTextStyle}>{t('database.entityManage.fieldOptions')}</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
           {options.map((opt, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -544,19 +513,19 @@ function FieldConfigSection({
                   flexShrink: 0,
                   padding: 0,
                 }}
-                title="Click to change color"
+                title={t('database.entityManage.optionColor')}
               />
               <input
                 value={opt.label}
                 onChange={(e) => updateOption(i, { label: e.target.value })}
-                placeholder="Option label"
+                placeholder={t('database.entityManage.optionLabel')}
                 style={{ ...inputStyle, flex: 1 }}
               />
               <button
                 type="button"
                 onClick={() => removeOption(i)}
                 style={iconBtnStyle}
-                title="Remove option"
+                title={t('database.entityManage.removeOption')}
               >
                 <X size={13} />
               </button>
@@ -580,7 +549,7 @@ function FieldConfigSection({
               width: 'fit-content',
             }}
           >
-            <Plus size={12} /> Add option
+            <Plus size={12} /> {t('database.entityManage.addOption')}
           </button>
         </div>
       </div>
@@ -590,7 +559,7 @@ function FieldConfigSection({
   if (type === 'currency') {
     return (
       <label style={{ ...labelStyle, marginTop: 12 }}>
-        <span style={labelTextStyle}>Currency</span>
+        <span style={labelTextStyle}>{t('database.entityManage.fieldCurrency')}</span>
         <select
           value={currencyCode}
           onChange={(e) => onCurrencyCodeChange(e.target.value)}
@@ -608,11 +577,11 @@ function FieldConfigSection({
     return (
       <div style={{ marginTop: 12 }}>
         <label style={labelStyle}>
-          <span style={labelTextStyle}>AI Prompt Template</span>
+          <span style={labelTextStyle}>{t('database.entityManage.fieldAiPrompt')}</span>
           <textarea
             value={aiPrompt}
             onChange={(e) => onAiPromptChange(e.target.value)}
-            placeholder="Describe what the AI should generate for this field..."
+            placeholder={t('database.entityManage.fieldDescriptionPlaceholder')}
             rows={3}
             style={{
               ...inputStyle,
@@ -622,7 +591,7 @@ function FieldConfigSection({
           />
         </label>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-          Use {'{field_name}'} to reference other fields
+          {t('database.entityManage.aiPromptHint')}
         </span>
       </div>
     )
@@ -631,7 +600,7 @@ function FieldConfigSection({
   if (type === 'rating') {
     return (
       <label style={{ ...labelStyle, marginTop: 12, maxWidth: 200 }}>
-        <span style={labelTextStyle}>Max Rating</span>
+        <span style={labelTextStyle}>{t('database.entityManage.fieldMaxRating')}</span>
         <input
           type="number"
           min={1}
@@ -647,7 +616,7 @@ function FieldConfigSection({
   if (type === 'decimal' || type === 'percent') {
     return (
       <label style={{ ...labelStyle, marginTop: 12, maxWidth: 200 }}>
-        <span style={labelTextStyle}>Decimal Places</span>
+        <span style={labelTextStyle}>{t('database.entityManage.fieldDecimalPlaces')}</span>
         <input
           type="number"
           min={0}
@@ -664,16 +633,16 @@ function FieldConfigSection({
     return (
       <div style={{ marginTop: 12 }}>
         <label style={labelStyle}>
-          <span style={labelTextStyle}>Related Entity Name</span>
+          <span style={labelTextStyle}>{t('database.entityManage.fieldRelationship')}</span>
           <input
             value={relationshipEntityName}
             onChange={(e) => onRelationshipEntityNameChange(e.target.value)}
-            placeholder="e.g. Orders, Products..."
+            placeholder={t('database.entityManage.selectTargetEntity')}
             style={inputStyle}
           />
         </label>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-          Full relationship setup available after the field is created
+          {t('database.entityManage.configureAfterSave')}
         </span>
       </div>
     )
@@ -761,7 +730,7 @@ function FieldsTab({
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          {fields.length} {fields.length === 1 ? 'field' : 'fields'}
+          {fields.length} {t('database.entityManage.fields').toLowerCase()}
         </span>
         <button
           onClick={onShowAddField}
@@ -816,10 +785,10 @@ function FieldsTab({
                 onChange={(e) => onNewFieldTypeChange(e.target.value as EntityFieldType)}
                 style={inputStyle}
               >
-                {FIELD_TYPE_GROUPS.map((group) => (
-                  <optgroup key={group.label} label={group.label}>
-                    {group.types.map((t) => (
-                      <option key={t} value={t}>{FIELD_TYPE_LABELS[t]}</option>
+                {FIELD_TYPE_GROUP_KEYS.map((group) => (
+                  <optgroup key={group.groupKey} label={t(`database.entityManage.fieldTypeGroups.${group.groupKey}`)}>
+                    {group.types.map((ft) => (
+                      <option key={ft} value={ft}>{getFieldTypeLabel(t, ft)}</option>
                     ))}
                   </optgroup>
                 ))}
@@ -842,7 +811,7 @@ function FieldsTab({
               <input
                 value={newFieldFormula}
                 onChange={(e) => onNewFieldFormulaChange(e.target.value)}
-                placeholder="e.g. {price} * {quantity}"
+                placeholder={t('database.entityManage.fieldFormulaPlaceholder')}
                 style={{ ...inputStyle, fontFamily: 'monospace' }}
               />
             </label>
@@ -872,7 +841,7 @@ function FieldsTab({
                 onChange={(e) => onNewFieldRequiredChange(e.target.checked)}
                 style={{ accentColor: 'var(--accent)' }}
               />
-              Required
+              {t('database.entityManage.fieldRequired')}
             </label>
           </div>
 
@@ -902,10 +871,10 @@ function FieldsTab({
           borderBottom: '1px solid var(--border)',
         }}>
           <span />
-          <span>Name</span>
-          <span>Type</span>
-          <span style={{ textAlign: 'center' }}>Req.</span>
-          <span style={{ textAlign: 'center' }}>Uniq.</span>
+          <span>{t('database.entityManage.fieldName')}</span>
+          <span>{t('database.entityManage.fieldType')}</span>
+          <span style={{ textAlign: 'center' }}>{t('database.entityManage.fieldRequired')}</span>
+          <span style={{ textAlign: 'center' }}>{t('database.entityManage.fieldUnique')}</span>
           <span />
         </div>
 
@@ -1044,13 +1013,13 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
           display: 'inline-block',
           width: 'fit-content',
         }}>
-          {FIELD_TYPE_LABELS[field.type]}
+          {getFieldTypeLabel(t, field.type)}
         </span>
         <span style={{ textAlign: 'center', fontSize: 12, color: field.required ? 'var(--accent)' : 'var(--text-muted)' }}>
-          {field.required ? 'Yes' : '-'}
+          {field.required ? t('database.entityManage.fieldRequired') : '-'}
         </span>
         <span style={{ textAlign: 'center', fontSize: 12, color: field.unique ? 'var(--accent)' : 'var(--text-muted)' }}>
-          {field.unique ? 'Yes' : '-'}
+          {field.unique ? t('database.entityManage.fieldUnique') : '-'}
         </span>
         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', opacity: hovered ? 1 : 0, transition: 'opacity 0.1s' }}>
           {!isSystem && (
@@ -1085,17 +1054,17 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
       {isExpanded && !isEditing && (
         <div style={{ padding: '0 12px 12px 40px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-            <DetailItem label="Type" value={FIELD_TYPE_LABELS[field.type]} />
-            {field.defaultValue !== undefined && <DetailItem label="Default" value={field.defaultValue} />}
-            {field.formula && <DetailItem label="Formula" value={field.formula} mono />}
-            {field.relationshipEntityName && <DetailItem label="Related Entity" value={field.relationshipEntityName} />}
-            {field.lookupFieldId && <DetailItem label="Lookup Field" value={field.lookupFieldId} />}
-            {field.rollupFunction && <DetailItem label="Rollup" value={field.rollupFunction} />}
-            {field.currencyCode && <DetailItem label="Currency" value={field.currencyCode} />}
-            {field.aiPrompt && <DetailItem label="AI Prompt" value={field.aiPrompt} />}
+            <DetailItem label={t('database.entityManage.fieldType')} value={getFieldTypeLabel(t, field.type)} />
+            {field.defaultValue !== undefined && <DetailItem label={t('database.entityManage.fieldDefault')} value={field.defaultValue} />}
+            {field.formula && <DetailItem label={t('database.entityManage.fieldFormula')} value={field.formula} mono />}
+            {field.relationshipEntityName && <DetailItem label={t('database.entityManage.fieldRelationship')} value={field.relationshipEntityName} />}
+            {field.lookupFieldId && <DetailItem label={t('database.entityManage.fieldLookup')} value={field.lookupFieldId} />}
+            {field.rollupFunction && <DetailItem label={t('database.entityManage.fieldRollup')} value={field.rollupFunction} />}
+            {field.currencyCode && <DetailItem label={t('database.entityManage.fieldCurrency')} value={field.currencyCode} />}
+            {field.aiPrompt && <DetailItem label={t('database.entityManage.fieldAiPrompt')} value={field.aiPrompt} />}
             {field.options && field.options.length > 0 && (
               <div style={{ gridColumn: '1 / -1' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Options:</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{t('database.entityManage.fieldOptions')}:</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
                   {field.options.map((opt) => (
                     <span key={opt.value} style={{
@@ -1143,10 +1112,10 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
                 onChange={(e) => setEditType(e.target.value as EntityFieldType)}
                 style={inputStyle}
               >
-                {FIELD_TYPE_GROUPS.map((group) => (
-                  <optgroup key={group.label} label={group.label}>
-                    {group.types.map((t) => (
-                      <option key={t} value={t}>{FIELD_TYPE_LABELS[t]}</option>
+                {FIELD_TYPE_GROUP_KEYS.map((group) => (
+                  <optgroup key={group.groupKey} label={t(`database.entityManage.fieldTypeGroups.${group.groupKey}`)}>
+                    {group.types.map((ft) => (
+                      <option key={ft} value={ft}>{getFieldTypeLabel(t, ft)}</option>
                     ))}
                   </optgroup>
                 ))}
@@ -1168,7 +1137,7 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
               <input
                 value={editFormula}
                 onChange={(e) => setEditFormula(e.target.value)}
-                placeholder="e.g. {price} * {quantity}"
+                placeholder={t('database.entityManage.fieldFormulaPlaceholder')}
                 style={{ ...inputStyle, fontFamily: 'monospace' }}
               />
             </label>
@@ -1196,7 +1165,7 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
                 onChange={(e) => setEditRequired(e.target.checked)}
                 style={{ accentColor: 'var(--accent)' }}
               />
-              Required
+              {t('database.entityManage.fieldRequired')}
             </label>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
@@ -1371,7 +1340,7 @@ function VersionsTab({ versions }: { versions: EntityVersion[] }) {
                   background: 'var(--surface-2)',
                   color: 'var(--text-muted)',
                 }}>
-                  {version.fieldCount} fields
+                  {version.fieldCount} {t('database.entityManage.fields').toLowerCase()}
                 </span>
                 {idx === 0 && (
                   <span style={{
