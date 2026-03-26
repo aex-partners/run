@@ -13,8 +13,8 @@ export interface FlowAction {
   skip: boolean;
   settings: Record<string, unknown>;
   nextAction?: FlowAction;
-  // ROUTER children
-  children?: FlowAction[];
+  // ROUTER children (slots can be undefined when a branch is deleted)
+  children?: (FlowAction | undefined)[];
   // LOOP first action
   firstLoopAction?: FlowAction;
 }
@@ -90,7 +90,9 @@ function findStep(
     }
     if (action.children) {
       for (let i = 0; i < action.children.length; i++) {
-        const found = walkAction(action.children[i], action, `children[${i}]`);
+        const child = action.children[i];
+        if (!child) continue;
+        const found = walkAction(child, action, `children[${i}]`);
         if (found) return found;
       }
     }
@@ -114,7 +116,7 @@ export function collectSteps(trigger: FlowTrigger): (FlowTrigger | FlowAction)[]
     steps.push(action);
     if (action.type === "ROUTER" && action.children) {
       for (const child of action.children) {
-        walkAction(child);
+        if (child) walkAction(child);
       }
     }
     if (action.type === "LOOP_ON_ITEMS" && action.firstLoopAction) {
@@ -187,12 +189,10 @@ export const useFlowBuilderStore = create<FlowBuilderState & FlowBuilderActions>
     const found = findStep(trigger, afterStepName);
     if (!found) return;
 
-    const parent = found.step;
-    if ("nextAction" in parent) {
-      // Preserve chain: new step's nextAction = old nextAction
-      step.nextAction = (parent as FlowAction | FlowTrigger).nextAction as FlowAction | undefined;
-      (parent as Record<string, unknown>).nextAction = step;
-    }
+    const parent = found.step as FlowAction | FlowTrigger;
+    // Preserve chain: new step's nextAction = old nextAction
+    step.nextAction = parent.nextAction;
+    parent.nextAction = step;
 
     set({
       flowVersion: { ...flowVersion, trigger },
@@ -219,11 +219,12 @@ export const useFlowBuilderStore = create<FlowBuilderState & FlowBuilderActions>
     } else if (found.parentKey === "firstLoopAction") {
       parent.firstLoopAction = action.nextAction ?? undefined;
     } else if (found.parentKey.startsWith("children[")) {
-      const idx = parseInt(found.parentKey.match(/\d+/)?.[0] ?? "0");
+      const match = found.parentKey.match(/\d+/);
+      if (!match) return;
+      const idx = parseInt(match[0], 10);
       const parentAction = found.parent as FlowAction;
       if (parentAction.children) {
-        // Replace the deleted step with its nextAction to preserve downstream chain
-        parentAction.children[idx] = action.nextAction ?? null;
+        parentAction.children[idx] = action.nextAction;
       }
     }
 
