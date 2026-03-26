@@ -57,13 +57,6 @@
       "when": 1773680000000,
       "tag": "0007_add_files_and_email",
       "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1774501377109,
-      "tag": "0008_fancy_sugar_man",
-      "breakpoints": true
     }
   ]
 }
