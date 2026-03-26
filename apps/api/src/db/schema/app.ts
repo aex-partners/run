@@ -15,6 +15,7 @@ export const conversations = pgTable("conversations", {
   name: text("name"),
   type: text("type", { enum: ["dm", "channel", "ai"] }).notNull().default("ai"),
   agentId: text("agent_id"),
+  sessionId: text("session_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

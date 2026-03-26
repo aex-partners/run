@@ -300,63 +300,72 @@ export async function verifyImapConfig(config: ImapConfig): Promise<{ ok: boolea
 }
 
 // ---------------------------------------------------------------------------
-// Simple raw email body parser
+// Raw email body parser (handles nested multipart)
 // ---------------------------------------------------------------------------
 
-function parseRawEmail(raw: string): { parseBody: { text: string; html: string } } {
-  let text = "";
-  let html = "";
+interface ParsedBody {
+  text: string;
+  html: string;
+}
 
-  // Split header from body
-  const headerEnd = raw.indexOf("\r\n\r\n");
-  if (headerEnd === -1) return { parseBody: { text: raw, html: "" } };
+function parseRawEmail(raw: string): { parseBody: ParsedBody } {
+  const result: ParsedBody = { text: "", html: "" };
+  parsePart(raw, result);
+  return { parseBody: result };
+}
 
-  const headers = raw.slice(0, headerEnd).toLowerCase();
-  const body = raw.slice(headerEnd + 4);
+function parsePart(raw: string, result: ParsedBody): void {
+  // Split header from body (handle both \r\n\r\n and \n\n)
+  let headerEnd = raw.indexOf("\r\n\r\n");
+  let separatorLen = 4;
+  if (headerEnd === -1) {
+    headerEnd = raw.indexOf("\n\n");
+    separatorLen = 2;
+  }
+  if (headerEnd === -1) {
+    if (!result.text) result.text = raw;
+    return;
+  }
 
-  // Check if multipart
-  const boundaryMatch = headers.match(/boundary="?([^";\r\n]+)"?/);
+  const headers = raw.slice(0, headerEnd);
+  const headersLower = headers.toLowerCase();
+  const body = raw.slice(headerEnd + separatorLen);
+
+  // Check for multipart boundary
+  const boundaryMatch = headersLower.match(/boundary="?([^";\r\n]+)"?/);
 
   if (boundaryMatch) {
-    const boundary = boundaryMatch[1];
+    const boundary = boundaryMatch[1].trim();
     const parts = body.split(`--${boundary}`);
 
     for (const part of parts) {
-      if (part.startsWith("--") || part.trim() === "") continue;
+      const trimmed = part.trim();
+      if (trimmed === "--" || trimmed === "") continue;
+      // Skip the closing boundary marker
+      if (part.startsWith("--")) continue;
 
-      const partHeaderEnd = part.indexOf("\r\n\r\n");
-      if (partHeaderEnd === -1) continue;
-
-      const partHeaders = part.slice(0, partHeaderEnd).toLowerCase();
-      let partBody = part.slice(partHeaderEnd + 4).replace(/--\s*$/, "").trim();
-
-      // Handle quoted-printable
-      if (partHeaders.includes("quoted-printable")) {
-        partBody = decodeQuotedPrintable(partBody);
-      }
-      // Handle base64
-      if (partHeaders.includes("base64")) {
-        try {
-          partBody = Buffer.from(partBody.replace(/\s/g, ""), "base64").toString("utf-8");
-        } catch { /* skip */ }
-      }
-
-      if (partHeaders.includes("text/html")) {
-        html = partBody;
-      } else if (partHeaders.includes("text/plain")) {
-        text = partBody;
-      }
+      // Remove trailing -- from the last part
+      const cleanPart = part.replace(/--\s*$/, "");
+      parsePart(cleanPart.replace(/^\r?\n/, ""), result);
     }
   } else {
-    // Single part
-    if (headers.includes("text/html")) {
-      html = body;
-    } else {
-      text = body;
+    // Leaf part: decode content
+    let content = body.replace(/--\s*$/, "").trim();
+
+    if (headersLower.includes("quoted-printable")) {
+      content = decodeQuotedPrintable(content);
+    } else if (headersLower.includes("base64")) {
+      try {
+        content = Buffer.from(content.replace(/\s/g, ""), "base64").toString("utf-8");
+      } catch { /* skip */ }
+    }
+
+    if (headersLower.includes("text/html") && !result.html) {
+      result.html = content;
+    } else if (headersLower.includes("text/plain") && !result.text) {
+      result.text = content;
     }
   }
-
-  return { parseBody: { text, html } };
 }
 
 function decodeQuotedPrintable(str: string): string {

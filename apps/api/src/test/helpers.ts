@@ -2,7 +2,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { sql } from "drizzle-orm";
 import * as schema from "../db/schema/index.js";
-import type { ToolContext } from "../ai/tools.js";
+// AI layer removed
+type ToolContext = { db: unknown; userId: string; conversationId?: string };
 
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;

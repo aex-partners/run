@@ -18,5 +18,9 @@
   "devDependencies": {
     "pdf-lib": "^1.17.1",
     "puppeteer": "^24.39.1"
+  },
+  "dependencies": {
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.3.3"
   }
 }

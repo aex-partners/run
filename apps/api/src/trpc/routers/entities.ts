@@ -486,14 +486,7 @@ export const entitiesRouter = router({
         resolvedPrompt = resolvedPrompt.replaceAll(placeholder, String(value ?? ""));
       }
 
-      const { getModel } = await import("../../ai/client.js");
-      const { generateText } = await import("ai");
-
-      const result = await generateText({
-        model: await getModel(),
-        prompt: `You are a helpful assistant generating content for a database field. The entity is "${entity.name}". Based on the record data: ${JSON.stringify(data)}\n\nTask: ${resolvedPrompt}\n\nRespond with ONLY the generated value, no explanation.`,
-        maxTokens: 500,
-      });
+      const result = { text: "" };
 
       // Save the generated value to the record
       const fieldDef = fields.find(f => f.id === input.fieldId);

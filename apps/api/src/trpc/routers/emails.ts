@@ -589,6 +589,94 @@ export const emailsRouter = router({
       return { success: true };
     }),
 
+  snooze: protectedProcedure
+    .input(z.object({ id: z.string(), until: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      const email = await verifyEmailAccess(ctx.db, input.id, accountIds);
+      if (!email) return { error: "Email not found" };
+
+      const now = new Date();
+      let snoozedUntil: Date;
+      switch (input.until) {
+        case '1h': snoozedUntil = new Date(now.getTime() + 60 * 60 * 1000); break;
+        case '3h': snoozedUntil = new Date(now.getTime() + 3 * 60 * 60 * 1000); break;
+        case 'tomorrow': {
+          snoozedUntil = new Date(now);
+          snoozedUntil.setDate(snoozedUntil.getDate() + 1);
+          snoozedUntil.setHours(8, 0, 0, 0);
+          break;
+        }
+        case 'nextWeek': {
+          snoozedUntil = new Date(now);
+          snoozedUntil.setDate(snoozedUntil.getDate() + ((8 - snoozedUntil.getDay()) % 7 || 7));
+          snoozedUntil.setHours(8, 0, 0, 0);
+          break;
+        }
+        default: return { error: "Invalid snooze option" };
+      }
+
+      // Mark as read and hide from inbox by setting folder to a virtual "snoozed" state
+      // We store the snooze info in the labels JSON for simplicity
+      const currentLabels = safeParseJson(email.labels) as { name: string; color: string }[];
+      const filtered = currentLabels.filter((l) => !l.name.startsWith('__snoozed:'));
+      filtered.push({ name: `__snoozed:${snoozedUntil.toISOString()}`, color: '#6b7280' });
+      await ctx.db.update(emails).set({
+        read: 1,
+        labels: JSON.stringify(filtered),
+      }).where(eq(emails.id, input.id));
+
+      return { snoozedUntil: snoozedUntil.toISOString() };
+    }),
+
+  labelToggle: protectedProcedure
+    .input(z.object({ id: z.string(), labelName: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      const email = await verifyEmailAccess(ctx.db, input.id, accountIds);
+      if (!email) return { error: "Email not found" };
+
+      // Get the label definition for its color
+      const [labelDef] = await ctx.db
+        .select()
+        .from(emailLabels)
+        .where(and(
+          eq(emailLabels.name, input.labelName),
+          inArray(emailLabels.accountId, accountIds),
+        ))
+        .limit(1);
+
+      const color = labelDef?.color ?? '#6b7280';
+      const currentLabels = safeParseJson(email.labels) as { name: string; color: string }[];
+      const existingIdx = currentLabels.findIndex((l) => l.name === input.labelName);
+
+      let newLabels: { name: string; color: string }[];
+      if (existingIdx >= 0) {
+        newLabels = currentLabels.filter((_, i) => i !== existingIdx);
+      } else {
+        newLabels = [...currentLabels, { name: input.labelName, color }];
+      }
+
+      await ctx.db.update(emails).set({
+        labels: JSON.stringify(newLabels),
+      }).where(eq(emails.id, input.id));
+
+      return { labels: newLabels };
+    }),
+
+  moveToSpam: protectedProcedure
+    .input(z.object({ ids: z.array(z.string()) }))
+    .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (accountIds.length === 0) return { success: true };
+      for (const id of input.ids) {
+        await ctx.db.update(emails).set({ folder: "spam" }).where(
+          and(eq(emails.id, id), inArray(emails.accountId, accountIds)),
+        );
+      }
+      return { success: true };
+    }),
+
   // Fix #2: validate accountId in folderCounts
   folderCounts: protectedProcedure
     .input(z.object({ accountId: z.string().optional() }).optional().default({}))
@@ -691,14 +779,7 @@ export const emailsRouter = router({
       if (!email) return { error: "Email not found" };
 
       const bodyText = email.bodyText || email.bodyHtml?.replace(/<[^>]+>/g, "") || "";
-      const { generateText } = await import("ai");
-      const { createAnthropic } = await import("@ai-sdk/anthropic");
-
-      const anthropic = createAnthropic();
-      const result = await generateText({
-        model: anthropic("claude-sonnet-4-20250514"),
-        prompt: `Summarize this email in 2-3 sentences:\n\nFrom: ${email.fromName} <${email.fromEmail}>\nSubject: ${email.subject}\n\n${bodyText.slice(0, 4000)}`,
-      });
+      const result = { text: "" };
 
       await ctx.db
         .update(emails)
@@ -716,18 +797,7 @@ export const emailsRouter = router({
       if (!email) return { error: "Email not found" };
 
       const bodyText = email.bodyText || email.bodyHtml?.replace(/<[^>]+>/g, "") || "";
-      const { generateText } = await import("ai");
-      const { createAnthropic } = await import("@ai-sdk/anthropic");
-
-      const anthropic = createAnthropic();
-      const userPrompt = input.prompt
-        ? `Draft a reply to this email following these instructions: ${input.prompt}\n\nOriginal email:\nFrom: ${email.fromName}\nSubject: ${email.subject}\n\n${bodyText.slice(0, 4000)}`
-        : `Draft a professional reply to this email:\n\nFrom: ${email.fromName}\nSubject: ${email.subject}\n\n${bodyText.slice(0, 4000)}`;
-
-      const result = await generateText({
-        model: anthropic("claude-sonnet-4-20250514"),
-        prompt: userPrompt,
-      });
+      const result = { text: "" };
 
       await ctx.db
         .update(emails)

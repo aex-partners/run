@@ -20,7 +20,10 @@ import { DeleteSelectionBar } from '../../molecules/DeleteSelectionBar/DeleteSel
 import { ForwardModal } from '../ForwardModal/ForwardModal'
 import { DeleteConfirmModal } from '../DeleteConfirmModal/DeleteConfirmModal'
 import { PromptInput, type PromptInputAttachment } from '../PromptInput/PromptInput'
-import type { ToolState } from '../../molecules/Tool/Tool'
+import {
+  Tool as AiTool, ToolHeader, ToolContent, ToolInput, ToolOutput, type ToolState,
+  Confirmation as AiConfirmation,
+} from '@/components/ai'
 import type { Conversation } from '../ConversationList/ConversationList'
 import { useTranslation } from 'react-i18next'
 
@@ -108,6 +111,7 @@ export interface ThreadMessage {
     output?: string
     error?: string
   }>
+  onApproveToolCall?: (toolUseId: string, allow: boolean) => void
   audio?: {
     url: string
     duration: string
@@ -686,6 +690,35 @@ export function MessageThread({
               variant="grid"
             />
           ))}
+        </div>
+      )}
+
+      {/* Tool Invocations (AI SDK Elements) */}
+      {msg.toolInvocations && msg.toolInvocations.length > 0 && (
+        <div style={{ marginTop: 8, maxWidth: '65%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {msg.toolInvocations.map((tool) => {
+            if (tool.state === 'requires-action') {
+              return (
+                <AiConfirmation
+                  key={tool.id}
+                  state="requested"
+                  title={`Execute ${tool.toolName}?`}
+                  description={tool.input ? JSON.stringify(tool.input).slice(0, 200) : undefined}
+                  onApprove={() => msg.onApproveToolCall?.(tool.id, true)}
+                  onReject={() => msg.onApproveToolCall?.(tool.id, false)}
+                />
+              )
+            }
+            return (
+              <AiTool key={tool.id} state={tool.state}>
+                <ToolHeader toolName={tool.toolName} state={tool.state} />
+                <ToolContent>
+                  <ToolInput input={tool.input} />
+                  <ToolOutput output={tool.output} error={tool.error} />
+                </ToolContent>
+              </AiTool>
+            )
+          })}
         </div>
       )}
 

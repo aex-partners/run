@@ -3,8 +3,6 @@ import { eq, desc, lt, and, sql, isNull } from "drizzle-orm";
 import { router, protectedProcedure } from "../index.js";
 import { messages, conversationMembers, conversations, users, agents } from "../../db/schema/index.js";
 import { sendToUser, broadcast } from "../../ws/index.js";
-import { processAIMessage } from "../../ai/agent.js";
-import { generateAndStoreEmbedding } from "../../ai/embeddings.js";
 import { DEFAULT_AGENT_NAME } from "@aex/shared";
 
 export const messagesRouter = router({
@@ -99,7 +97,6 @@ export const messagesRouter = router({
         .returning();
 
       // Generate embedding asynchronously
-      generateAndStoreEmbedding(id, input.conversationId, input.content, input.role, ctx.db).catch(() => {});
 
       const authorName = ctx.session.user.name;
 
@@ -134,12 +131,6 @@ export const messagesRouter = router({
         .from(conversations)
         .where(eq(conversations.id, input.conversationId))
         .limit(1);
-
-      if (conv?.type === "ai" && input.role === "user") {
-        processAIMessage(input.conversationId, ctx.session.user.id, ctx.db).catch(
-          (err) => console.error("AI processing error:", err),
-        );
-      }
 
       return { ...message, authorName };
     }),
@@ -466,19 +457,6 @@ export const messagesRouter = router({
         if (member.userId !== ctx.session.user.id) {
           sendToUser(member.userId, payload);
         }
-      }
-
-      // Trigger AI processing for AI conversations
-      const [conv] = await ctx.db
-        .select({ type: conversations.type })
-        .from(conversations)
-        .where(eq(conversations.id, input.conversationId))
-        .limit(1);
-
-      if (conv?.type === "ai") {
-        processAIMessage(input.conversationId, ctx.session.user.id, ctx.db).catch(
-          (err) => console.error("AI processing error:", err),
-        );
       }
 
       return { ...message, authorName };

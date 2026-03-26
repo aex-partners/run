@@ -5,6 +5,7 @@ import { formatRelativeTime, formatTime } from "../lib/formatTime";
 import { ChatScreen } from "../components/screens/ChatScreen/ChatScreen";
 import { useWS } from "../providers/WebSocketProvider";
 import { useAuth } from "../hooks/useAuth";
+import { useAgentChat } from "../hooks/useAgentChat";
 import { Avatar } from "../components/atoms/Avatar/Avatar";
 import type { Section } from "../components/layout/AppShell/AppShell";
 import type { Conversation } from "../components/organisms/ConversationList/ConversationList";
@@ -213,9 +214,59 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
     return agent ? { id: agent.id, name: agent.name } : null;
   }, [activeConversationId, serverConversations, serverAgents]);
 
+  // Determine if active conversation is AI
+  const activeConvType = useMemo(() => {
+    if (!activeConversationId) return null;
+    const conv = serverConversations.find((c) => c.id === activeConversationId);
+    return conv?.type ?? null;
+  }, [activeConversationId, serverConversations]);
+  const isAIConversation = activeConvType === "ai";
+
+  // Agent chat for AI conversations
+  const agentChat = useAgentChat({
+    conversationId: activeConversationId ?? "",
+    agentName: activeAgent?.name ?? "Eric",
+  });
+
+  // Load initial messages from DB into agent chat when conversation changes
+  useEffect(() => {
+    if (!isAIConversation || !serverMessages?.items) return;
+    const dbMessages = [...serverMessages.items].reverse().map((m) => ({
+      id: m.id,
+      role: m.role as "user" | "ai",
+      content: m.content,
+      author: m.authorName ?? (m.role === "user" ? "You" : activeAgent?.name ?? "Eric"),
+    }));
+    if (dbMessages.length > 0 && agentChat.messages.length === 0) {
+      agentChat.setMessages(dbMessages);
+    }
+  }, [isAIConversation, serverMessages, activeConversationId]);
+
   const messages: ThreadMessage[] = useMemo(() => {
+    // AI conversation: use agent chat messages
+    if (isAIConversation && agentChat.messages.length > 0) {
+      return agentChat.messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        author: m.author,
+        reasoning: m.reasoning,
+        queue: m.queue,
+        // Only pass approval-required tool invocations (shown as Confirmation cards)
+        toolInvocations: m.toolInvocations?.map((t) => ({
+          id: t.id,
+          toolName: t.toolName,
+          state: t.state,
+          input: t.input,
+          output: t.output,
+          error: t.error,
+        })),
+        onApproveToolCall: agentChat.approveToolCall,
+      }));
+    }
+
+    // DM/channel: use DB messages
     if (!serverMessages?.items) return [];
-    // API returns DESC, UI needs ASC
     const mapped = [...serverMessages.items].reverse().map((m) => {
       const raw = m as typeof m & { metadata?: string | null };
       let metadata: {
@@ -242,7 +293,6 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
         starred: m.starred === 1,
       };
 
-      // Reactions: server stores [{emoji, userId}], UI needs [{emoji, count, reacted}]
       if (m.reactions) {
         try {
           const raw: { emoji: string; userId: string }[] = JSON.parse(m.reactions as string);
@@ -266,7 +316,6 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
         }
       }
 
-      // Audio
       if (m.audioUrl) {
         msg.audio = {
           url: m.audioUrl as string,
@@ -303,7 +352,7 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
       return msg;
     });
 
-    // Append streaming message if active
+    // Append streaming message for DM/channel (WebSocket-based)
     const activeStream = activeConversationId ? streams.get(activeConversationId) : null;
     if (activeStream && activeStream.content) {
       mapped.push({
@@ -315,15 +364,21 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
     }
 
     return mapped;
-  }, [serverMessages, activeConversationId, streams, confirmAction]);
+  }, [isAIConversation, agentChat.messages, serverMessages, activeConversationId, streams, confirmAction]);
 
-  const isTyping = activeConversationId
-    ? typingConversations.has(activeConversationId)
-    : false;
+  const isTyping = isAIConversation
+    ? agentChat.isStreaming
+    : activeConversationId
+      ? typingConversations.has(activeConversationId)
+      : false;
 
   const handleSendMessage = (content: string) => {
     if (!activeConversationId) return;
-    sendMessage.mutate({ conversationId: activeConversationId, content });
+    if (isAIConversation) {
+      agentChat.sendMessage(content);
+    } else {
+      sendMessage.mutate({ conversationId: activeConversationId, content });
+    }
   };
 
   const markQuickReplyAnswered = trpc.messages.markQuickReplyAnswered.useMutation({

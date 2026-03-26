@@ -1,16 +1,6 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { Mic, MicOff, Send, X, Keyboard } from 'lucide-react'
-
-type VoiceModeState = 'idle' | 'listening' | 'thinking' | 'speaking'
-
-interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResultList
-  resultIndex: number
-}
-
-interface SpeechRecognitionErrorEvent {
-  error: string
-}
+import React, { useEffect, useCallback, useRef, useState } from 'react'
+import { Keyboard, GripHorizontal } from 'lucide-react'
+import { Persona, type PersonaState } from '../../atoms/Persona/Persona'
 
 export interface VoiceModeProps {
   onSend: (message: string) => void
@@ -20,6 +10,49 @@ export interface VoiceModeProps {
   lastAIMessage?: string
 }
 
+async function transcribeAudio(audioBlob: Blob): Promise<string> {
+  const formData = new FormData()
+  formData.append('audio', audioBlob, 'recording.webm')
+  const res = await fetch('/api/voice/transcribe', {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  })
+  if (!res.ok) throw new Error('Transcription failed')
+  const data = await res.json()
+  return data.text || ''
+}
+
+async function playTTS(text: string, signal: AbortSignal): Promise<void> {
+  const res = await fetch('/api/voice/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ text, voice: 'echo' }),
+    signal,
+  })
+  if (!res.ok) throw new Error('TTS failed')
+
+  const audioCtx = new AudioContext()
+  const arrayBuffer = await res.arrayBuffer()
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+
+  return new Promise((resolve, reject) => {
+    const source = audioCtx.createBufferSource()
+    source.buffer = audioBuffer
+    source.connect(audioCtx.destination)
+    source.onended = () => { audioCtx.close(); resolve() }
+    signal.addEventListener('abort', () => {
+      try { source.stop() } catch {}
+      audioCtx.close()
+      reject(new DOMException('Aborted', 'AbortError'))
+    })
+    source.start()
+  })
+}
+
+type Phase = 'idle' | 'recording' | 'transcribing' | 'waiting' | 'speaking'
+
 export function VoiceMode({
   onSend,
   onClose,
@@ -27,457 +60,328 @@ export function VoiceMode({
   agentName = 'Eric',
   lastAIMessage,
 }: VoiceModeProps) {
-  const [state, setState] = useState<VoiceModeState>('idle')
+  const [phase, setPhase] = useState<Phase>('idle')
   const [transcript, setTranscript] = useState('')
-  const [interimTranscript, setInterimTranscript] = useState('')
-  const recognitionRef = useRef<unknown>(null)
-  const [supported, setSupported] = useState(true)
-  const [showTranscriptInput, setShowTranscriptInput] = useState(false)
+  const prevAIMessageRef = useRef(lastAIMessage)
+  const phaseRef = useRef<Phase>('idle')
+  const ttsAbortRef = useRef<AbortController | null>(null)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+  const rafRef = useRef(0)
+  const silenceFramesRef = useRef(0)
+  const monitorStreamRef = useRef<MediaStream | null>(null)
+  const monitorCtxRef = useRef<AudioContext | null>(null)
+  const monitorRafRef = useRef(0)
 
-  useEffect(() => {
-    const SpeechRecognition =
-      (window as unknown as Record<string, unknown>).SpeechRecognition ||
-      (window as unknown as Record<string, unknown>).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      setSupported(false)
-    }
+  const setPhaseSync = (p: Phase) => { phaseRef.current = p; setPhase(p) }
+
+  const personaState: PersonaState =
+    phase === 'speaking' ? 'speaking'
+    : phase === 'waiting' || phase === 'transcribing' || isTyping ? 'thinking'
+    : phase === 'recording' ? 'listening'
+    : 'idle'
+
+  // --- Barge-in: always monitor mic for voice activity during TTS ---
+  const stopBargeInMonitor = useCallback(() => {
+    cancelAnimationFrame(monitorRafRef.current)
+    monitorCtxRef.current?.close().catch(() => {})
+    monitorCtxRef.current = null
+    monitorStreamRef.current?.getTracks().forEach((t) => t.stop())
+    monitorStreamRef.current = null
   }, [])
 
-  useEffect(() => {
-    if (isTyping) {
-      setState('thinking')
-    } else if (state === 'thinking') {
-      setState('idle')
+  const startBargeInMonitor = useCallback(() => {
+    stopBargeInMonitor()
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      monitorStreamRef.current = stream
+      const ctx = new AudioContext()
+      monitorCtxRef.current = ctx
+      const src = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 512
+      src.connect(analyser)
+      const data = new Uint8Array(analyser.frequencyBinCount)
+      let voiceFrames = 0
+
+      const check = () => {
+        analyser.getByteFrequencyData(data)
+        const avg = data.reduce((a, b) => a + b, 0) / data.length
+        if (avg > 25) {
+          voiceFrames++
+        } else {
+          voiceFrames = 0
+        }
+        // 5 consecutive frames of voice (~170ms) = barge-in
+        if (voiceFrames >= 5 && phaseRef.current === 'speaking') {
+          // Interrupt TTS and start recording
+          ttsAbortRef.current?.abort()
+          stopBargeInMonitor()
+          // Reuse this stream for recording
+          startRecordingWithStream(stream)
+          return
+        }
+        monitorRafRef.current = requestAnimationFrame(check)
+      }
+      monitorRafRef.current = requestAnimationFrame(check)
+    }).catch(() => {})
+  }, [stopBargeInMonitor])
+
+  // --- Recording ---
+  const startRecordingWithStream = useCallback((stream: MediaStream) => {
+    streamRef.current = stream
+    chunksRef.current = []
+    silenceFramesRef.current = 0
+
+    const recorder = new MediaRecorder(stream, {
+      mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus' : 'audio/webm',
+    })
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data)
     }
+
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+      cancelAnimationFrame(rafRef.current)
+
+      const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+      if (blob.size < 1000) { setPhaseSync('idle'); return }
+
+      setPhaseSync('transcribing')
+
+      try {
+        const text = await transcribeAudio(blob)
+        if (!text.trim()) {
+          setPhaseSync('idle')
+          setTimeout(() => startRecording(), 200)
+          return
+        }
+        setTranscript(text)
+        // Send to chat immediately
+        onSend(text)
+        setPhaseSync('waiting')
+      } catch (err) {
+        console.error('Transcription error:', err)
+        setPhaseSync('idle')
+        setTimeout(() => startRecording(), 200)
+      }
+    }
+
+    recorderRef.current = recorder
+    recorder.start(250)
+    setPhaseSync('recording')
+    setTranscript('')
+
+    // Silence detection
+    const audioCtx = new AudioContext()
+    const src = audioCtx.createMediaStreamSource(stream)
+    const analyser = audioCtx.createAnalyser()
+    analyser.fftSize = 512
+    src.connect(analyser)
+    const freqData = new Uint8Array(analyser.frequencyBinCount)
+
+    const checkSilence = () => {
+      analyser.getByteFrequencyData(freqData)
+      const avg = freqData.reduce((a, b) => a + b, 0) / freqData.length
+      if (avg < 15) {
+        silenceFramesRef.current++
+      } else {
+        silenceFramesRef.current = 0
+      }
+      // ~1s of silence at 30fps
+      if (silenceFramesRef.current >= 30 && recorderRef.current?.state === 'recording') {
+        recorderRef.current.stop()
+        audioCtx.close()
+        return
+      }
+      rafRef.current = requestAnimationFrame(checkSilence)
+    }
+    rafRef.current = requestAnimationFrame(checkSilence)
+  }, [onSend])
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      startRecordingWithStream(stream)
+    } catch (err) {
+      console.error('Mic error:', err)
+      setPhaseSync('idle')
+    }
+  }, [startRecordingWithStream])
+
+  const stopRecording = useCallback(() => {
+    cancelAnimationFrame(rafRef.current)
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
+  }, [])
+
+  // --- TTS when AI responds ---
+  useEffect(() => {
+    if (!lastAIMessage || lastAIMessage === prevAIMessageRef.current) return
+    prevAIMessageRef.current = lastAIMessage
+
+    ttsAbortRef.current?.abort()
+    const controller = new AbortController()
+    ttsAbortRef.current = controller
+
+    setPhaseSync('speaking')
+
+    // Start barge-in monitor so user can interrupt
+    startBargeInMonitor()
+
+    playTTS(lastAIMessage, controller.signal)
+      .then(() => {
+        stopBargeInMonitor()
+        setPhaseSync('idle')
+        setTimeout(() => startRecording(), 100)
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') console.error('TTS error:', err)
+        // If barge-in triggered, recording already started
+        if (phaseRef.current !== 'recording') {
+          stopBargeInMonitor()
+          setPhaseSync('idle')
+          setTimeout(() => startRecording(), 100)
+        }
+      })
+  }, [lastAIMessage])
+
+  useEffect(() => {
+    if (isTyping && phase !== 'speaking' && phase !== 'recording') setPhaseSync('waiting')
   }, [isTyping])
 
-  const startListening = useCallback(() => {
-    const SpeechRecognition =
-      (window as unknown as Record<string, unknown>).SpeechRecognition ||
-      (window as unknown as Record<string, unknown>).webkitSpeechRecognition
-    if (!SpeechRecognition) return
-
-    const recognition = new (SpeechRecognition as new () => {
-      continuous: boolean
-      interimResults: boolean
-      lang: string
-      onresult: (e: SpeechRecognitionEvent) => void
-      onerror: (e: SpeechRecognitionErrorEvent) => void
-      onend: () => void
-      start: () => void
-      stop: () => void
-    })()
-
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = navigator.language || 'en-US'
-
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
-      let final = ''
-      let interim = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const result = e.results[i]
-        if (result.isFinal) {
-          final += result[0].transcript
-        } else {
-          interim += result[0].transcript
-        }
-      }
-      if (final) {
-        setTranscript((prev) => (prev ? prev + ' ' + final : final))
-        setInterimTranscript('')
-      } else {
-        setInterimTranscript(interim)
-      }
-    }
-
-    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', e.error)
-      setState('idle')
-    }
-
-    recognition.onend = () => {
-      if (state === 'listening') {
-        setState('idle')
-      }
-    }
-
-    recognitionRef.current = recognition
-    recognition.start()
-    setState('listening')
-    setTranscript('')
-    setInterimTranscript('')
-  }, [state])
-
-  const stopListening = useCallback(() => {
-    const recognition = recognitionRef.current as { stop: () => void } | null
-    if (recognition) {
-      recognition.stop()
-      recognitionRef.current = null
-    }
-    setState('idle')
-    setInterimTranscript('')
+  // Auto-start
+  useEffect(() => {
+    const t = setTimeout(() => startRecording(), 400)
+    return () => clearTimeout(t)
   }, [])
 
-  const handleSend = useCallback(() => {
-    const text = transcript.trim()
-    if (!text) return
-    onSend(text)
-    setTranscript('')
-    setInterimTranscript('')
-    setState('idle')
-  }, [transcript, onSend])
+  // Cleanup
+  useEffect(() => () => {
+    ttsAbortRef.current?.abort()
+    cancelAnimationFrame(rafRef.current)
+    stopBargeInMonitor()
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+  }, [])
 
-  const handleMicToggle = useCallback(() => {
-    if (state === 'listening') {
-      stopListening()
-    } else {
-      startListening()
+  const handleOrbClick = () => {
+    if (phase === 'speaking') {
+      ttsAbortRef.current?.abort()
+      stopBargeInMonitor()
+      setPhaseSync('idle')
+      setTimeout(() => startRecording(), 100)
+    } else if (phase === 'recording') {
+      stopRecording()
+    } else if (phase === 'idle') {
+      startRecording()
     }
-  }, [state, startListening, stopListening])
+  }
 
-  const displayText = transcript + (interimTranscript ? ' ' + interimTranscript : '')
+  // Drag
+  const onDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      setPos({
+        x: Math.max(0, Math.min(window.innerWidth - 300, dragRef.current.origX + ev.clientX - dragRef.current.startX)),
+        y: Math.max(0, Math.min(window.innerHeight - 200, dragRef.current.origY + ev.clientY - dragRef.current.startY)),
+      })
+    }
+    const onUp = () => {
+      dragRef.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+  const dragRefState = useRef<typeof dragRef.current>(null)
+  // reuse pos from state
+
+  const stateLabel =
+    phase === 'recording' ? 'Listening...'
+    : phase === 'transcribing' ? 'Transcribing...'
+    : phase === 'waiting' ? `${agentName} is thinking...`
+    : phase === 'speaking' ? `${agentName} is speaking... (talk to interrupt)`
+    : 'Tap to start'
 
   return (
     <div
       style={{
-        flex: 1,
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        zIndex: 1000,
+        width: 280,
+        background: '#fff',
+        borderRadius: 16,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08)',
+        border: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(180deg, #fff 0%, #fdf8f5 100%)',
-        position: 'relative',
-        gap: 32,
-        padding: '40px 24px',
+        overflow: 'hidden',
+        userSelect: 'none',
       }}
     >
-      <style>{`
-        @keyframes voice-pulse {
-          0%, 100% { transform: scale(1); opacity: 0.3; }
-          50% { transform: scale(1.4); opacity: 0; }
-        }
-        @keyframes voice-ring {
-          0%, 100% { transform: scale(1); opacity: 0.15; }
-          50% { transform: scale(1.2); opacity: 0; }
-        }
-        @keyframes voice-dot-bounce {
-          0%, 80%, 100% { transform: scale(0); }
-          40% { transform: scale(1); }
-        }
-        @keyframes voice-orbit {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        style={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: 'var(--text-muted)',
-          padding: 8,
-          borderRadius: 8,
-          display: 'flex',
-        }}
-      >
-        <X size={20} />
-      </button>
-
-      {/* Switch to keyboard */}
-      <button
-        onClick={onClose}
-        style={{
-          position: 'absolute',
-          top: 16,
-          left: 16,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: 'var(--text-muted)',
-          padding: 8,
-          borderRadius: 8,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 12,
-        }}
-      >
-        <Keyboard size={16} />
-        Chat
-      </button>
-
-      {/* Agent name */}
-      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>
-        {agentName}
-      </div>
-
-      {/* Animated orb */}
       <div
+        onMouseDown={onDragStart}
         style={{
-          position: 'relative',
-          width: 160,
-          height: 160,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: '100%', padding: '8px 12px', display: 'flex',
+          alignItems: 'center', justifyContent: 'space-between',
+          cursor: 'grab', borderBottom: '1px solid var(--border)',
+          background: 'var(--surface)',
         }}
       >
-        {/* Pulse rings */}
-        {(state === 'listening' || state === 'speaking') && (
-          <>
-            <div
-              style={{
-                position: 'absolute',
-                inset: -20,
-                borderRadius: '50%',
-                background: 'var(--accent)',
-                animation: 'voice-pulse 2s ease-in-out infinite',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                inset: -10,
-                borderRadius: '50%',
-                background: 'var(--accent)',
-                animation: 'voice-ring 2s ease-in-out infinite 0.3s',
-              }}
-            />
-          </>
-        )}
-
-        {/* Thinking orbit */}
-        {state === 'thinking' && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: -16,
-              borderRadius: '50%',
-              border: '2px solid transparent',
-              borderTopColor: 'var(--accent)',
-              animation: 'voice-orbit 1.2s linear infinite',
-            }}
-          />
-        )}
-
-        {/* Main orb */}
-        <div
-          style={{
-            width: 120,
-            height: 120,
-            borderRadius: '50%',
-            background:
-              state === 'listening'
-                ? 'linear-gradient(135deg, #EA580C, #f97316)'
-                : state === 'thinking'
-                  ? 'linear-gradient(135deg, #EA580C80, #f9731680)'
-                  : state === 'speaking'
-                    ? 'linear-gradient(135deg, #EA580C, #dc2626)'
-                    : 'linear-gradient(135deg, #d4d4d4, #a3a3a3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'background 0.4s ease',
-            boxShadow:
-              state === 'listening'
-                ? '0 0 40px rgba(234, 88, 12, 0.3)'
-                : state === 'thinking'
-                  ? '0 0 20px rgba(234, 88, 12, 0.15)'
-                  : 'none',
-          }}
-        >
-          {state === 'thinking' ? (
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: '#fff',
-                    animation: `voice-dot-bounce 1.4s ease-in-out ${i * 0.16}s infinite`,
-                  }}
-                />
-              ))}
-            </div>
-          ) : (
-            <Mic size={40} color="#fff" strokeWidth={1.5} />
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <GripHorizontal size={14} color="var(--text-muted)" />
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{agentName}</span>
         </div>
-      </div>
-
-      {/* State label */}
-      <div
-        style={{
-          fontSize: 13,
-          color: state === 'listening' ? 'var(--accent)' : 'var(--text-muted)',
-          fontWeight: 500,
-          minHeight: 20,
-        }}
-      >
-        {state === 'idle' && 'Tap the mic to start'}
-        {state === 'listening' && 'Listening...'}
-        {state === 'thinking' && `${agentName} is thinking...`}
-      </div>
-
-      {/* Transcript area */}
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 480,
-          minHeight: 60,
-          padding: '12px 16px',
-          background: displayText ? '#fff' : 'transparent',
-          borderRadius: 12,
-          border: displayText ? '1px solid var(--border)' : '1px solid transparent',
-          fontSize: 15,
-          color: 'var(--text)',
-          lineHeight: 1.5,
-          textAlign: 'center',
-          transition: 'all 0.2s',
-        }}
-      >
-        {displayText && (
-          <>
-            <span>{transcript}</span>
-            {interimTranscript && (
-              <span style={{ color: 'var(--text-muted)' }}> {interimTranscript}</span>
-            )}
-          </>
-        )}
-
-        {/* Last AI response */}
-        {!displayText && lastAIMessage && state === 'idle' && (
-          <div
-            style={{
-              fontSize: 13,
-              color: 'var(--text-muted)',
-              maxHeight: 120,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {lastAIMessage.length > 200 ? lastAIMessage.slice(0, 200) + '...' : lastAIMessage}
-          </div>
-        )}
-      </div>
-
-      {/* Transcript edit toggle */}
-      {displayText && !showTranscriptInput && (
         <button
-          onClick={() => setShowTranscriptInput(true)}
+          onClick={() => {
+            ttsAbortRef.current?.abort()
+            stopRecording()
+            stopBargeInMonitor()
+            streamRef.current?.getTracks().forEach((t) => t.stop())
+            onClose()
+          }}
           style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 12,
-            color: 'var(--accent)',
-            textDecoration: 'underline',
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-muted)', padding: '2px 6px', borderRadius: 4,
+            display: 'flex', alignItems: 'center', gap: 4, fontSize: 11,
           }}
         >
-          Edit transcript
+          <Keyboard size={12} /> Chat
         </button>
-      )}
+      </div>
 
-      {showTranscriptInput && (
-        <div style={{ width: '100%', maxWidth: 480 }}>
-          <textarea
-            value={transcript}
-            onChange={(e) => setTranscript(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-                setShowTranscriptInput(false)
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              fontSize: 14,
-              fontFamily: 'inherit',
-              color: 'var(--text)',
-              background: '#fff',
-              resize: 'none',
-              outline: 'none',
-              minHeight: 60,
-            }}
-          />
+      <div onClick={handleOrbClick} style={{ cursor: 'pointer', padding: '16px 0 8px' }}>
+        <Persona state={personaState} variant="obsidian" style={{ width: 120, height: 120 }} />
+      </div>
+
+      <div style={{
+        fontSize: 12,
+        color: phase === 'recording' ? 'var(--accent)' : 'var(--text-muted)',
+        fontWeight: 500, paddingBottom: 4, textAlign: 'center', padding: '0 12px 4px',
+      }}>
+        {stateLabel}
+      </div>
+
+      {transcript && (
+        <div style={{
+          width: '100%', padding: '6px 16px 12px', fontSize: 13,
+          color: 'var(--text)', lineHeight: 1.4, textAlign: 'center',
+          maxHeight: 60, overflow: 'hidden',
+        }}>
+          {transcript}
         </div>
       )}
 
-      {/* Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        {!supported ? (
-          <div style={{ fontSize: 13, color: 'var(--danger)', textAlign: 'center' }}>
-            Speech recognition not supported in this browser.
-            <br />
-            Use Chrome or Edge for voice input.
-          </div>
-        ) : (
-          <>
-            {/* Mic button */}
-            <button
-              onClick={handleMicToggle}
-              disabled={state === 'thinking'}
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                background: state === 'listening' ? 'var(--danger, #dc2626)' : 'var(--accent)',
-                border: 'none',
-                cursor: state === 'thinking' ? 'default' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                boxShadow: state === 'listening'
-                  ? '0 0 0 4px rgba(220, 38, 38, 0.2)'
-                  : '0 2px 8px rgba(234, 88, 12, 0.3)',
-                transition: 'all 0.2s',
-                opacity: state === 'thinking' ? 0.5 : 1,
-              }}
-            >
-              {state === 'listening' ? <MicOff size={28} /> : <Mic size={28} />}
-            </button>
-
-            {/* Send button (visible when there's transcript) */}
-            {transcript.trim() && state !== 'listening' && (
-              <button
-                onClick={() => {
-                  handleSend()
-                  setShowTranscriptInput(false)
-                }}
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  background: 'var(--accent)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  boxShadow: '0 2px 8px rgba(234, 88, 12, 0.3)',
-                }}
-              >
-                <Send size={20} />
-              </button>
-            )}
-          </>
-        )}
-      </div>
+      {!transcript && <div style={{ height: 12 }} />}
     </div>
   )
 }

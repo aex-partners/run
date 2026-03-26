@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { router, publicProcedure, protectedProcedure } from "../index.js";
-import { entities, settings, conversations, conversationMembers, messages, agents, emailAccounts, mailAccountMembers } from "../../db/schema/index.js";
-import { resetProvider } from "../../ai/client.js";
+import { entities, settings, conversations, conversationMembers, messages, agents, skills, emailAccounts, mailAccountMembers } from "../../db/schema/index.js";
 import { users } from "../../db/schema/auth.js";
 import { getEntitiesForRoutines, translateEntity } from "@aex/shared";
 import { slugify, serializeFields, type EntityField } from "../../db/entity-fields.js";
-import { processAIMessage } from "../../ai/agent.js";
 import { auth } from "../../auth/index.js";
+import { runBackgroundQuery as runBackgroundQueryFn } from "../../ai/background-query.js";
+import { getSkillsForRoutines } from "../../ai/skill-templates.js";
 
 // Niche display names per locale (keyed by niche ID)
 const NICHE_NAMES: Record<string, Record<string, string>> = {
@@ -107,23 +107,33 @@ function buildKickoffMessage(input: {
   const parts: string[] = [];
 
   if (lang === "pt-BR") {
-    parts.push(`Acabei de configurar o RUN para ${input.orgName}.`);
+    parts.push(`Acabei de configurar o AEX Run para ${input.orgName}.`);
     if (input.website) parts.push(`Nosso site é ${input.website}.`);
     if (nicheName) parts.push(`Trabalhamos com ${nicheName}${subNicheName ? ` (${subNicheName})` : ""}.`);
     if (input.selectedRoutines && input.selectedRoutines.length > 0) {
       const names = input.selectedRoutines.map((id) => routineNames[id] ?? id);
       parts.push(`Selecionamos estas rotinas: ${names.join(", ")}.`);
     }
-    parts.push("Pesquise sobre nossa empresa e se apresente. Explique como pode nos ajudar baseado no contexto do nosso negócio.");
+    parts.push("Faça agora uma análise completa da nossa empresa:");
+    parts.push("1. Acesse nosso site e analise o que fazemos, nossos produtos/serviços, público-alvo e posicionamento.");
+    if (input.website) parts.push("2. Busque nossas redes sociais (Instagram, Facebook, LinkedIn, etc.) a partir do site ou por busca.");
+    parts.push("3. Busque informações complementares sobre a empresa na internet (CNPJ, endereço, avaliações).");
+    parts.push("4. Com base em tudo isso, se apresente explicando como o AEX Run pode ajudar especificamente o nosso negócio.");
+    parts.push("5. Guarde todas essas informações pois elas serão a base de todo o nosso trabalho juntos.");
   } else {
-    parts.push(`I just set up RUN for ${input.orgName}.`);
+    parts.push(`I just set up AEX Run for ${input.orgName}.`);
     if (input.website) parts.push(`Our website is ${input.website}.`);
     if (nicheName) parts.push(`We work in ${nicheName}${subNicheName ? ` (${subNicheName})` : ""}.`);
     if (input.selectedRoutines && input.selectedRoutines.length > 0) {
       const names = input.selectedRoutines.map((id) => routineNames[id] ?? id);
       parts.push(`We selected these routines: ${names.join(", ")}.`);
     }
-    parts.push("Research our company and introduce yourself. Explain what you can help us with based on our business context.");
+    parts.push("Do a complete analysis of our company now:");
+    parts.push("1. Visit our website and analyze what we do, our products/services, target audience and positioning.");
+    if (input.website) parts.push("2. Find our social media profiles (Instagram, Facebook, LinkedIn, etc.).");
+    parts.push("3. Search for additional company info (registration, address, reviews).");
+    parts.push("4. Based on all this, introduce yourself explaining how AEX Run can specifically help our business.");
+    parts.push("5. Store all this information as it will be the foundation for all our work together.");
   }
 
   return parts.join(" ");
@@ -246,7 +256,6 @@ export const settingsRouter = router({
       if (input.aiOllamaModel !== undefined) await upsert("ai.ollamaModel", input.aiOllamaModel);
 
       // Invalidate cached AI provider so it picks up the new key/provider
-      resetProvider();
 
       // Mark setup as complete
       await upsert("system.setupComplete", "true");
@@ -346,6 +355,35 @@ export const settingsRouter = router({
         }
       }
 
+      // Create skills from selected routines and link to Eric
+      const skillIds: string[] = [];
+      if (input.selectedRoutines && input.selectedRoutines.length > 0) {
+        const matchingSkills = getSkillsForRoutines(input.selectedRoutines);
+        for (const tpl of matchingSkills) {
+          // Skip if skill already exists
+          const [existing] = await ctx.db
+            .select({ id: skills.id })
+            .from(skills)
+            .where(eq(skills.slug, tpl.slug))
+            .limit(1);
+          if (existing) {
+            skillIds.push(existing.id);
+            continue;
+          }
+
+          const skillId = crypto.randomUUID();
+          await ctx.db.insert(skills).values({
+            id: skillId,
+            name: tpl.name,
+            slug: tpl.slug,
+            description: tpl.description,
+            systemPrompt: tpl.systemPrompt,
+            createdBy: ctx.session.user.id,
+          });
+          skillIds.push(skillId);
+        }
+      }
+
       // Create the default Eric agent (every installation gets Eric for free)
       const ericId = crypto.randomUUID();
       await ctx.db.insert(agents).values({
@@ -354,6 +392,7 @@ export const settingsRouter = router({
         slug: "eric",
         description: "Your AI-powered ERP assistant. Eric helps manage tasks, query data, create entities, and automate workflows.",
         systemPrompt: "",
+        skillIds: JSON.stringify(skillIds),
         isSystem: true,
         createdBy: ctx.session.user.id,
       });
@@ -383,10 +422,12 @@ export const settingsRouter = router({
         role: "user",
       });
 
-      // Trigger AI response asynchronously
-      processAIMessage(convId, ctx.session.user.id, ctx.db).catch(
-        (err) => console.error("Setup AI kickoff error:", err),
-      );
+      // Trigger AI analysis in background
+      runBackgroundQueryFn({
+        conversationId: convId,
+        prompt: kickoffContent,
+        userId: ctx.session.user.id,
+      }).catch((err: unknown) => console.error("Setup AI kickoff error:", err));
 
       return { success: true };
     }),
@@ -474,7 +515,6 @@ export const settingsRouter = router({
       await upsert("ai.provider", "openrouter");
       await upsert("ai.apiKey", key);
 
-      resetProvider();
 
       return { success: true };
     }),

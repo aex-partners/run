@@ -358,7 +358,22 @@ export function ChatScreen({
         {activeConversation ? (
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {voiceModeOpen && isAI ? (
+              <MessageThread
+                messages={activeMessages}
+                onSend={onSendMessage}
+                placeholder={`Message ${activeConversation.name}...`}
+                isTyping={isTypingProp}
+                showAuthor={isGroup}
+                onReact={onReact}
+                onForward={onForwardMessages}
+                onPin={onPinMessage}
+                onStar={onStarMessage}
+                onDeleteForEveryone={onDeleteForEveryone}
+                onDeleteForMe={onDeleteForMe}
+                onTranscriptionEdit={onTranscriptionEdit}
+                conversations={conversations}
+              />
+              {voiceModeOpen && isAI && (
                 <VoiceMode
                   onSend={(msg) => onSendMessage?.(msg)}
                   onClose={() => setVoiceModeOpen(false)}
@@ -367,22 +382,6 @@ export function ChatScreen({
                   lastAIMessage={
                     [...activeMessages].reverse().find((m) => m.role === 'ai')?.content
                   }
-                />
-              ) : (
-                <MessageThread
-                  messages={activeMessages}
-                  onSend={onSendMessage}
-                  placeholder={`Message ${activeConversation.name}...`}
-                  isTyping={isTypingProp}
-                  showAuthor={isGroup}
-                  onReact={onReact}
-                  onForward={onForwardMessages}
-                  onPin={onPinMessage}
-                  onStar={onStarMessage}
-                  onDeleteForEveryone={onDeleteForEveryone}
-                  onDeleteForMe={onDeleteForMe}
-                  onTranscriptionEdit={onTranscriptionEdit}
-                  conversations={conversations}
                 />
               )}
             </div>

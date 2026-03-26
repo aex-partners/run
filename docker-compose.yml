@@ -30,6 +30,8 @@ services:
       - redis
     ports:
       - "3001:3001"
+    volumes:
+      - claude_sessions:/home/aex/.claude
 
   web:
     build:
@@ -60,3 +62,4 @@ volumes:
   redisdata:
   caddydata:
   caddyconfig:
+  claude_sessions:

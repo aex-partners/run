@@ -29,34 +29,61 @@ export interface MessageBubbleProps {
 }
 
 const markdownStyles: Record<string, React.CSSProperties> = {
-  p: { margin: '0 0 8px 0' },
+  p: { margin: '0 0 12px 0', lineHeight: 1.7 },
   pLast: { margin: 0 },
-  ul: { margin: '4px 0', paddingLeft: 20 },
-  ol: { margin: '4px 0', paddingLeft: 20 },
-  li: { marginBottom: 2 },
+  ul: { margin: '8px 0', paddingLeft: 24 },
+  ol: { margin: '8px 0', paddingLeft: 24 },
+  li: { marginBottom: 4, lineHeight: 1.6 },
   code: {
     background: 'var(--surface-2)',
-    padding: '1px 5px',
+    padding: '2px 6px',
     borderRadius: 4,
     fontSize: 13,
-    fontFamily: 'monospace',
+    fontFamily: "'SF Mono', 'Monaco', 'Menlo', monospace",
   },
   pre: {
     background: 'var(--surface-2)',
-    padding: '8px 12px',
-    borderRadius: 6,
+    padding: '12px 16px',
+    borderRadius: 8,
     overflow: 'auto',
     fontSize: 13,
-    margin: '6px 0',
+    margin: '12px 0',
+    border: '1px solid var(--border)',
   },
-  h1: { fontSize: 16, fontWeight: 700, margin: '8px 0 4px' },
-  h2: { fontSize: 15, fontWeight: 600, margin: '8px 0 4px' },
-  h3: { fontSize: 14, fontWeight: 600, margin: '6px 0 2px' },
+  h1: { fontSize: 18, fontWeight: 700, margin: '20px 0 8px', letterSpacing: '-0.02em' },
+  h2: { fontSize: 16, fontWeight: 600, margin: '18px 0 6px', letterSpacing: '-0.01em' },
+  h3: { fontSize: 15, fontWeight: 600, margin: '14px 0 4px' },
   blockquote: {
-    borderLeft: '3px solid var(--border)',
-    paddingLeft: 10,
-    margin: '6px 0',
+    borderLeft: '3px solid var(--accent)',
+    paddingLeft: 14,
+    margin: '12px 0',
     color: 'var(--text-muted)',
+    fontStyle: 'italic',
+  },
+  hr: {
+    border: 'none',
+    borderTop: '1px solid var(--border)',
+    margin: '16px 0',
+  },
+  table: {
+    borderCollapse: 'collapse' as const,
+    width: '100%',
+    margin: '12px 0',
+    fontSize: 13,
+  },
+  th: {
+    borderBottom: '2px solid var(--border)',
+    padding: '8px 12px',
+    textAlign: 'left' as const,
+    fontWeight: 600,
+    fontSize: 12,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+    color: 'var(--text-muted)',
+  },
+  td: {
+    borderBottom: '1px solid var(--border)',
+    padding: '8px 12px',
   },
 }
 
@@ -121,15 +148,22 @@ export function MessageBubble({ role, content, author, timestamp, showAuthor = f
       }}
     >
       <div
-        style={{
-          maxWidth: '65%',
-          background: isUser ? 'var(--accent-light)' : 'var(--surface)',
-          borderRadius: isUser ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-          padding: '6px 10px 6px 10px',
+        style={isUser ? {
+          maxWidth: '70%',
+          background: 'var(--accent-light)',
+          borderRadius: '18px 18px 4px 18px',
+          padding: '10px 16px',
           fontSize: 14,
           color: 'var(--text)',
-          lineHeight: 1.6,
-          border: isUser ? '1px solid var(--accent-border)' : '1px solid var(--border)',
+          lineHeight: 1.5,
+          border: '1px solid var(--accent-border)',
+        } : {
+          maxWidth: '95%',
+          background: 'transparent',
+          padding: '4px 0',
+          fontSize: 14,
+          color: 'var(--text)',
+          lineHeight: 1.7,
         }}
       >
         {replyTo && <ReplyQuote author={replyTo.author} content={replyTo.content} />}
@@ -199,9 +233,22 @@ export function MessageBubble({ role, content, author, timestamp, showAuthor = f
                   <blockquote {...props} style={markdownStyles.blockquote}>{children}</blockquote>
                 ),
                 a: ({ children, href, ...props }) => (
-                  <a {...props} href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>
+                  <a {...props} href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
                     {children}
                   </a>
+                ),
+                hr: () => <hr style={markdownStyles.hr} />,
+                table: ({ children, ...props }) => (
+                  <table {...props} style={markdownStyles.table}>{children}</table>
+                ),
+                th: ({ children, ...props }) => (
+                  <th {...props} style={markdownStyles.th}>{children}</th>
+                ),
+                td: ({ children, ...props }) => (
+                  <td {...props} style={markdownStyles.td}>{children}</td>
+                ),
+                strong: ({ children }) => (
+                  <strong style={{ fontWeight: 600, color: 'var(--text)' }}>{children}</strong>
                 ),
               }}
             >

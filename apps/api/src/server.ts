@@ -58,6 +58,10 @@ export async function buildServer() {
       .send(await response.text());
   });
 
+  // AI Chat (Claude Agent SDK)
+  const { registerChatRoutes } = await import("./ai/index.js");
+  registerChatRoutes(app);
+
   // tRPC
   await app.register(fastifyTRPCPlugin, {
     prefix: "/api/trpc",
@@ -297,6 +301,85 @@ export async function buildServer() {
     } catch (error) {
       console.error("Bling OAuth callback error:", error);
       return reply.status(500).send({ error: "Bling OAuth callback failed" });
+    }
+  });
+
+  // Speech-to-Text: transcribe audio via Whisper
+  app.post("/api/voice/transcribe", async (req, reply) => {
+    try {
+      const data = await req.file();
+      if (!data) {
+        return reply.status(400).send({ error: "Missing audio file" });
+      }
+
+      const chunks: Buffer[] = [];
+      for await (const chunk of data.file) {
+        chunks.push(chunk);
+      }
+      const audioBuffer = Buffer.concat(chunks);
+
+      const { experimental_transcribe: transcribe } = await import("ai");
+      const { getProvider } = await import("./ai/client.js");
+      const provider = await getProvider();
+
+      const result = await transcribe({
+        model: provider.transcription("whisper-1"),
+        audio: audioBuffer,
+      });
+
+      return reply.send({ text: result.text });
+    } catch (err) {
+      console.error("Transcription error:", err);
+      return reply.status(500).send({ error: "Transcription failed" });
+    }
+  });
+
+  // Text-to-Speech: generate audio via OpenAI TTS
+  app.post("/api/voice/tts", async (req, reply) => {
+    const { text, voice } = req.body as { text?: string; voice?: string };
+    if (!text) {
+      return reply.status(400).send({ error: "Missing text" });
+    }
+
+    try {
+      const { experimental_generateSpeech: generateSpeech } = await import("ai");
+      const { getProvider } = await import("./ai/client.js");
+      const provider = await getProvider();
+
+      const result = await generateSpeech({
+        model: provider.speech("tts-1"),
+        text: text.slice(0, 4096),
+        voice: (voice as "alloy") || "echo",
+      });
+
+      reply
+        .header("Content-Type", "audio/mpeg")
+        .header("Cache-Control", "no-cache")
+        .send(Buffer.from(result.audio.uint8Array));
+    } catch (err) {
+      console.error("TTS error:", err);
+      return reply.status(500).send({ error: "TTS generation failed" });
+    }
+  });
+
+  // Legacy TTS endpoint (backwards compat)
+  app.post("/api/tts", async (req, reply) => {
+    const { text, voice } = req.body as { text?: string; voice?: string };
+    if (!text) return reply.status(400).send({ error: "Missing text" });
+    try {
+      const { experimental_generateSpeech: generateSpeech } = await import("ai");
+      const { getProvider } = await import("./ai/client.js");
+      const provider = await getProvider();
+      const result = await generateSpeech({
+        model: provider.speech("tts-1"),
+        text: text.slice(0, 4096),
+        voice: (voice as "alloy") || "echo",
+      });
+      reply.header("Content-Type", "audio/mpeg").header("Cache-Control", "no-cache")
+        .send(Buffer.from(result.audio.uint8Array));
+    } catch (err) {
+      console.error("TTS error:", err);
+      return reply.status(500).send({ error: "TTS generation failed" });
     }
   });
 

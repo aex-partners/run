@@ -2,6 +2,7 @@
 @import "@xyflow/react/dist/style.css";
 
 :root {
+  /* AEX design tokens */
   --background: #f9fafb;
   --surface: #ffffff;
   --surface-2: #f3f4f6;
@@ -18,6 +19,24 @@
   --warning-light: #fffbeb;
   --danger: #dc2626;
   --danger-light: #fef2f2;
+
+  /* shadcn/ui compatibility (used by AI Elements) */
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--text-muted);
+  --color-border: var(--border);
+  --color-primary: var(--accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--text);
+  --color-ring: var(--accent);
+  --radius: 0.5rem;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

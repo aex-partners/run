@@ -38,6 +38,8 @@ export interface AppShellProps {
   onLogout?: () => void
   /** Whether the user is shown as online in the avatar. Defaults to true. */
   isOnline?: boolean
+  /** Optional tab bar rendered above the main content area */
+  tabBar?: React.ReactNode
 }
 
 export function AppShell({
@@ -49,6 +51,7 @@ export function AppShell({
   currentUserRole = 'user',
   onLogout,
   isOnline = true,
+  tabBar,
 }: AppShellProps) {
   const [internalSection, setInternalSection] = useState<Section>('chat')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -220,7 +223,10 @@ export function AppShell({
             background: 'var(--background)',
           }}
         >
-          {children}
+          {tabBar}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {children}
+          </div>
         </main>
       </div>
     </Tooltip.Provider>

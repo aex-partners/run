@@ -60,25 +60,67 @@ export function MailPage() {
   const deleteMut = trpc.emails.delete.useMutation({
     onSuccess: () => { emailsQuery.refetch(); countsQuery.refetch(); },
   });
+  const snoozeMut = trpc.emails.snooze.useMutation({
+    onSuccess: () => { emailsQuery.refetch(); countsQuery.refetch(); },
+  });
+  const labelToggleMut = trpc.emails.labelToggle.useMutation({
+    onSuccess: () => emailsQuery.refetch(),
+  });
+  const moveToSpamMut = trpc.emails.moveToSpam.useMutation({
+    onSuccess: () => { emailsQuery.refetch(); countsQuery.refetch(); },
+  });
   const aiDraftMut = trpc.emails.aiDraft.useMutation({
     onSettled: () => setAiDrafting(false),
   });
 
-  const emailsList: MailEmail[] = (emailsQuery.data ?? []).map((row) => ({
-    id: row.id,
-    from: row.from,
-    fromEmail: row.fromEmail,
-    subject: row.subject,
-    preview: row.preview,
-    timestamp: row.timestamp,
-    read: row.read,
-    starred: row.starred,
-    hasAttachment: row.hasAttachment,
-    labels: row.labels as { name: string; color: string }[],
-    folder: row.folder as MailFolder,
-    aiSummary: row.aiSummary ?? undefined,
-    aiDraft: row.aiDraft ?? undefined,
-  }));
+  const labelsQuery = trpc.emails.labels.list.useQuery(
+    { accountId: selectedAccountId! },
+    { enabled: hasAccount && !!selectedAccountId },
+  );
+
+  const emailDetailQuery = trpc.emails.getById.useQuery(
+    { id: activeEmailId! },
+    { enabled: !!activeEmailId },
+  );
+  const emailDetail = emailDetailQuery.data;
+
+  const emailsList: MailEmail[] = (emailsQuery.data ?? []).map((row) => {
+    const base: MailEmail = {
+      id: row.id,
+      from: row.from,
+      fromEmail: row.fromEmail,
+      subject: row.subject,
+      preview: row.preview,
+      timestamp: row.timestamp,
+      read: row.read,
+      starred: row.starred,
+      hasAttachment: row.hasAttachment,
+      labels: row.labels as { name: string; color: string }[],
+      folder: row.folder as MailFolder,
+      aiSummary: row.aiSummary ?? undefined,
+      aiDraft: row.aiDraft ?? undefined,
+    };
+
+    if (row.id === activeEmailId && emailDetail) {
+      const content = emailDetail.bodyHtml || emailDetail.bodyText || row.preview;
+      base.thread = [{
+        id: row.id,
+        from: row.from,
+        fromEmail: row.fromEmail,
+        to: Array.isArray(emailDetail.to) ? emailDetail.to : ['me'],
+        cc: Array.isArray(emailDetail.cc) ? emailDetail.cc : undefined,
+        date: row.timestamp,
+        content,
+        attachments: emailDetail.attachments?.map((a) => ({
+          name: a.name,
+          size: a.size ? `${Math.round(a.size / 1024)} KB` : '',
+          type: a.mimeType,
+        })),
+      }];
+    }
+
+    return base;
+  });
 
   const handleAccountSubmit = (config: EmailAccountConfig) => {
     const namePart = config.email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -121,6 +163,7 @@ export function MailPage() {
       folderCounts={countsQuery.data}
       hasAccount={hasAccount}
       loading={emailsQuery.isLoading}
+      emailDetailLoading={emailDetailQuery.isLoading}
       aiDrafting={aiDrafting}
       onAccountChange={setActiveAccountId}
       onAddAccount={undefined}
@@ -146,10 +189,14 @@ export function MailPage() {
           body: data.body,
         });
       }}
+      labels={(labelsQuery.data ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color }))}
       onArchive={(ids) => archiveMut.mutate({ ids })}
       onDelete={(ids) => deleteMut.mutate({ ids })}
       onMarkRead={(ids) => markReadMut.mutate({ ids })}
       onMarkUnread={(ids) => markUnreadMut.mutate({ ids })}
+      onSnooze={(emailId, until) => snoozeMut.mutate({ id: emailId, until })}
+      onLabelToggle={(emailId, labelName) => labelToggleMut.mutate({ id: emailId, labelName })}
+      onMoveToSpam={(ids) => moveToSpamMut.mutate({ ids })}
       onRefresh={() => {
         emailsQuery.refetch();
         countsQuery.refetch();

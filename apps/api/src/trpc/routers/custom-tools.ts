@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../index.js";
 import { customTools } from "../../db/schema/index.js";
-import { buildCustomTool } from "../../ai/tool-registry.js";
 
 const customToolInput = z.object({
   name: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/, "Must be lowercase with underscores"),
@@ -131,19 +130,6 @@ export const customToolsRouter = router({
 
       if (!toolRow) throw new TRPCError({ code: "NOT_FOUND" });
 
-      const toolCtx = { db: ctx.db, userId: ctx.session.user.id };
-      const builtTool = buildCustomTool(toolRow, toolCtx);
-
-      try {
-        const result = await (builtTool as any).execute(input.testInput, {
-          toolCallId: crypto.randomUUID(),
-        });
-        return { success: true, result };
-      } catch (err) {
-        return {
-          success: false,
-          error: err instanceof Error ? err.message : String(err),
-        };
-      }
+      return { success: false, error: "AI layer not available" };
     }),
 });

@@ -68,11 +68,15 @@ export interface MailScreenProps {
   onDelete?: (ids: string[]) => void
   onMarkRead?: (ids: string[]) => void
   onMarkUnread?: (ids: string[]) => void
+  onSnooze?: (emailId: string, until: string) => void
+  onLabelToggle?: (emailId: string, labelName: string) => void
+  onMoveToSpam?: (ids: string[]) => void
   onRefresh?: () => void
   onAiAction?: (prompt: string) => void
   onAiDraft?: (prompt: string) => void
   aiDrafting?: boolean
   loading?: boolean
+  emailDetailLoading?: boolean
 }
 
 const FOLDERS: { id: MailFolder; labelKey: string; icon: React.ReactNode }[] = [
@@ -111,11 +115,15 @@ export function MailScreen({
   onDelete,
   onMarkRead,
   onMarkUnread,
+  onSnooze,
+  onLabelToggle,
+  onMoveToSpam,
   onRefresh,
   onAiAction,
   onAiDraft,
   aiDrafting = false,
   loading = false,
+  emailDetailLoading = false,
 }: MailScreenProps) {
   const { t } = useTranslation()
   const [internalFolder, setInternalFolder] = useState<MailFolder>('inbox')
@@ -537,14 +545,8 @@ export function MailScreen({
             subject={activeEmail.subject}
             starred={activeEmail.starred}
             labels={activeEmail.labels}
-            messages={activeEmail.thread ?? [{
-              id: '1',
-              from: activeEmail.from,
-              fromEmail: activeEmail.fromEmail,
-              to: ['me'],
-              date: activeEmail.timestamp,
-              content: activeEmail.preview,
-            }]}
+            messages={activeEmail.thread ?? []}
+            loading={emailDetailLoading && !activeEmail.thread}
             aiSummary={activeEmail.aiSummary}
             aiDraft={activeEmail.aiDraft}
             onBack={handleBack}
@@ -555,6 +557,12 @@ export function MailScreen({
             onArchive={() => onArchive?.([activeEmail.id])}
             onDelete={() => onDelete?.([activeEmail.id])}
             onStar={() => onEmailStar?.(activeEmail.id)}
+            onMarkUnread={() => { onMarkUnread?.([activeEmail.id]); handleBack() }}
+            onSnooze={(until) => { onSnooze?.(activeEmail.id, until); handleBack() }}
+            onLabelToggle={(labelName) => onLabelToggle?.(activeEmail.id, labelName)}
+            onMoveToSpam={() => { onMoveToSpam?.([activeEmail.id]); handleBack() }}
+            onPrint={() => window.print()}
+            availableLabels={labels}
           />
         ) : (
           <MailList
