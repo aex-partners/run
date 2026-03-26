@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bot, Users, Search, Sparkles, MessageSquarePlus, Database, ListTodo } from 'lucide-react'
+import { Bot, Users, Search, Sparkles, MessageSquarePlus, Database, ListTodo, Mic } from 'lucide-react'
 import { Avatar } from '../../atoms/Avatar/Avatar'
 import { ConversationList, type Conversation } from '../../organisms/ConversationList/ConversationList'
 import { MessageThread, type ThreadMessage } from '../../organisms/MessageThread/MessageThread'
+import { VoiceMode } from '../../organisms/VoiceMode/VoiceMode'
 import { TaskBar } from '../../organisms/TaskBar/TaskBar'
 import type { Task } from '../../organisms/TaskList/TaskList'
 
@@ -81,6 +82,7 @@ export function ChatScreen({
     controlledId ?? conversationsProp[0]?.id
   )
   const [taskBarOpen, setTaskBarOpen] = useState(false)
+  const [voiceModeOpen, setVoiceModeOpen] = useState(false)
   const [agentSelectorOpen, setAgentSelectorOpen] = useState(false)
   const agentSelectorRef = useRef<HTMLDivElement>(null)
 
@@ -226,6 +228,25 @@ export function ChatScreen({
                   <Search size={18} />
                 </button>
 
+                {/* Voice mode toggle */}
+                {isAI && (
+                  <button
+                    onClick={() => setVoiceModeOpen((prev) => !prev)}
+                    style={{
+                      background: voiceModeOpen ? 'var(--accent-light)' : 'none',
+                      border: 'none',
+                      color: voiceModeOpen ? 'var(--accent)' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: 4,
+                      borderRadius: 4,
+                      display: 'flex',
+                    }}
+                    aria-label="Voice mode"
+                  >
+                    <Mic size={18} />
+                  </button>
+                )}
+
                 {/* Task bar toggle */}
                 <button
                   onClick={() => setTaskBarOpen((prev) => !prev)}
@@ -337,21 +358,33 @@ export function ChatScreen({
         {activeConversation ? (
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <MessageThread
-                messages={activeMessages}
-                onSend={onSendMessage}
-                placeholder={`Message ${activeConversation.name}...`}
-                isTyping={isTypingProp}
-                showAuthor={isGroup}
-                onReact={onReact}
-                onForward={onForwardMessages}
-                onPin={onPinMessage}
-                onStar={onStarMessage}
-                onDeleteForEveryone={onDeleteForEveryone}
-                onDeleteForMe={onDeleteForMe}
-                onTranscriptionEdit={onTranscriptionEdit}
-                conversations={conversations}
-              />
+              {voiceModeOpen && isAI ? (
+                <VoiceMode
+                  onSend={(msg) => onSendMessage?.(msg)}
+                  onClose={() => setVoiceModeOpen(false)}
+                  isTyping={isTypingProp}
+                  agentName={activeAgent?.name ?? activeConversation.agentName ?? 'Eric'}
+                  lastAIMessage={
+                    [...activeMessages].reverse().find((m) => m.role === 'ai')?.content
+                  }
+                />
+              ) : (
+                <MessageThread
+                  messages={activeMessages}
+                  onSend={onSendMessage}
+                  placeholder={`Message ${activeConversation.name}...`}
+                  isTyping={isTypingProp}
+                  showAuthor={isGroup}
+                  onReact={onReact}
+                  onForward={onForwardMessages}
+                  onPin={onPinMessage}
+                  onStar={onStarMessage}
+                  onDeleteForEveryone={onDeleteForEveryone}
+                  onDeleteForMe={onDeleteForMe}
+                  onTranscriptionEdit={onTranscriptionEdit}
+                  conversations={conversations}
+                />
+              )}
             </div>
             <TaskBar
               tasks={tasks ?? []}

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg17
     restart: unless-stopped
     environment:
       POSTGRES_USER: aex
@@ -39,7 +39,7 @@ services:
     depends_on:
       - api
     ports:
-      - "5173:5173"
+      - "5173:80"
 
   caddy:
     image: caddy:2-alpine

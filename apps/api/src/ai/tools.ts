@@ -17,6 +17,7 @@ import {
   emails,
   plugins,
 } from "../db/schema/index.js";
+import { searchSimilarMessages } from "./embeddings.js";
 import {
   slugify,
   parseFields,
@@ -51,6 +52,7 @@ export const READ_ONLY_TOOLS = new Set([
   "draft_email_reply",
   "list_plugins",
   "list_plugin_tools",
+  "recall_memory",
 ]);
 
 export const WORKER_BLOCKED_TOOLS = new Set([
@@ -1536,6 +1538,37 @@ export function createTools(ctx: ToolContext) {
             error: err instanceof Error ? err.message : "Installation failed",
           };
         }
+      },
+    }),
+
+    recall_memory: tool({
+      description:
+        "Search your memory for relevant information from past conversations. " +
+        "Use this when the user asks about something you discussed before, " +
+        "references past topics, or when you need context that isn't in the current conversation. " +
+        "This searches across ALL conversations semantically.",
+      inputSchema: z.object({
+        query: z.string().describe("What to search for in memory (be specific and descriptive)"),
+        limit: z.number().optional().describe("Max results to return (default 10)"),
+      }),
+      execute: async ({ query, limit }) => {
+        const results = await searchSimilarMessages(query, ctx.db, {
+          limit: limit || 10,
+        });
+
+        if (results.length === 0) {
+          return { found: false, message: "No relevant memories found." };
+        }
+
+        return {
+          found: true,
+          total: results.length,
+          memories: results.map((r) => ({
+            role: r.role,
+            content: r.content,
+            similarity: Math.round(r.similarity * 100) / 100,
+          })),
+        };
       },
     }),
 

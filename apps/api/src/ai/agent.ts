@@ -13,6 +13,7 @@ import { messages, conversationMembers, conversations, customTools as customTool
 import { sendToConversation } from "../ws/index.js";
 import { DEFAULT_AGENT_ID, DEFAULT_AGENT_NAME } from "@aex/shared";
 import type { Database } from "../db/index.js";
+import { generateAndStoreEmbedding, searchSimilarMessages } from "./embeddings.js";
 
 // Abort controllers for in-flight AI calls per conversation
 const activeControllers = new Map<string, AbortController>();
@@ -33,18 +34,10 @@ async function loadContext(conversationId: string, db: Database): Promise<CoreMe
     })
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
-    .orderBy(desc(messages.createdAt))
-    .limit(30);
+    .orderBy(asc(messages.createdAt));
 
-  // Reverse to ASC order
-  rows.reverse();
-
-  // Simple token estimation and trimming
-  let estimatedTokens = 0;
   const contextMessages: CoreMessage[] = [];
   for (const row of rows) {
-    estimatedTokens += Math.ceil(row.content.length / 4);
-    if (estimatedTokens > 100_000) break;
     if (row.role === "user") {
       contextMessages.push({ role: "user", content: row.content });
     } else if (row.role === "ai") {
@@ -54,6 +47,29 @@ async function loadContext(conversationId: string, db: Database): Promise<CoreMe
     }
   }
   return contextMessages;
+}
+
+async function loadMemoryContext(
+  conversationId: string,
+  lastUserMessage: string,
+  db: Database,
+): Promise<string | null> {
+  const results = await searchSimilarMessages(lastUserMessage, db, {
+    limit: 10,
+  });
+
+  // Filter out low-similarity results and messages from current conversation
+  const relevant = results.filter(
+    (r) => r.similarity > 0.3 && r.conversationId !== conversationId,
+  );
+
+  if (relevant.length === 0) return null;
+
+  const lines = relevant.map(
+    (r) => `[${r.role}] ${r.content}`,
+  );
+
+  return `## Relevant information from previous conversations\n${lines.join("\n\n")}`;
 }
 
 function describeAction(toolName: string, args: Record<string, unknown>) {
@@ -244,7 +260,6 @@ async function streamAIResponse(
 
   const result = streamText({
     model: resolvedModel,
-    maxTokens: 4096,
     system: systemPrompt,
     messages: chatMessages,
     tools: chatTools,
@@ -356,6 +371,7 @@ async function streamAIResponse(
         content: textToSave,
         role: "ai",
       });
+      generateAndStoreEmbedding(messageId, conversationId, textToSave, "ai", db).catch(() => {});
       sendToConversation(memberIds, {
         type: "new_message",
         message: {
@@ -442,6 +458,7 @@ async function streamAIResponse(
       content: textContent,
       role: "ai",
     });
+    generateAndStoreEmbedding(messageId, conversationId, textContent, "ai", db).catch(() => {});
 
     sendToConversation(memberIds, {
       type: "new_message",
@@ -587,6 +604,19 @@ export async function processAIMessage(
       buildSystemPrompt(db, promptOptions),
     ]);
 
+    // Get the last user message for memory search
+    const lastUserMsg = [...contextMessages].reverse().find((m) => m.role === "user");
+    const lastUserContent = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+
+    // Search memory for relevant context from other conversations
+    const memoryContext = lastUserContent
+      ? await loadMemoryContext(conversationId, lastUserContent, db)
+      : null;
+
+    const finalSystemPrompt = memoryContext
+      ? `${systemPrompt}\n\n${memoryContext}`
+      : systemPrompt;
+
     const resolvedModel = await getModel(agentConfig?.modelId);
     const resolvedTools = agentConfig?.tools as Record<string, unknown> | undefined;
 
@@ -599,7 +629,7 @@ export async function processAIMessage(
       userId,
       db,
       controller.signal,
-      systemPrompt,
+      finalSystemPrompt,
       isOnboarding,
       resolvedModel,
       resolvedTools,

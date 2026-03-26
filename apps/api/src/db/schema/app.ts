@@ -7,6 +7,7 @@ import {
   integer,
   boolean,
 } from "drizzle-orm/pg-core";
+import { vector } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export const conversations = pgTable("conversations", {
@@ -456,3 +457,23 @@ export const emailLabels = pgTable("email_labels", {
   color: text("color").notNull().default("#6b7280"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const messageEmbeddings = pgTable(
+  "message_embeddings",
+  {
+    id: text("id").primaryKey(),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    role: text("role").notNull(),
+    embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("message_embeddings_conversation_id_idx").on(table.conversationId),
+  ],
+);

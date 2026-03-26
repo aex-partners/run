@@ -4,6 +4,7 @@ import { router, protectedProcedure } from "../index.js";
 import { messages, conversationMembers, conversations, users, agents } from "../../db/schema/index.js";
 import { sendToUser, broadcast } from "../../ws/index.js";
 import { processAIMessage } from "../../ai/agent.js";
+import { generateAndStoreEmbedding } from "../../ai/embeddings.js";
 import { DEFAULT_AGENT_NAME } from "@aex/shared";
 
 export const messagesRouter = router({
@@ -96,6 +97,9 @@ export const messagesRouter = router({
           role: input.role,
         })
         .returning();
+
+      // Generate embedding asynchronously
+      generateAndStoreEmbedding(id, input.conversationId, input.content, input.role, ctx.db).catch(() => {});
 
       const authorName = ctx.session.user.name;
 
