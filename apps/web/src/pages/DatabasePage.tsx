@@ -1,5 +1,13 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { Database } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  Database, Type, AlignLeft, FileText, Hash, ToggleLeft,
+  Calendar, Clock, Timer, List, ListChecks, CircleDot, Flag, Star,
+  DollarSign, Percent, ListOrdered, Mail, Globe, Phone, User,
+  Link2, ArrowUpRight, BarChart3, FunctionSquare, Sparkles,
+  Paperclip, Braces, Barcode, CalendarPlus, CalendarClock, UserPlus, UserCheck,
+  Search, ChevronDown,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { DatabaseScreen, type DatabaseEntity } from "../components/screens/DatabaseScreen/DatabaseScreen";
 import type { GridColumn, GridRow } from "../components/organisms/DataGrid/DataGrid";
@@ -27,60 +35,78 @@ interface EntityField {
   decimalPlaces?: number;
 }
 
-// Grouped field type options for the add-field dialog
-const FIELD_TYPE_GROUPS: { label: string; types: { value: string; label: string }[] }[] = [
-  { label: "Basic", types: [
-    { value: "text", label: "Text" },
-    { value: "long_text", label: "Long Text" },
-    { value: "rich_text", label: "Rich Text" },
-    { value: "number", label: "Number" },
-    { value: "decimal", label: "Decimal" },
-    { value: "checkbox", label: "Checkbox" },
+// Field type metadata with Portuguese labels, icons, and examples
+interface FieldTypeInfo {
+  value: string;
+  label: string;
+  icon: LucideIcon;
+  example: string;
+}
+
+interface FieldTypeGroup {
+  label: string;
+  types: FieldTypeInfo[];
+}
+
+const FIELD_TYPE_GROUPS: FieldTypeGroup[] = [
+  { label: "Basico", types: [
+    { value: "text", label: "Texto", icon: Type, example: "Nome, titulo, codigo" },
+    { value: "long_text", label: "Texto longo", icon: AlignLeft, example: "Descricao, observacoes" },
+    { value: "rich_text", label: "Texto formatado", icon: FileText, example: "Conteudo com formatacao" },
+    { value: "number", label: "Numero", icon: Hash, example: "42, 1500, -7" },
+    { value: "decimal", label: "Decimal", icon: Hash, example: "3.14, 99.99" },
+    { value: "checkbox", label: "Checkbox", icon: ToggleLeft, example: "Sim / Nao" },
   ]},
-  { label: "Date & Time", types: [
-    { value: "date", label: "Date" },
-    { value: "datetime", label: "Date & Time" },
-    { value: "duration", label: "Duration" },
+  { label: "Data e Hora", types: [
+    { value: "date", label: "Data", icon: Calendar, example: "15/03/2026" },
+    { value: "datetime", label: "Data e hora", icon: Clock, example: "15/03/2026 14:30" },
+    { value: "duration", label: "Duracao", icon: Timer, example: "2h 30min" },
   ]},
-  { label: "Selection", types: [
-    { value: "select", label: "Select" },
-    { value: "multiselect", label: "Multi-select" },
-    { value: "status", label: "Status" },
-    { value: "priority", label: "Priority" },
-    { value: "rating", label: "Rating" },
+  { label: "Selecao", types: [
+    { value: "select", label: "Selecao unica", icon: List, example: "Categoria, tipo" },
+    { value: "multiselect", label: "Selecao multipla", icon: ListChecks, example: "Tags, habilidades" },
+    { value: "status", label: "Status", icon: CircleDot, example: "Ativo, Pendente, Concluido" },
+    { value: "priority", label: "Prioridade", icon: Flag, example: "Alta, Media, Baixa" },
+    { value: "rating", label: "Avaliacao", icon: Star, example: "1 a 5 estrelas" },
   ]},
-  { label: "Numeric", types: [
-    { value: "currency", label: "Currency" },
-    { value: "percent", label: "Percent" },
-    { value: "autonumber", label: "Auto Number" },
+  { label: "Numerico", types: [
+    { value: "currency", label: "Moeda", icon: DollarSign, example: "R$ 1.500,00" },
+    { value: "percent", label: "Porcentagem", icon: Percent, example: "85%" },
+    { value: "autonumber", label: "Numero automatico", icon: ListOrdered, example: "#001, #002, #003" },
   ]},
-  { label: "Contact", types: [
-    { value: "email", label: "Email" },
-    { value: "url", label: "URL" },
-    { value: "phone", label: "Phone" },
-    { value: "person", label: "Person" },
+  { label: "Contato", types: [
+    { value: "email", label: "Email", icon: Mail, example: "nome@empresa.com" },
+    { value: "url", label: "URL", icon: Globe, example: "https://site.com.br" },
+    { value: "phone", label: "Telefone", icon: Phone, example: "(11) 99999-0000" },
+    { value: "person", label: "Pessoa", icon: User, example: "Usuario do workspace" },
   ]},
-  { label: "Relational", types: [
-    { value: "relationship", label: "Relationship" },
-    { value: "lookup", label: "Lookup" },
-    { value: "rollup", label: "Rollup" },
+  { label: "Relacional", types: [
+    { value: "relationship", label: "Relacionamento", icon: Link2, example: "Vincula a outra tabela" },
+    { value: "lookup", label: "Lookup", icon: ArrowUpRight, example: "Campo de tabela vinculada" },
+    { value: "rollup", label: "Rollup", icon: BarChart3, example: "Soma, media, contagem" },
   ]},
-  { label: "Computed", types: [
-    { value: "formula", label: "Formula" },
-    { value: "ai", label: "AI" },
+  { label: "Computado", types: [
+    { value: "formula", label: "Formula", icon: FunctionSquare, example: "{preco} * {quantidade}" },
+    { value: "ai", label: "IA", icon: Sparkles, example: "Gera conteudo via prompt" },
   ]},
-  { label: "Other", types: [
-    { value: "attachment", label: "Attachment" },
-    { value: "json", label: "JSON" },
-    { value: "barcode", label: "Barcode" },
+  { label: "Outros", types: [
+    { value: "attachment", label: "Anexo", icon: Paperclip, example: "Arquivos e imagens" },
+    { value: "json", label: "JSON", icon: Braces, example: '{ "chave": "valor" }' },
+    { value: "barcode", label: "Codigo de barras", icon: Barcode, example: "7891234567890" },
   ]},
-  { label: "System", types: [
-    { value: "created_at", label: "Created At" },
-    { value: "updated_at", label: "Updated At" },
-    { value: "created_by", label: "Created By" },
-    { value: "updated_by", label: "Updated By" },
+  { label: "Sistema", types: [
+    { value: "created_at", label: "Criado em", icon: CalendarPlus, example: "Data de criacao automatica" },
+    { value: "updated_at", label: "Atualizado em", icon: CalendarClock, example: "Data de atualizacao automatica" },
+    { value: "created_by", label: "Criado por", icon: UserPlus, example: "Autor do registro" },
+    { value: "updated_by", label: "Atualizado por", icon: UserCheck, example: "Ultimo editor" },
   ]},
 ];
+
+// Flat list for lookup
+const ALL_FIELD_TYPES = FIELD_TYPE_GROUPS.flatMap(g => g.types);
+function getFieldTypeInfo(value: string): FieldTypeInfo | undefined {
+  return ALL_FIELD_TYPES.find(t => t.value === value);
+}
 
 /** Map a backend EntityField to a DataGrid GridColumn with full metadata */
 function fieldToColumn(field: EntityField): GridColumn {
@@ -526,136 +552,16 @@ export function DatabasePage() {
 
       {/* Add Field Dialog */}
       {showAddField && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-          onClick={() => setShowAddField(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: 24,
-              width: 360,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-            }}
-          >
-            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600 }}>Add Field</h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>
-                  Name
-                </label>
-                <input
-                  autoFocus
-                  value={newFieldName}
-                  onChange={(e) => setNewFieldName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddField()}
-                  placeholder="Field name"
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    border: "1px solid var(--border)",
-                    borderRadius: 6,
-                    fontSize: 13,
-                    fontFamily: "inherit",
-                    color: "var(--text)",
-                    background: "var(--surface-2)",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>
-                  Type
-                </label>
-                <select
-                  value={newFieldType}
-                  onChange={(e) => setNewFieldType(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    border: "1px solid var(--border)",
-                    borderRadius: 6,
-                    fontSize: 13,
-                    fontFamily: "inherit",
-                    color: "var(--text)",
-                    background: "var(--surface-2)",
-                    outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                >
-                  {FIELD_TYPE_GROUPS.map((group) => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.types.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={newFieldRequired}
-                  onChange={(e) => setNewFieldRequired(e.target.checked)}
-                  style={{ accentColor: "var(--accent)" }}
-                />
-                Required
-              </label>
-
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-                <button
-                  onClick={() => setShowAddField(false)}
-                  style={{
-                    padding: "7px 16px",
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 6,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    color: "var(--text)",
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddField}
-                  disabled={!newFieldName.trim()}
-                  style={{
-                    padding: "7px 16px",
-                    background: newFieldName.trim() ? "var(--accent)" : "var(--surface-2)",
-                    border: "none",
-                    borderRadius: 6,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: newFieldName.trim() ? "pointer" : "default",
-                    fontFamily: "inherit",
-                    color: newFieldName.trim() ? "#fff" : "var(--text-muted)",
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AddFieldDialog
+          fieldName={newFieldName}
+          fieldType={newFieldType}
+          fieldRequired={newFieldRequired}
+          onFieldNameChange={setNewFieldName}
+          onFieldTypeChange={setNewFieldType}
+          onFieldRequiredChange={setNewFieldRequired}
+          onSubmit={handleAddField}
+          onClose={() => setShowAddField(false)}
+        />
       )}
 
       {/* New Record Dialog */}
@@ -820,6 +726,307 @@ export function DatabasePage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Add Field Dialog with searchable type picker ────────────────────────────
+
+interface AddFieldDialogProps {
+  fieldName: string;
+  fieldType: string;
+  fieldRequired: boolean;
+  onFieldNameChange: (v: string) => void;
+  onFieldTypeChange: (v: string) => void;
+  onFieldRequiredChange: (v: boolean) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}
+
+function AddFieldDialog({
+  fieldName, fieldType, fieldRequired,
+  onFieldNameChange, onFieldTypeChange, onFieldRequiredChange,
+  onSubmit, onClose,
+}: AddFieldDialogProps) {
+  const [typePickerOpen, setTypePickerOpen] = useState(false);
+  const [typeSearch, setTypeSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  const selectedInfo = getFieldTypeInfo(fieldType);
+  const SelectedIcon = selectedInfo?.icon ?? Type;
+
+  // Close picker on click outside
+  useEffect(() => {
+    if (!typePickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setTypePickerOpen(false);
+        setTypeSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [typePickerOpen]);
+
+  // Focus search when picker opens
+  useEffect(() => {
+    if (typePickerOpen) searchRef.current?.focus();
+  }, [typePickerOpen]);
+
+  const searchLower = typeSearch.toLowerCase();
+  const filteredGroups = FIELD_TYPE_GROUPS
+    .map(g => ({
+      ...g,
+      types: g.types.filter(t =>
+        t.label.toLowerCase().includes(searchLower) ||
+        t.example.toLowerCase().includes(searchLower) ||
+        t.value.includes(searchLower)
+      ),
+    }))
+    .filter(g => g.types.length > 0);
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "8px 10px",
+    border: "1px solid var(--border)",
+    borderRadius: 6,
+    fontSize: 13,
+    fontFamily: "inherit",
+    color: "var(--text)",
+    background: "var(--surface-2)",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.3)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          padding: 24,
+          width: 400,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+        }}
+      >
+        <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
+          Novo campo
+        </h3>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Field name */}
+          <div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 4, fontWeight: 500 }}>
+              Nome do campo
+            </label>
+            <input
+              autoFocus
+              value={fieldName}
+              onChange={(e) => onFieldNameChange(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+              placeholder="Ex: Nome do cliente, Valor total..."
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Field type picker */}
+          <div style={{ position: "relative" }} ref={pickerRef}>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 4, fontWeight: 500 }}>
+              Tipo de campo
+            </label>
+            <button
+              type="button"
+              onClick={() => setTypePickerOpen(!typePickerOpen)}
+              style={{
+                ...inputStyle,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                textAlign: "left",
+                background: "var(--surface-2)",
+              }}
+            >
+              <SelectedIcon size={15} style={{ color: "var(--accent)", flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>{selectedInfo?.label ?? fieldType}</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>{selectedInfo?.example}</span>
+              <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+            </button>
+
+            {/* Dropdown picker */}
+            {typePickerOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 4px)",
+                  left: 0,
+                  right: 0,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.14)",
+                  zIndex: 100,
+                  maxHeight: 360,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Search */}
+                <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--surface-2)", borderRadius: 6, padding: "6px 8px" }}>
+                    <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <input
+                      ref={searchRef}
+                      value={typeSearch}
+                      onChange={(e) => setTypeSearch(e.target.value)}
+                      placeholder="Buscar tipo de campo..."
+                      style={{
+                        flex: 1,
+                        border: "none",
+                        background: "transparent",
+                        fontSize: 13,
+                        fontFamily: "inherit",
+                        color: "var(--text)",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Results */}
+                <div style={{ overflowY: "auto", padding: "4px 0" }}>
+                  {filteredGroups.length === 0 && (
+                    <div style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, color: "var(--text-muted)" }}>
+                      Nenhum tipo encontrado
+                    </div>
+                  )}
+                  {filteredGroups.map((group) => (
+                    <div key={group.label}>
+                      <div style={{
+                        padding: "6px 12px 2px",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: "var(--text-muted)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                      }}>
+                        {group.label}
+                      </div>
+                      {group.types.map((t) => {
+                        const Icon = t.icon;
+                        const isSelected = t.value === fieldType;
+                        return (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => {
+                              onFieldTypeChange(t.value);
+                              setTypePickerOpen(false);
+                              setTypeSearch("");
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              width: "100%",
+                              padding: "7px 12px",
+                              border: "none",
+                              background: isSelected ? "var(--accent-light)" : "transparent",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              textAlign: "left",
+                              borderRadius: 0,
+                              outline: "none",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = "var(--surface-2)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = isSelected ? "var(--accent-light)" : "transparent";
+                            }}
+                          >
+                            <Icon size={15} style={{ color: isSelected ? "var(--accent)" : "var(--text-muted)", flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, color: isSelected ? "var(--accent)" : "var(--text)", fontWeight: isSelected ? 500 : 400 }}>
+                                {t.label}
+                              </div>
+                            </div>
+                            <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0, whiteSpace: "nowrap" }}>
+                              {t.example}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Required */}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text)", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={fieldRequired}
+              onChange={(e) => onFieldRequiredChange(e.target.checked)}
+              style={{ accentColor: "var(--accent)" }}
+            />
+            Obrigatorio
+          </label>
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 2 }}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: "7px 16px",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                fontSize: 13,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                color: "var(--text)",
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onSubmit}
+              disabled={!fieldName.trim()}
+              style={{
+                padding: "7px 16px",
+                background: fieldName.trim() ? "var(--accent)" : "var(--surface-2)",
+                border: "none",
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: fieldName.trim() ? "pointer" : "default",
+                fontFamily: "inherit",
+                color: fieldName.trim() ? "#fff" : "var(--text-muted)",
+              }}
+            >
+              Adicionar
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
