@@ -65,6 +65,15 @@ export const emailsRouter = router({
         return await getSmtpDefaults(ctx.db);
       }),
 
+    /** Auto-discover SMTP/IMAP settings from email address. */
+    autodiscover: protectedProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const { autodiscover } = await import("../../email/autodiscover.js");
+        const settings = await autodiscover(input.email);
+        return settings;
+      }),
+
     /** Create a new mail account for the current user. */
     create: protectedProcedure
       .input(z.object({
@@ -76,6 +85,11 @@ export const emailsRouter = router({
         smtpUser: z.string().min(1),
         smtpPass: z.string().min(1),
         smtpSecure: z.boolean().default(true),
+        imapHost: z.string().optional(),
+        imapPort: z.number().int().min(1).max(65535).default(993),
+        imapUser: z.string().optional(),
+        imapPass: z.string().optional(),
+        imapSecure: z.boolean().default(true),
         isShared: z.boolean().default(false),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -91,6 +105,11 @@ export const emailsRouter = router({
           smtpUser: input.smtpUser,
           smtpPass: input.smtpPass,
           smtpSecure: input.smtpSecure ? 1 : 0,
+          imapHost: input.imapHost || null,
+          imapPort: input.imapPort,
+          imapUser: input.imapUser || null,
+          imapPass: input.imapPass || null,
+          imapSecure: input.imapSecure ? 1 : 0,
           isShared: input.isShared ? 1 : 0,
           ownerId: ctx.session.user.id,
         });
@@ -100,6 +119,14 @@ export const emailsRouter = router({
           userId: ctx.session.user.id,
           canSend: 1,
         });
+
+        // Trigger IMAP sync in background if IMAP is configured
+        if (input.imapHost) {
+          const { syncImapAccount } = await import("../../email/sync.js");
+          syncImapAccount(ctx.db, accountId).catch((err) => {
+            console.error(`[email-sync] Initial sync failed for ${accountId}:`, err);
+          });
+        }
 
         return { id: accountId };
       }),
@@ -232,7 +259,33 @@ export const emailsRouter = router({
         const { verifySmtpConfig } = await import("../../email/provider.js");
         return verifySmtpConfig(input);
       }),
+
+    /** Verify IMAP connection for given credentials. */
+    verifyImap: protectedProcedure
+      .input(z.object({
+        host: z.string(),
+        port: z.number(),
+        user: z.string(),
+        pass: z.string(),
+        secure: z.boolean(),
+      }))
+      .mutation(async ({ input }) => {
+        const { verifyImapConfig } = await import("../../email/sync.js");
+        return verifyImapConfig(input);
+      }),
   }),
+
+  /** Trigger IMAP sync for an account. */
+  sync: protectedProcedure
+    .input(z.object({ accountId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const accountIds = await getUserAccountIds(ctx.db, ctx.session.user.id);
+      if (!accountIds.includes(input.accountId)) return { error: "Account not found" };
+
+      const { syncImapAccount } = await import("../../email/sync.js");
+      const result = await syncImapAccount(ctx.db, input.accountId);
+      return { success: true, fetched: result.fetched, errors: result.errors };
+    }),
 
   // ---------------------------------------------------------------------------
   // Send / Reply

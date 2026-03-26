@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
 import { MailScreen, type MailFolder, type MailEmail, type MailAccount } from "../components/screens/MailScreen/MailScreen";
+import type { EmailAccountConfig } from "../components/organisms/EmailSetup/EmailSetup";
 
 export function MailPage() {
   const [activeFolder, setActiveFolder] = useState<MailFolder>("inbox");
@@ -31,8 +32,16 @@ export function MailPage() {
   );
 
   const createAccountMut = trpc.emails.mailAccounts.create.useMutation({
-    onSuccess: () => accountsQuery.refetch(),
+    onSuccess: () => {
+      accountsQuery.refetch();
+      emailsQuery.refetch();
+      countsQuery.refetch();
+    },
   });
+  const autodiscoverMut = trpc.emails.mailAccounts.autodiscover.useMutation();
+  const verifySmtpMut = trpc.emails.mailAccounts.verify.useMutation();
+  const verifyImapMut = trpc.emails.mailAccounts.verifyImap.useMutation();
+
   const sendMut = trpc.emails.send.useMutation({
     onSuccess: () => emailsQuery.refetch(),
   });
@@ -71,6 +80,37 @@ export function MailPage() {
     aiDraft: row.aiDraft ?? undefined,
   }));
 
+  const handleAccountSubmit = (config: EmailAccountConfig) => {
+    const namePart = config.email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    createAccountMut.mutate({
+      displayName: namePart,
+      emailAddress: config.email,
+      smtpHost: config.smtpHost,
+      smtpPort: config.smtpPort,
+      smtpUser: config.smtpUser,
+      smtpPass: config.smtpPass,
+      smtpSecure: config.smtpSecure,
+      imapHost: config.imapHost,
+      imapPort: config.imapPort,
+      imapUser: config.imapUser,
+      imapPass: config.imapPass,
+      imapSecure: config.imapSecure,
+    });
+  };
+
+  const handleDiscover = async (email: string) => {
+    const result = await autodiscoverMut.mutateAsync({ email });
+    return result;
+  };
+
+  const handleVerifySmtp = async (config: { host: string; port: number; user: string; pass: string; from: string; secure: boolean }) => {
+    return verifySmtpMut.mutateAsync(config);
+  };
+
+  const handleVerifyImap = async (config: { host: string; port: number; user: string; pass: string; secure: boolean }) => {
+    return verifyImapMut.mutateAsync(config);
+  };
+
   return (
     <MailScreen
       emails={emailsList}
@@ -83,18 +123,12 @@ export function MailPage() {
       loading={emailsQuery.isLoading}
       aiDrafting={aiDrafting}
       onAccountChange={setActiveAccountId}
-      onAddAccount={(config) => {
-        // Derive a readable display name from the email (e.g. "user@corp.com" -> "User")
-        const namePart = config.from.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-        createAccountMut.mutate({
-          displayName: namePart,
-          emailAddress: config.from,
-          smtpHost: config.host,
-          smtpPort: parseInt(config.port, 10),
-          smtpUser: config.user,
-          smtpPass: config.pass,
-          smtpSecure: config.secure,
-        });
+      onAddAccount={undefined}
+      onAddAccountV2={{
+        onAccountSubmit: handleAccountSubmit,
+        onDiscover: handleDiscover,
+        onVerifySmtp: handleVerifySmtp,
+        onVerifyImap: handleVerifyImap,
       }}
       onFolderChange={(folder) => {
         setActiveFolder(folder);

@@ -8,7 +8,7 @@ import { MailFolderItem } from '../../molecules/MailFolderItem/MailFolderItem'
 import { MailList } from '../../organisms/MailList/MailList'
 import { MailDetail, type MailMessage } from '../../organisms/MailDetail/MailDetail'
 import { MailCompose } from '../../organisms/MailCompose/MailCompose'
-import { EmailSetup } from '../../organisms/EmailSetup/EmailSetup'
+import { EmailSetup, type EmailAccountConfig } from '../../organisms/EmailSetup/EmailSetup'
 import { Button } from '../../atoms/Button/Button'
 import type { MailItemProps } from '../../molecules/MailItem/MailItem'
 
@@ -47,6 +47,15 @@ export interface MailScreenProps {
   hasAccount?: boolean
   onAccountChange?: (accountId: string) => void
   onAddAccount?: (config: { host: string; port: string; user: string; pass: string; from: string; secure: boolean }) => void
+  onAddAccountV2?: {
+    onAccountSubmit: (config: EmailAccountConfig) => void
+    onDiscover: (email: string) => Promise<{
+      smtpHost: string; smtpPort: number; smtpSecure: boolean
+      imapHost: string; imapPort: number; imapSecure: boolean
+    } | null>
+    onVerifySmtp: (config: { host: string; port: number; user: string; pass: string; from: string; secure: boolean }) => Promise<{ ok: boolean; error?: string }>
+    onVerifyImap: (config: { host: string; port: number; user: string; pass: string; secure: boolean }) => Promise<{ ok: boolean; error?: string }>
+  }
   onFolderChange?: (folder: MailFolder) => void
   onEmailClick?: (id: string) => void
   onEmailStar?: (id: string) => void
@@ -89,6 +98,7 @@ export function MailScreen({
   hasAccount = true,
   onAccountChange,
   onAddAccount,
+  onAddAccountV2,
   onFolderChange,
   onEmailClick,
   onEmailStar,
@@ -256,6 +266,10 @@ export function MailScreen({
           </div>
           <EmailSetup
             onSmtpSubmit={onAddAccount}
+            onAccountSubmit={onAddAccountV2?.onAccountSubmit}
+            onDiscover={onAddAccountV2?.onDiscover}
+            onVerifySmtp={onAddAccountV2?.onVerifySmtp}
+            onVerifyImap={onAddAccountV2?.onVerifyImap}
           />
         </div>
       </div>
