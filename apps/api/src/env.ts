@@ -5,8 +5,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().url(),
   PORT: z.coerce.number().default(3001),
   BETTER_AUTH_SECRET: z.string().min(1),
-  BETTER_AUTH_URL: z.string().url(),
-  CORS_ORIGIN: z.string().url(),
+  BETTER_AUTH_URL: z.string().min(1),
+  CORS_ORIGIN: z.string().min(1),
   ENCRYPTION_KEY: z.string().optional(),
 });
 
