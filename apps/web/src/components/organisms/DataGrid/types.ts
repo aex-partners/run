@@ -1,13 +1,20 @@
 export type GridColumnType =
   | 'text'
+  | 'long_text'
+  | 'rich_text'
   | 'number'
+  | 'decimal'
+  | 'currency'
+  | 'percent'
   | 'badge'
   | 'date'
+  | 'datetime'
+  | 'duration'
   | 'status'
   | 'person'
-  | 'currency'
   | 'timeline'
   | 'priority'
+  | 'rating'
   | 'checkbox'
   | 'select'
   | 'multiselect'
@@ -15,7 +22,18 @@ export type GridColumnType =
   | 'url'
   | 'phone'
   | 'relationship'
+  | 'lookup'
+  | 'rollup'
+  | 'formula'
+  | 'autonumber'
+  | 'attachment'
+  | 'json'
+  | 'barcode'
   | 'ai'
+  | 'created_at'
+  | 'updated_at'
+  | 'created_by'
+  | 'updated_by'
 
 export interface SelectOption {
   value: string
@@ -49,7 +67,13 @@ export interface GridColumn {
   currencyCode?: string
   options?: SelectOption[]
   relationshipEntityId?: string
-  aiPromptTemplate?: string
+  aiPrompt?: string
+  maxRating?: number
+  decimalPlaces?: number
+  lookupEntityId?: string
+  lookupFieldId?: string
+  rollupFunction?: string
+  formula?: string
 }
 
 export interface RowGroup {
@@ -102,6 +126,10 @@ export interface DataGridProps {
   onGroupByChange?: (colId: string | null) => void
   /** Optional slot rendered at the start of the toolbar (e.g. ViewSwitcher) */
   toolbarLeftSlot?: React.ReactNode
+  /** Callback to fetch records from a related entity (for relationship cells) */
+  onFetchRelationshipRecords?: (entityId: string, search: string) => Promise<{ id: string; label: string }[]>
+  /** Available workspace users (for person cells) */
+  workspaceUsers?: { id: string; name: string; avatar?: string }[]
 }
 
 export interface CellProps {
@@ -113,4 +141,12 @@ export interface CellProps {
   onEditChange: (value: string) => void
   onCommit: () => void
   onCancel: () => void
+  /** Direct commit for cells that manage their own value (dropdowns, pickers) */
+  onDirectCommit?: (value: string | number | boolean) => void
+  /** Fetch related entity records (for relationship cells) */
+  onFetchRelationshipRecords?: (entityId: string, search: string) => Promise<{ id: string; label: string }[]>
+  /** Available workspace users (for person cells) */
+  workspaceUsers?: { id: string; name: string; avatar?: string }[]
+  /** AI generation callback */
+  onAIGenerate?: (rowId: string, colId: string, prompt: string) => Promise<string>
 }

@@ -1,6 +1,6 @@
 import type { CellProps } from '../types'
 
-export function CurrencyCell({ column, value, isEditing, editValue, onEditChange, onCommit, onCancel }: CellProps) {
+export function PercentCell({ value, isEditing, editValue, onEditChange, onCommit, onCancel }: CellProps) {
   if (isEditing) {
     return (
       <input
@@ -27,15 +27,12 @@ export function CurrencyCell({ column, value, isEditing, editValue, onEditChange
     )
   }
 
-  const num = typeof value === 'number' ? value : parseFloat(String(value))
-  const formatted = isNaN(num) ? String(value) : new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: column.currencyCode || 'BRL',
-  }).format(num)
+  const numValue = typeof value === 'number' ? value : Number(value)
+  const displayValue = Number.isNaN(numValue) ? String(value) : `${numValue}%`
 
   return (
-    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, display: 'block', textAlign: 'right' }}>
-      {formatted}
+    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>
+      {displayValue}
     </span>
   )
 }

@@ -43,6 +43,9 @@ export function DataGrid({
   filterConfig: externalFilterConfig,
   onFilterChange: externalFilterChange,
   toolbarLeftSlot,
+  onAIGenerate,
+  onFetchRelationshipRecords,
+  workspaceUsers,
 }: DataGridProps) {
   const [internalGroupBy, setInternalGroupBy] = useState<string | null>(externalGroupBy ?? null)
   const groupByColumn = externalGroupBy !== undefined ? externalGroupBy : (internalGroupBy ?? undefined)
@@ -184,11 +187,20 @@ export function DataGrid({
   }
 
   const handleCellClick = (rowId: string, col: GridColumn) => {
-    if (col.id === idCol || col.type === 'badge' || col.type === 'status' || col.type === 'priority') return
+    if (col.id === idCol || col.type === 'badge') return
     const row = mergedRows.find((r) => getRowId(r) === rowId)
     const currentValue = row ? String(row[col.id] ?? '') : ''
     state.setEditValue(currentValue)
     state.setEditingCell({ rowId, colId: col.id })
+  }
+
+  const handleDirectCommit = (rowId: string, colId: string, value: string | number | boolean) => {
+    state.setEditedRows((prev) => ({
+      ...prev,
+      [rowId]: { ...(prev[rowId] ?? {}), [colId]: value },
+    }))
+    onCellEdit?.(rowId, colId, value)
+    state.setEditingCell(null)
   }
 
   const handleSelectAll = (checked: boolean) => {
@@ -364,6 +376,10 @@ export function DataGrid({
               onAddRow={onAddRow}
               rowMenuRef={state.rowMenuRef}
               getColumnWidth={(colId, defaultWidth) => getWidth(colId, defaultWidth)}
+              onDirectCommit={handleDirectCommit}
+              onFetchRelationshipRecords={onFetchRelationshipRecords}
+              workspaceUsers={workspaceUsers}
+              onAIGenerate={onAIGenerate}
             />
           </div>
         </ScrollArea.Viewport>

@@ -1,10 +1,11 @@
 import type { CellProps } from '../types'
 
-export function CurrencyCell({ column, value, isEditing, editValue, onEditChange, onCommit, onCancel }: CellProps) {
+export function DateCell({ value, isEditing, editValue, onEditChange, onCommit, onCancel }: CellProps) {
   if (isEditing) {
     return (
       <input
         autoFocus
+        type="date"
         value={editValue}
         onChange={(e) => onEditChange(e.target.value)}
         onBlur={onCommit}
@@ -27,15 +28,14 @@ export function CurrencyCell({ column, value, isEditing, editValue, onEditChange
     )
   }
 
-  const num = typeof value === 'number' ? value : parseFloat(String(value))
-  const formatted = isNaN(num) ? String(value) : new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: column.currencyCode || 'BRL',
-  }).format(num)
+  const displayValue = String(value)
+  let formatted = displayValue
+  if (displayValue) {
+    const d = new Date(displayValue)
+    if (!Number.isNaN(d.getTime())) {
+      formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+  }
 
-  return (
-    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, display: 'block', textAlign: 'right' }}>
-      {formatted}
-    </span>
-  )
+  return <span style={{ fontSize: 13 }}>{formatted}</span>
 }

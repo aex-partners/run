@@ -1027,23 +1027,8 @@ const en = {
     },
     email: {
       title: 'Email Setup',
-      description: 'Choose how to handle email. Connect a provider or configure your own SMTP server.',
-      gmail: {
-        title: 'Gmail',
-        description: 'Connect via Google OAuth2.',
-      },
-      outlook: {
-        title: 'Outlook',
-        description: 'Connect via Microsoft OAuth2.',
-      },
-      smtp: {
-        title: 'SMTP',
-        description: 'Manual server configuration.',
-      },
-      oauthNote: 'Click the button below to sign in with your email provider. A popup will open for authentication.',
-      connectButton: 'Connect {{provider}}',
-      connecting: 'Connecting...',
-      connected: 'Connected as',
+      description: 'Configure SMTP to send notifications, invites, and system emails.',
+      enableSmtp: 'Enable SMTP email',
       hint: 'This step is optional. You can configure email later in Settings.',
     },
     smtp: {
@@ -1155,13 +1140,8 @@ const en = {
       },
       email: {
         title: 'Email Integration',
-        description: 'Choose a provider to send and receive email from AEX.',
-        gmailDesc: 'Sync your Gmail inbox, send and receive emails directly from AEX.',
-        outlookDesc: 'Sync your Outlook inbox, send and receive emails directly from AEX.',
+        description: 'Configure SMTP to send notifications, invites, and system emails.',
         smtpDesc: 'Connect any mail server to send system emails, invites, and notifications.',
-        oauthSync: 'Full inbox sync via OAuth2',
-        sendReceive: 'Send and receive from AEX',
-        autoRefresh: 'Auto-refresh every 5 minutes',
         smtpSend: 'Send invites and notifications',
         tlsEncryption: 'TLS/SSL encrypted delivery',
         anyProvider: 'Works with any mail server',

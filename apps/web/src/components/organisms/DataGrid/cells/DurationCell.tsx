@@ -1,6 +1,6 @@
 import type { CellProps } from '../types'
 
-export function CurrencyCell({ column, value, isEditing, editValue, onEditChange, onCommit, onCancel }: CellProps) {
+export function DurationCell({ value, isEditing, editValue, onEditChange, onCommit, onCancel }: CellProps) {
   if (isEditing) {
     return (
       <input
@@ -12,6 +12,7 @@ export function CurrencyCell({ column, value, isEditing, editValue, onEditChange
           if (e.key === 'Enter') onCommit()
           if (e.key === 'Escape') onCancel()
         }}
+        placeholder="e.g. 2h 30m"
         style={{
           width: '100%',
           background: 'var(--surface)',
@@ -27,15 +28,9 @@ export function CurrencyCell({ column, value, isEditing, editValue, onEditChange
     )
   }
 
-  const num = typeof value === 'number' ? value : parseFloat(String(value))
-  const formatted = isNaN(num) ? String(value) : new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: column.currencyCode || 'BRL',
-  }).format(num)
-
   return (
-    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, display: 'block', textAlign: 'right' }}>
-      {formatted}
+    <span style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+      {String(value)}
     </span>
   )
 }

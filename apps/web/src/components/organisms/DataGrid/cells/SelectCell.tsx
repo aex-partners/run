@@ -2,7 +2,7 @@ import { useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { CellProps } from '../types'
 
-export function SelectCell({ column, value, isEditing }: CellProps) {
+export function SelectCell({ column, value, isEditing, onDirectCommit }: CellProps) {
   const [open, setOpen] = useState(false)
   const options = column.options ?? []
   const selected = options.find(o => o.value === String(value))
@@ -41,6 +41,9 @@ export function SelectCell({ column, value, isEditing }: CellProps) {
             padding: '4px 0',
           }}
         >
+          {options.length === 0 && (
+            <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)' }}>No options configured</div>
+          )}
           {options.map(opt => (
             <DropdownMenu.Item
               key={opt.value}
@@ -56,7 +59,7 @@ export function SelectCell({ column, value, isEditing }: CellProps) {
                 color: 'var(--text)',
               }}
               onSelect={() => {
-                // Selection handled via onCellEdit callback from parent
+                onDirectCommit?.(opt.value)
               }}
             >
               <div style={{

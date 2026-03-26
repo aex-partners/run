@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { GridColumn } from '../types'
+import { COLUMN_TYPE_REGISTRY } from '../constants'
 
 interface InlineEditState {
   isActive: boolean
@@ -37,7 +38,7 @@ export function useInlineEdit(columns: GridColumn[], idCol: string) {
 
   const getEditableColumns = useCallback(() => {
     return columns.filter(
-      col => col.id !== idCol && col.type !== 'badge' && col.type !== 'priority'
+      col => col.id !== idCol && col.type !== 'badge' && COLUMN_TYPE_REGISTRY[col.type]?.editable !== false
     )
   }, [columns, idCol])
 

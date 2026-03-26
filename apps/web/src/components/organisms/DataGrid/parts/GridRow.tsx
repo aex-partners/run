@@ -26,6 +26,10 @@ interface GridRowProps {
   onDeleteRow: (rowId: string) => void
   rowMenuRef?: React.Ref<HTMLDivElement>
   getColumnWidth?: (colId: string, defaultWidth: number) => number
+  onDirectCommit?: (rowId: string, colId: string, value: string | number | boolean) => void
+  onFetchRelationshipRecords?: (entityId: string, search: string) => Promise<{ id: string; label: string }[]>
+  workspaceUsers?: { id: string; name: string; avatar?: string }[]
+  onAIGenerate?: (rowId: string, colId: string, prompt: string) => Promise<string>
 }
 
 export function GridRow({
@@ -49,6 +53,10 @@ export function GridRow({
   onDeleteRow,
   rowMenuRef,
   getColumnWidth,
+  onDirectCommit,
+  onFetchRelationshipRecords,
+  workspaceUsers,
+  onAIGenerate,
 }: GridRowProps) {
   const { t } = useTranslation()
   return (
@@ -80,7 +88,7 @@ export function GridRow({
       </div>
       {visibleColumns.map((col) => {
         const isEditableCol = col.id !== idCol && COLUMN_TYPE_REGISTRY[col.type]?.editable !== false
-          && col.type !== 'badge' && col.type !== 'status' && col.type !== 'priority'
+          && col.type !== 'badge'
         const isEditing = editingCell?.rowId === rowId && editingCell?.colId === col.id
         const width = getColumnWidth ? getColumnWidth(col.id, col.width || 120) : (col.width || 120)
         return (
@@ -109,6 +117,10 @@ export function GridRow({
                 onEditChange={onEditChange}
                 onCommit={() => onEditCommit(rowId, col.id, col)}
                 onCancel={onEditCancel}
+                onDirectCommit={onDirectCommit ? (val) => onDirectCommit(rowId, col.id, val) : undefined}
+                onFetchRelationshipRecords={onFetchRelationshipRecords}
+                workspaceUsers={workspaceUsers}
+                onAIGenerate={onAIGenerate}
               />
             </div>
           </div>

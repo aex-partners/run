@@ -34,3 +34,57 @@ export const signInSchema = z.object({
   password: z.string().min(1),
 });
 export type SignInInput = z.infer<typeof signInSchema>;
+
+// ─── Entity Field Types ──────────────────────────────────────────────────────
+
+export const ENTITY_FIELD_TYPES = [
+  "text",
+  "long_text",
+  "rich_text",
+  "number",
+  "decimal",
+  "currency",
+  "percent",
+  "date",
+  "datetime",
+  "duration",
+  "checkbox",
+  "select",
+  "multiselect",
+  "status",
+  "priority",
+  "rating",
+  "email",
+  "url",
+  "phone",
+  "person",
+  "relationship",
+  "lookup",
+  "rollup",
+  "formula",
+  "autonumber",
+  "attachment",
+  "json",
+  "barcode",
+  "ai",
+  "created_at",
+  "updated_at",
+  "created_by",
+  "updated_by",
+] as const;
+
+export type EntityFieldType = (typeof ENTITY_FIELD_TYPES)[number];
+
+export const entityFieldTypeSchema = z.enum(ENTITY_FIELD_TYPES);
+
+export interface EntityFieldOption {
+  value: string;
+  label: string;
+  color?: string;
+}
+
+export const entityFieldOptionSchema = z.object({
+  value: z.string(),
+  label: z.string(),
+  color: z.string().optional(),
+});

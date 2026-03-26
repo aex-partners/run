@@ -120,6 +120,8 @@ export interface EntityField {
   options?: { value: string; label: string; color?: string }[]
   currencyCode?: string
   aiPrompt?: string
+  maxRating?: number
+  decimalPlaces?: number
 }
 
 export interface EntityRelationship {
@@ -152,6 +154,7 @@ export interface EntityManagePanelProps {
   fields: EntityField[]
   relationships?: EntityRelationship[]
   versions?: EntityVersion[]
+  availableEntities?: { id: string; name: string; fields?: { id: string; name: string }[] }[]
   onBack?: () => void
   onUpdateDescription?: (description: string) => void
   onAddField?: (field: Omit<EntityField, 'id'>) => void
@@ -191,6 +194,15 @@ export function EntityManagePanel({
   const [newFieldDesc, setNewFieldDesc] = useState('')
   const [newFieldRequired, setNewFieldRequired] = useState(false)
   const [newFieldFormula, setNewFieldFormula] = useState('')
+  const [newFieldOptions, setNewFieldOptions] = useState<{ value: string; label: string; color?: string }[]>([])
+  const [newFieldCurrencyCode, setNewFieldCurrencyCode] = useState('BRL')
+  const [newFieldRelationshipEntityId, setNewFieldRelationshipEntityId] = useState('')
+  const [newFieldRelationshipEntityName, setNewFieldRelationshipEntityName] = useState('')
+  const [newFieldLookupFieldId, setNewFieldLookupFieldId] = useState('')
+  const [newFieldRollupFunction, setNewFieldRollupFunction] = useState<string>('count')
+  const [newFieldAiPrompt, setNewFieldAiPrompt] = useState('')
+  const [newFieldMaxRating, setNewFieldMaxRating] = useState(5)
+  const [newFieldDecimalPlaces, setNewFieldDecimalPlaces] = useState(2)
 
   const resetNewFieldForm = () => {
     setNewFieldName('')
@@ -198,17 +210,36 @@ export function EntityManagePanel({
     setNewFieldDesc('')
     setNewFieldRequired(false)
     setNewFieldFormula('')
+    setNewFieldOptions([])
+    setNewFieldCurrencyCode('BRL')
+    setNewFieldRelationshipEntityId('')
+    setNewFieldRelationshipEntityName('')
+    setNewFieldLookupFieldId('')
+    setNewFieldRollupFunction('count')
+    setNewFieldAiPrompt('')
+    setNewFieldMaxRating(5)
+    setNewFieldDecimalPlaces(2)
     setShowAddField(false)
   }
 
   const handleAddField = () => {
     if (!newFieldName.trim()) return
+    const needsOptions = ['select', 'multiselect', 'status', 'priority'].includes(newFieldType)
     onAddField?.({
       name: newFieldName.trim(),
       type: newFieldType,
       description: newFieldDesc.trim() || undefined,
       required: newFieldRequired,
       formula: newFieldType === 'formula' ? newFieldFormula : undefined,
+      options: needsOptions && newFieldOptions.length > 0 ? newFieldOptions : undefined,
+      currencyCode: newFieldType === 'currency' ? newFieldCurrencyCode : undefined,
+      relationshipEntityId: ['relationship', 'lookup', 'rollup'].includes(newFieldType) ? newFieldRelationshipEntityId || undefined : undefined,
+      relationshipEntityName: ['relationship', 'lookup', 'rollup'].includes(newFieldType) ? newFieldRelationshipEntityName || undefined : undefined,
+      lookupFieldId: newFieldType === 'lookup' ? newFieldLookupFieldId || undefined : undefined,
+      rollupFunction: newFieldType === 'rollup' ? newFieldRollupFunction as any : undefined,
+      aiPrompt: newFieldType === 'ai' ? newFieldAiPrompt || undefined : undefined,
+      maxRating: newFieldType === 'rating' ? newFieldMaxRating : undefined,
+      decimalPlaces: ['decimal', 'percent'].includes(newFieldType) ? newFieldDecimalPlaces : undefined,
     })
     resetNewFieldForm()
   }
@@ -374,11 +405,41 @@ export function EntityManagePanel({
               newFieldDesc={newFieldDesc}
               newFieldRequired={newFieldRequired}
               newFieldFormula={newFieldFormula}
+              newFieldOptions={newFieldOptions}
+              newFieldCurrencyCode={newFieldCurrencyCode}
+              newFieldAiPrompt={newFieldAiPrompt}
+              newFieldMaxRating={newFieldMaxRating}
+              newFieldDecimalPlaces={newFieldDecimalPlaces}
               onNewFieldNameChange={setNewFieldName}
-              onNewFieldTypeChange={setNewFieldType}
+              onNewFieldTypeChange={(type) => {
+                setNewFieldType(type)
+                if (type === 'status' && newFieldOptions.length === 0) {
+                  setNewFieldOptions([
+                    { value: 'todo', label: 'To Do', color: '#6b7280' },
+                    { value: 'in_progress', label: 'In Progress', color: '#d97706' },
+                    { value: 'done', label: 'Done', color: '#16a34a' },
+                  ])
+                } else if (type === 'priority' && newFieldOptions.length === 0) {
+                  setNewFieldOptions([
+                    { value: 'critical', label: 'Critical', color: '#dc2626' },
+                    { value: 'high', label: 'High', color: '#ea580c' },
+                    { value: 'medium', label: 'Medium', color: '#d97706' },
+                    { value: 'low', label: 'Low', color: '#2563eb' },
+                  ])
+                } else if (!['select', 'multiselect', 'status', 'priority'].includes(type)) {
+                  setNewFieldOptions([])
+                }
+              }}
               onNewFieldDescChange={setNewFieldDesc}
               onNewFieldRequiredChange={setNewFieldRequired}
               onNewFieldFormulaChange={setNewFieldFormula}
+              onNewFieldOptionsChange={setNewFieldOptions}
+              onNewFieldCurrencyCodeChange={setNewFieldCurrencyCode}
+              onNewFieldAiPromptChange={setNewFieldAiPrompt}
+              onNewFieldMaxRatingChange={setNewFieldMaxRating}
+              onNewFieldDecimalPlacesChange={setNewFieldDecimalPlaces}
+              onNewFieldRelationshipEntityNameChange={setNewFieldRelationshipEntityName}
+              newFieldRelationshipEntityName={newFieldRelationshipEntityName}
               onAddField={handleAddField}
               onCancelAdd={resetNewFieldForm}
               onUpdateField={onUpdateField}
@@ -397,6 +458,230 @@ export function EntityManagePanel({
   )
 }
 
+// ─── Field Config Section ───────────────────────────────────────────────────
+
+const PRESET_COLORS = ['#dc2626', '#ea580c', '#d97706', '#16a34a', '#2563eb', '#8b5cf6', '#6b7280', '#ec4899']
+
+const CURRENCY_OPTIONS = ['BRL', 'USD', 'EUR', 'GBP', 'JPY', 'ARS', 'CLP', 'COP', 'MXN']
+
+interface FieldConfigSectionProps {
+  type: EntityFieldType
+  options: { value: string; label: string; color?: string }[]
+  onOptionsChange: (opts: { value: string; label: string; color?: string }[]) => void
+  currencyCode: string
+  onCurrencyCodeChange: (code: string) => void
+  aiPrompt: string
+  onAiPromptChange: (prompt: string) => void
+  maxRating: number
+  onMaxRatingChange: (max: number) => void
+  decimalPlaces: number
+  onDecimalPlacesChange: (places: number) => void
+  relationshipEntityName: string
+  onRelationshipEntityNameChange: (name: string) => void
+}
+
+function FieldConfigSection({
+  type,
+  options,
+  onOptionsChange,
+  currencyCode,
+  onCurrencyCodeChange,
+  aiPrompt,
+  onAiPromptChange,
+  maxRating,
+  onMaxRatingChange,
+  decimalPlaces,
+  onDecimalPlacesChange,
+  relationshipEntityName,
+  onRelationshipEntityNameChange,
+}: FieldConfigSectionProps) {
+  const needsOptions = ['select', 'multiselect', 'status', 'priority'].includes(type)
+
+  if (needsOptions) {
+    const addOption = () => {
+      onOptionsChange([...options, { value: '', label: '', color: PRESET_COLORS[options.length % PRESET_COLORS.length] }])
+    }
+
+    const updateOption = (index: number, updates: Partial<{ value: string; label: string; color?: string }>) => {
+      const updated = options.map((opt, i) => {
+        if (i !== index) return opt
+        const newOpt = { ...opt, ...updates }
+        if (updates.label !== undefined) {
+          newOpt.value = updates.label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+        }
+        return newOpt
+      })
+      onOptionsChange(updated)
+    }
+
+    const removeOption = (index: number) => {
+      onOptionsChange(options.filter((_, i) => i !== index))
+    }
+
+    const cycleColor = (index: number) => {
+      const currentColor = options[index].color || PRESET_COLORS[0]
+      const currentIdx = PRESET_COLORS.indexOf(currentColor)
+      const nextIdx = (currentIdx + 1) % PRESET_COLORS.length
+      updateOption(index, { color: PRESET_COLORS[nextIdx] })
+    }
+
+    return (
+      <div style={{ marginTop: 12 }}>
+        <span style={labelTextStyle}>Options</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+          {options.map((opt, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => cycleColor(i)}
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  background: opt.color || PRESET_COLORS[0],
+                  border: '2px solid var(--border)',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  padding: 0,
+                }}
+                title="Click to change color"
+              />
+              <input
+                value={opt.label}
+                onChange={(e) => updateOption(i, { label: e.target.value })}
+                placeholder="Option label"
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={() => removeOption(i)}
+                style={iconBtnStyle}
+                title="Remove option"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addOption}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              background: 'none',
+              border: '1px dashed var(--border)',
+              borderRadius: 6,
+              fontSize: 12,
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              width: 'fit-content',
+            }}
+          >
+            <Plus size={12} /> Add option
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'currency') {
+    return (
+      <label style={{ ...labelStyle, marginTop: 12 }}>
+        <span style={labelTextStyle}>Currency</span>
+        <select
+          value={currencyCode}
+          onChange={(e) => onCurrencyCodeChange(e.target.value)}
+          style={inputStyle}
+        >
+          {CURRENCY_OPTIONS.map((code) => (
+            <option key={code} value={code}>{code}</option>
+          ))}
+        </select>
+      </label>
+    )
+  }
+
+  if (type === 'ai') {
+    return (
+      <div style={{ marginTop: 12 }}>
+        <label style={labelStyle}>
+          <span style={labelTextStyle}>AI Prompt Template</span>
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => onAiPromptChange(e.target.value)}
+            placeholder="Describe what the AI should generate for this field..."
+            rows={3}
+            style={{
+              ...inputStyle,
+              resize: 'vertical',
+              minHeight: 60,
+            }}
+          />
+        </label>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+          Use {'{field_name}'} to reference other fields
+        </span>
+      </div>
+    )
+  }
+
+  if (type === 'rating') {
+    return (
+      <label style={{ ...labelStyle, marginTop: 12, maxWidth: 200 }}>
+        <span style={labelTextStyle}>Max Rating</span>
+        <input
+          type="number"
+          min={1}
+          max={10}
+          value={maxRating}
+          onChange={(e) => onMaxRatingChange(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+          style={inputStyle}
+        />
+      </label>
+    )
+  }
+
+  if (type === 'decimal' || type === 'percent') {
+    return (
+      <label style={{ ...labelStyle, marginTop: 12, maxWidth: 200 }}>
+        <span style={labelTextStyle}>Decimal Places</span>
+        <input
+          type="number"
+          min={0}
+          max={10}
+          value={decimalPlaces}
+          onChange={(e) => onDecimalPlacesChange(Math.min(10, Math.max(0, Number(e.target.value) || 0)))}
+          style={inputStyle}
+        />
+      </label>
+    )
+  }
+
+  if (['relationship', 'lookup', 'rollup'].includes(type)) {
+    return (
+      <div style={{ marginTop: 12 }}>
+        <label style={labelStyle}>
+          <span style={labelTextStyle}>Related Entity Name</span>
+          <input
+            value={relationshipEntityName}
+            onChange={(e) => onRelationshipEntityNameChange(e.target.value)}
+            placeholder="e.g. Orders, Products..."
+            style={inputStyle}
+          />
+        </label>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+          Full relationship setup available after the field is created
+        </span>
+      </div>
+    )
+  }
+
+  return null
+}
+
 // ─── Fields Tab ─────────────────────────────────────────────────────────────
 
 interface FieldsTabProps {
@@ -412,11 +697,23 @@ interface FieldsTabProps {
   newFieldDesc: string
   newFieldRequired: boolean
   newFieldFormula: string
+  newFieldOptions: { value: string; label: string; color?: string }[]
+  newFieldCurrencyCode: string
+  newFieldAiPrompt: string
+  newFieldMaxRating: number
+  newFieldDecimalPlaces: number
   onNewFieldNameChange: (v: string) => void
   onNewFieldTypeChange: (v: EntityFieldType) => void
   onNewFieldDescChange: (v: string) => void
   onNewFieldRequiredChange: (v: boolean) => void
   onNewFieldFormulaChange: (v: string) => void
+  onNewFieldOptionsChange: (v: { value: string; label: string; color?: string }[]) => void
+  onNewFieldCurrencyCodeChange: (v: string) => void
+  onNewFieldAiPromptChange: (v: string) => void
+  onNewFieldMaxRatingChange: (v: number) => void
+  onNewFieldDecimalPlacesChange: (v: number) => void
+  newFieldRelationshipEntityName: string
+  onNewFieldRelationshipEntityNameChange: (v: string) => void
   onAddField: () => void
   onCancelAdd: () => void
   onUpdateField?: (id: string, updates: Partial<EntityField>) => void
@@ -436,11 +733,23 @@ function FieldsTab({
   newFieldDesc,
   newFieldRequired,
   newFieldFormula,
+  newFieldOptions,
+  newFieldCurrencyCode,
+  newFieldAiPrompt,
+  newFieldMaxRating,
+  newFieldDecimalPlaces,
   onNewFieldNameChange,
   onNewFieldTypeChange,
   onNewFieldDescChange,
   onNewFieldRequiredChange,
   onNewFieldFormulaChange,
+  onNewFieldOptionsChange,
+  onNewFieldCurrencyCodeChange,
+  onNewFieldAiPromptChange,
+  onNewFieldMaxRatingChange,
+  onNewFieldDecimalPlacesChange,
+  newFieldRelationshipEntityName,
+  onNewFieldRelationshipEntityNameChange,
   onAddField,
   onCancelAdd,
   onUpdateField,
@@ -539,6 +848,22 @@ function FieldsTab({
             </label>
           )}
 
+          <FieldConfigSection
+            type={newFieldType}
+            options={newFieldOptions}
+            onOptionsChange={onNewFieldOptionsChange}
+            currencyCode={newFieldCurrencyCode}
+            onCurrencyCodeChange={onNewFieldCurrencyCodeChange}
+            aiPrompt={newFieldAiPrompt}
+            onAiPromptChange={onNewFieldAiPromptChange}
+            maxRating={newFieldMaxRating}
+            onMaxRatingChange={onNewFieldMaxRatingChange}
+            decimalPlaces={newFieldDecimalPlaces}
+            onDecimalPlacesChange={onNewFieldDecimalPlacesChange}
+            relationshipEntityName={newFieldRelationshipEntityName}
+            onRelationshipEntityNameChange={onNewFieldRelationshipEntityNameChange}
+          />
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text)', cursor: 'pointer' }}>
               <input
@@ -629,16 +954,35 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
   const [editType, setEditType] = useState<EntityFieldType>(field.type)
   const [editFormula, setEditFormula] = useState(field.formula || '')
   const [editRequired, setEditRequired] = useState(field.required || false)
+  const [editOptions, setEditOptions] = useState<{ value: string; label: string; color?: string }[]>(field.options || [])
+  const [editCurrencyCode, setEditCurrencyCode] = useState(field.currencyCode || 'BRL')
+  const [editAiPrompt, setEditAiPrompt] = useState(field.aiPrompt || '')
+  const [editMaxRating, setEditMaxRating] = useState(field.maxRating || 5)
+  const [editDecimalPlaces, setEditDecimalPlaces] = useState(field.decimalPlaces ?? 2)
+  const [editRelationshipEntityId, setEditRelationshipEntityId] = useState(field.relationshipEntityId || '')
+  const [editRelationshipEntityName, setEditRelationshipEntityName] = useState(field.relationshipEntityName || '')
+  const [editLookupFieldId, setEditLookupFieldId] = useState(field.lookupFieldId || '')
+  const [editRollupFunction, setEditRollupFunction] = useState(field.rollupFunction || 'count')
 
   const isSystem = ['created_at', 'updated_at', 'created_by', 'updated_by', 'autonumber'].includes(field.type)
 
   const commitEdit = () => {
+    const needsOptions = ['select', 'multiselect', 'status', 'priority'].includes(editType)
     onUpdate?.(field.id, {
       name: editName.trim() || field.name,
       description: editDesc.trim() || undefined,
       type: editType,
       formula: editType === 'formula' ? editFormula : undefined,
       required: editRequired,
+      options: needsOptions && editOptions.length > 0 ? editOptions : undefined,
+      currencyCode: editType === 'currency' ? editCurrencyCode : undefined,
+      aiPrompt: editType === 'ai' ? editAiPrompt || undefined : undefined,
+      maxRating: editType === 'rating' ? editMaxRating : undefined,
+      decimalPlaces: ['decimal', 'percent'].includes(editType) ? editDecimalPlaces : undefined,
+      relationshipEntityId: ['relationship', 'lookup', 'rollup'].includes(editType) ? editRelationshipEntityId || undefined : undefined,
+      relationshipEntityName: ['relationship', 'lookup', 'rollup'].includes(editType) ? editRelationshipEntityName || undefined : undefined,
+      lookupFieldId: editType === 'lookup' ? editLookupFieldId || undefined : undefined,
+      rollupFunction: editType === 'rollup' ? editRollupFunction as any : undefined,
     })
     onStopEdit()
   }
@@ -649,6 +993,15 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
     setEditType(field.type)
     setEditFormula(field.formula || '')
     setEditRequired(field.required || false)
+    setEditOptions(field.options || [])
+    setEditCurrencyCode(field.currencyCode || 'BRL')
+    setEditAiPrompt(field.aiPrompt || '')
+    setEditMaxRating(field.maxRating || 5)
+    setEditDecimalPlaces(field.decimalPlaces ?? 2)
+    setEditRelationshipEntityId(field.relationshipEntityId || '')
+    setEditRelationshipEntityName(field.relationshipEntityName || '')
+    setEditLookupFieldId(field.lookupFieldId || '')
+    setEditRollupFunction(field.rollupFunction || 'count')
     onStopEdit()
   }
 
@@ -820,6 +1173,21 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
               />
             </label>
           )}
+          <FieldConfigSection
+            type={editType}
+            options={editOptions}
+            onOptionsChange={setEditOptions}
+            currencyCode={editCurrencyCode}
+            onCurrencyCodeChange={setEditCurrencyCode}
+            aiPrompt={editAiPrompt}
+            onAiPromptChange={setEditAiPrompt}
+            maxRating={editMaxRating}
+            onMaxRatingChange={setEditMaxRating}
+            decimalPlaces={editDecimalPlaces}
+            onDecimalPlacesChange={setEditDecimalPlaces}
+            relationshipEntityName={editRelationshipEntityName}
+            onRelationshipEntityNameChange={setEditRelationshipEntityName}
+          />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text)', cursor: 'pointer' }}>
               <input

@@ -571,7 +571,7 @@ export function translateEntity(
       ...f,
       name: ft.name,
       ...(ft.options && f.options
-        ? { options: f.options.map((o) => ft.options![o] ?? o) }
+        ? { options: f.options.map((o) => ({ ...o, label: ft.options![o.value] ?? o.label })) }
         : {}),
     };
   });

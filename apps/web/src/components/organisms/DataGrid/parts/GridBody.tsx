@@ -37,6 +37,10 @@ interface GridBodyProps {
   onToggleGroup: (groupId: string) => void
   onAddRow?: () => void
   rowMenuRef: React.RefObject<HTMLDivElement | null>
+  onDirectCommit?: (rowId: string, colId: string, value: string | number | boolean) => void
+  onFetchRelationshipRecords?: (entityId: string, search: string) => Promise<{ id: string; label: string }[]>
+  workspaceUsers?: { id: string; name: string; avatar?: string }[]
+  onAIGenerate?: (rowId: string, colId: string, prompt: string) => Promise<string>
   inlineNewRow?: {
     isActive: boolean
     values: Record<string, string>
@@ -73,6 +77,10 @@ export function GridBody({
   onAddRow,
   rowMenuRef,
   getColumnWidth,
+  onDirectCommit,
+  onFetchRelationshipRecords,
+  workspaceUsers,
+  onAIGenerate,
   inlineNewRow,
 }: GridBodyProps) {
   const showSkeleton = visibleRows.length === 0 && !emptyMessage
@@ -102,6 +110,10 @@ export function GridBody({
         onDeleteRow={onDeleteRow}
         rowMenuRef={rowMenuRef}
         getColumnWidth={getColumnWidth}
+        onDirectCommit={onDirectCommit}
+        onFetchRelationshipRecords={onFetchRelationshipRecords}
+        workspaceUsers={workspaceUsers}
+        onAIGenerate={onAIGenerate}
       />
     )
   }

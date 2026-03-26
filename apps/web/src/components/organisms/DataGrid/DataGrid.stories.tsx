@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { fn } from '@storybook/test'
 import { DataGrid } from './DataGrid'
+import type { GridColumn } from './types'
 
 const mockColumns = [
   { id: 'id', label: 'ID', type: 'text' as const, width: 80 },
@@ -363,5 +364,119 @@ export const WithDetailPanel: Story = {
     title: 'Project Tasks',
     groups: mondayGroups,
     onRowClick: fn(),
+  },
+}
+
+// All field types columns
+const allFieldTypesColumns: GridColumn[] = [
+  { id: 'id', label: 'ID', type: 'autonumber', width: 60 },
+  { id: 'nome', label: 'Nome', type: 'text', width: 180 },
+  { id: 'descricao', label: 'Descricao', type: 'long_text', width: 200 },
+  { id: 'valor', label: 'Valor', type: 'currency', currencyCode: 'BRL', width: 120 },
+  { id: 'quantidade', label: 'Qtd', type: 'number', width: 80 },
+  { id: 'desconto', label: 'Desconto', type: 'decimal', decimalPlaces: 2, width: 100 },
+  { id: 'margem', label: 'Margem', type: 'percent', width: 90 },
+  { id: 'data_criacao', label: 'Criado em', type: 'date', width: 120 },
+  { id: 'ultima_atualizacao', label: 'Atualizado', type: 'datetime', width: 170 },
+  { id: 'duracao', label: 'Duracao', type: 'duration', width: 100 },
+  { id: 'ativo', label: 'Ativo', type: 'checkbox', width: 60 },
+  { id: 'categoria', label: 'Categoria', type: 'select', options: [
+    { value: 'eletronicos', label: 'Eletronicos', color: '#2563eb' },
+    { value: 'roupas', label: 'Roupas', color: '#8b5cf6' },
+    { value: 'alimentos', label: 'Alimentos', color: '#16a34a' },
+    { value: 'servicos', label: 'Servicos', color: '#ea580c' },
+  ], width: 130 },
+  { id: 'tags', label: 'Tags', type: 'multiselect', options: [
+    { value: 'destaque', label: 'Destaque', color: '#ea580c' },
+    { value: 'promocao', label: 'Promocao', color: '#16a34a' },
+    { value: 'novo', label: 'Novo', color: '#2563eb' },
+  ], width: 160 },
+  { id: 'status', label: 'Status', type: 'status', options: [
+    { value: 'ativo', label: 'Ativo', color: '#16a34a' },
+    { value: 'inativo', label: 'Inativo', color: '#dc2626' },
+    { value: 'pendente', label: 'Pendente', color: '#d97706' },
+  ], width: 120 },
+  { id: 'prioridade', label: 'Prioridade', type: 'priority', options: [
+    { value: 'critica', label: 'Critica', color: '#dc2626' },
+    { value: 'alta', label: 'Alta', color: '#ea580c' },
+    { value: 'media', label: 'Media', color: '#d97706' },
+    { value: 'baixa', label: 'Baixa', color: '#2563eb' },
+  ], width: 120 },
+  { id: 'avaliacao', label: 'Avaliacao', type: 'rating', maxRating: 5, width: 120 },
+  { id: 'email', label: 'Email', type: 'email', width: 200 },
+  { id: 'site', label: 'Site', type: 'url', width: 180 },
+  { id: 'telefone', label: 'Telefone', type: 'phone', width: 140 },
+  { id: 'responsavel', label: 'Responsavel', type: 'person', width: 120 },
+  { id: 'cliente', label: 'Cliente', type: 'relationship', relationshipEntityId: 'clientes', width: 160 },
+  { id: 'formula_total', label: 'Total Calc', type: 'formula', width: 120 },
+  { id: 'codigo', label: 'Codigo', type: 'barcode', width: 140 },
+  { id: 'resumo', label: 'Resumo IA', type: 'ai', aiPrompt: 'Summarize {nome}', width: 200 },
+]
+
+const allFieldTypesRows = [
+  {
+    id: 1, nome: 'Notebook Gamer Pro', descricao: 'Notebook com RTX 4070, 32GB RAM, ideal para desenvolvimento e jogos',
+    valor: 8999.90, quantidade: 15, desconto: 12.50, margem: 35,
+    data_criacao: '2026-01-15', ultima_atualizacao: '2026-03-20T14:30:00', duracao: '02:30',
+    ativo: true, categoria: 'eletronicos', tags: 'destaque,novo', status: 'ativo',
+    prioridade: 'alta', avaliacao: 5, email: 'vendas@techbr.com.br', site: 'https://techbr.com.br',
+    telefone: '+55 11 3456-7890', responsavel: 'Ana Paula Silva', cliente: 'TechBR Distribuidora',
+    formula_total: '134998.50', codigo: '7891234567890', resumo: 'Notebook topo de linha para publico gamer e profissional.',
+  },
+  {
+    id: 2, nome: 'Camiseta Polo Premium', descricao: 'Camiseta polo em algodao pima, disponivel em 5 cores',
+    valor: 189.90, quantidade: 200, desconto: 5.00, margem: 62,
+    data_criacao: '2026-02-10', ultima_atualizacao: '2026-03-18T09:15:00', duracao: '00:45',
+    ativo: true, categoria: 'roupas', tags: 'promocao', status: 'ativo',
+    prioridade: 'media', avaliacao: 4, email: 'contato@modabrasil.com', site: 'https://modabrasil.com',
+    telefone: '+55 21 2345-6789', responsavel: 'Carlos Eduardo Mendes', cliente: 'Moda Brasil Ltda',
+    formula_total: '37980.00', codigo: '7899876543210', resumo: 'Produto com alta margem e boa rotatividade.',
+  },
+  {
+    id: 3, nome: 'Cafe Especial Arabica', descricao: 'Cafe torrado e moido, origem Minas Gerais, torra media',
+    valor: 45.50, quantidade: 500, desconto: 0, margem: 48,
+    data_criacao: '2026-03-01', ultima_atualizacao: '2026-03-22T16:00:00', duracao: '01:15',
+    ativo: true, categoria: 'alimentos', tags: 'destaque,promocao,novo', status: 'pendente',
+    prioridade: 'critica', avaliacao: 5, email: 'pedidos@cafemineiro.com.br', site: 'https://cafemineiro.com.br',
+    telefone: '+55 31 9876-5432', responsavel: 'Maria Fernanda Souza', cliente: 'Cafe Mineiro SA',
+    formula_total: '22750.00', codigo: '7894561237890', resumo: 'Cafe premiado com certificacao de origem.',
+  },
+  {
+    id: 4, nome: 'Consultoria em TI', descricao: 'Pacote de 40 horas de consultoria em infraestrutura cloud',
+    valor: 12000.00, quantidade: 3, desconto: 10.00, margem: 70,
+    data_criacao: '2026-02-20', ultima_atualizacao: '2026-03-21T11:45:00', duracao: '40:00',
+    ativo: false, categoria: 'servicos', tags: 'novo', status: 'inativo',
+    prioridade: 'baixa', avaliacao: 3, email: 'projetos@cloudsolucoes.com', site: 'https://cloudsolucoes.com',
+    telefone: '+55 11 5678-1234', responsavel: 'Pedro Henrique Costa', cliente: 'Cloud Solucoes',
+    formula_total: '36000.00', codigo: '7897894561230', resumo: 'Servico suspenso aguardando aprovacao orcamentaria do cliente.',
+  },
+  {
+    id: 5, nome: 'Monitor Ultrawide 34"', descricao: 'Monitor curvo 34 polegadas, resolucao WQHD, 144Hz',
+    valor: 3499.00, quantidade: 25, desconto: 8.00, margem: 28,
+    data_criacao: '2026-01-28', ultima_atualizacao: '2026-03-19T10:00:00', duracao: '01:00',
+    ativo: true, categoria: 'eletronicos', tags: 'destaque', status: 'ativo',
+    prioridade: 'alta', avaliacao: 4, email: 'vendas@techbr.com.br', site: 'https://techbr.com.br',
+    telefone: '+55 11 3456-7890', responsavel: 'Ana Paula Silva', cliente: 'TechBR Distribuidora',
+    formula_total: '87475.00', codigo: '7891237894560', resumo: 'Alta demanda entre profissionais de design e desenvolvimento.',
+  },
+  {
+    id: 6, nome: 'Kit Churrasco Gaucho', descricao: 'Kit com 6 facas, tabua de madeira nobre e avental de couro',
+    valor: 349.90, quantidade: 80, desconto: 15.00, margem: 55,
+    data_criacao: '2026-03-05', ultima_atualizacao: '2026-03-23T08:30:00', duracao: '00:30',
+    ativo: true, categoria: 'alimentos', tags: 'promocao,novo', status: 'ativo',
+    prioridade: 'media', avaliacao: 5, email: 'sac@gauchoshop.com.br', site: 'https://gauchoshop.com.br',
+    telefone: '+55 51 4321-8765', responsavel: 'Lucas Oliveira', cliente: 'Gaucho Shop',
+    formula_total: '27992.00', codigo: '7896543217890', resumo: 'Produto sazonal com pico de vendas no inverno.',
+  },
+]
+
+/** Every supported column type in a single grid with realistic Brazilian product data. */
+export const AllFieldTypes: Story = {
+  name: 'All Field Types',
+  args: {
+    columns: allFieldTypesColumns,
+    rows: allFieldTypesRows,
+    title: 'Catalogo de Produtos',
+    onCellEdit: fn(),
   },
 }

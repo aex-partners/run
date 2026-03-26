@@ -4,9 +4,17 @@ export {
   MessageRole,
   signUpSchema,
   signInSchema,
+  ENTITY_FIELD_TYPES,
+  entityFieldTypeSchema,
+  entityFieldOptionSchema,
 } from "./types/index.js";
 
-export type { SignUpInput, SignInInput } from "./types/index.js";
+export type {
+  SignUpInput,
+  SignInInput,
+  EntityFieldType,
+  EntityFieldOption,
+} from "./types/index.js";
 
 export {
   DEFAULT_AGENT_ID,

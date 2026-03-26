@@ -1,10 +1,11 @@
 import type { CellProps } from '../types'
 
-export function CurrencyCell({ column, value, isEditing, editValue, onEditChange, onCommit, onCancel }: CellProps) {
+export function BarcodeCell({ value, isEditing, editValue, onEditChange, onCommit, onCancel }: CellProps) {
   if (isEditing) {
     return (
       <input
         autoFocus
+        type="text"
         value={editValue}
         onChange={(e) => onEditChange(e.target.value)}
         onBlur={onCommit}
@@ -20,22 +21,19 @@ export function CurrencyCell({ column, value, isEditing, editValue, onEditChange
           padding: '2px 6px',
           fontSize: 13,
           color: 'var(--text)',
-          fontFamily: 'inherit',
+          fontFamily: 'monospace',
           outline: 'none',
         }}
       />
     )
   }
 
-  const num = typeof value === 'number' ? value : parseFloat(String(value))
-  const formatted = isNaN(num) ? String(value) : new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: column.currencyCode || 'BRL',
-  }).format(num)
-
   return (
-    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13, display: 'block', textAlign: 'right' }}>
-      {formatted}
+    <span style={{
+      fontSize: 13,
+      fontFamily: 'monospace',
+    }}>
+      {String(value)}
     </span>
   )
 }

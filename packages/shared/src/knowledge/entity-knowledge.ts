@@ -12,11 +12,15 @@
  * business intent and map user language to the right data structures.
  */
 
+import type { EntityFieldType, EntityFieldOption } from "../types/index.js";
+
 export interface FieldDefinition {
   name: string;
-  type: "text" | "number" | "email" | "phone" | "date" | "select" | "checkbox";
+  type: EntityFieldType;
   required?: boolean;
-  options?: string[];
+  options?: EntityFieldOption[];
+  currencyCode?: string;
+  relationshipEntity?: string;
   /** What this field represents in business context */
   hint?: string;
 }
@@ -61,9 +65,9 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Name", type: "text", required: true, hint: "Full name of the lead or company name" },
       { name: "Email", type: "email", hint: "Primary contact email" },
       { name: "Phone", type: "phone", hint: "Primary contact phone" },
-      { name: "Source", type: "select", options: ["Website", "Referral", "Social Media", "Cold Call", "Event", "Other"], hint: "How the lead found us" },
-      { name: "Status", type: "select", options: ["New", "Contacted", "Qualified", "Unqualified"], hint: "Current qualification stage" },
-      { name: "Notes", type: "text", hint: "Free-form notes about interactions" },
+      { name: "Source", type: "select", options: [{ value: "Website", label: "Website" }, { value: "Referral", label: "Referral" }, { value: "Social Media", label: "Social Media" }, { value: "Cold Call", label: "Cold Call" }, { value: "Event", label: "Event" }, { value: "Other", label: "Other" }], hint: "How the lead found us" },
+      { name: "Status", type: "status", options: [{ value: "New", label: "New", color: "#6b7280" }, { value: "Contacted", label: "Contacted", color: "#2563eb" }, { value: "Qualified", label: "Qualified", color: "#16a34a" }, { value: "Unqualified", label: "Unqualified", color: "#dc2626" }], hint: "Current qualification stage" },
+      { name: "Notes", type: "long_text", hint: "Free-form notes about interactions" },
     ],
   },
 
@@ -82,11 +86,11 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Customers", "Leads", "Quotations", "Commissions"],
     fields: [
       { name: "Title", type: "text", required: true, hint: "Short description of the opportunity" },
-      { name: "Value", type: "number", hint: "Expected revenue amount" },
-      { name: "Stage", type: "select", options: ["Prospecting", "Qualification", "Proposal", "Negotiation", "Closed Won", "Closed Lost"], hint: "Pipeline stage" },
+      { name: "Value", type: "currency", currencyCode: "BRL", hint: "Expected revenue amount" },
+      { name: "Stage", type: "status", options: [{ value: "Prospecting", label: "Prospecting", color: "#6b7280" }, { value: "Qualification", label: "Qualification", color: "#d97706" }, { value: "Proposal", label: "Proposal", color: "#2563eb" }, { value: "Negotiation", label: "Negotiation", color: "#d97706" }, { value: "Closed Won", label: "Closed Won", color: "#16a34a" }, { value: "Closed Lost", label: "Closed Lost", color: "#dc2626" }], hint: "Pipeline stage" },
       { name: "Contact", type: "text", hint: "Primary contact name or customer" },
       { name: "Expected Close", type: "date", hint: "When we expect to close this deal" },
-      { name: "Notes", type: "text", hint: "Deal notes, meeting summaries, next steps" },
+      { name: "Notes", type: "long_text", hint: "Deal notes, meeting summaries, next steps" },
     ],
   },
 
@@ -107,9 +111,9 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Client", type: "text", required: true, hint: "Client or company name" },
       { name: "Date", type: "date", required: true, hint: "Issue date" },
       { name: "Valid Until", type: "date", hint: "Expiration date" },
-      { name: "Total", type: "number", hint: "Total quoted amount" },
-      { name: "Status", type: "select", options: ["Draft", "Sent", "Accepted", "Rejected", "Expired"], hint: "Current status" },
-      { name: "Notes", type: "text", hint: "Terms, conditions, special notes" },
+      { name: "Total", type: "currency", currencyCode: "BRL", hint: "Total quoted amount" },
+      { name: "Status", type: "status", options: [{ value: "Draft", label: "Draft", color: "#6b7280" }, { value: "Sent", label: "Sent", color: "#2563eb" }, { value: "Accepted", label: "Accepted", color: "#16a34a" }, { value: "Rejected", label: "Rejected", color: "#dc2626" }, { value: "Expired", label: "Expired", color: "#dc2626" }], hint: "Current status" },
+      { name: "Notes", type: "long_text", hint: "Terms, conditions, special notes" },
     ],
   },
 
@@ -131,8 +135,8 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Phone", type: "phone", hint: "Primary contact phone" },
       { name: "Company", type: "text", hint: "Company name (if contact is an individual within a company)" },
       { name: "Address", type: "text", hint: "Full address" },
-      { name: "Segment", type: "select", options: ["Individual", "Small Business", "Enterprise"], hint: "Customer segment for service level" },
-      { name: "Notes", type: "text", hint: "Relationship notes, preferences" },
+      { name: "Segment", type: "select", options: [{ value: "Individual", label: "Individual" }, { value: "Small Business", label: "Small Business" }, { value: "Enterprise", label: "Enterprise" }], hint: "Customer segment for service level" },
+      { name: "Notes", type: "long_text", hint: "Relationship notes, preferences" },
     ],
   },
 
@@ -153,10 +157,10 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Number", type: "text", required: true, hint: "Order reference number" },
       { name: "Customer", type: "text", required: true, hint: "Customer name" },
       { name: "Date", type: "date", required: true, hint: "Order date" },
-      { name: "Total", type: "number", hint: "Order total amount" },
-      { name: "Status", type: "select", options: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"], hint: "Fulfillment status" },
+      { name: "Total", type: "currency", currencyCode: "BRL", hint: "Order total amount" },
+      { name: "Status", type: "status", options: [{ value: "Pending", label: "Pending", color: "#d97706" }, { value: "Processing", label: "Processing", color: "#2563eb" }, { value: "Shipped", label: "Shipped", color: "#2563eb" }, { value: "Delivered", label: "Delivered", color: "#16a34a" }, { value: "Cancelled", label: "Cancelled", color: "#dc2626" }], hint: "Fulfillment status" },
       { name: "Tracking", type: "text", hint: "Shipping tracking number" },
-      { name: "Notes", type: "text", hint: "Special instructions, delivery notes" },
+      { name: "Notes", type: "long_text", hint: "Special instructions, delivery notes" },
     ],
   },
 
@@ -174,11 +178,11 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     fields: [
       { name: "Salesperson", type: "text", required: true, hint: "Name of the salesperson" },
       { name: "Deal", type: "text", hint: "Related deal or order reference" },
-      { name: "Amount", type: "number", required: true, hint: "Commission amount" },
+      { name: "Amount", type: "currency", currencyCode: "BRL", required: true, hint: "Commission amount" },
       { name: "Rate", type: "number", hint: "Commission rate percentage" },
       { name: "Date", type: "date", hint: "Commission date" },
-      { name: "Status", type: "select", options: ["Pending", "Approved", "Paid"], hint: "Payment status" },
-      { name: "Notes", type: "text" },
+      { name: "Status", type: "status", options: [{ value: "Pending", label: "Pending", color: "#d97706" }, { value: "Approved", label: "Approved", color: "#16a34a" }, { value: "Paid", label: "Paid", color: "#16a34a" }], hint: "Payment status" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -200,11 +204,11 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     fields: [
       { name: "Invoice", type: "text", required: true, hint: "Invoice number" },
       { name: "Customer", type: "text", required: true, hint: "Customer name" },
-      { name: "Amount", type: "number", required: true, hint: "Total invoice amount" },
+      { name: "Amount", type: "currency", currencyCode: "BRL", required: true, hint: "Total invoice amount" },
       { name: "Due Date", type: "date", required: true, hint: "Payment due date" },
-      { name: "Status", type: "select", options: ["Open", "Partial", "Paid", "Overdue"], hint: "Payment status" },
-      { name: "Paid Amount", type: "number", hint: "Amount received so far" },
-      { name: "Notes", type: "text", hint: "Payment terms, partial payment notes" },
+      { name: "Status", type: "status", options: [{ value: "Open", label: "Open", color: "#6b7280" }, { value: "Partial", label: "Partial", color: "#d97706" }, { value: "Paid", label: "Paid", color: "#16a34a" }, { value: "Overdue", label: "Overdue", color: "#dc2626" }], hint: "Payment status" },
+      { name: "Paid Amount", type: "currency", currencyCode: "BRL", hint: "Amount received so far" },
+      { name: "Notes", type: "long_text", hint: "Payment terms, partial payment notes" },
     ],
   },
 
@@ -223,11 +227,11 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     fields: [
       { name: "Bill", type: "text", required: true, hint: "Bill or invoice number" },
       { name: "Vendor", type: "text", required: true, hint: "Vendor or supplier name" },
-      { name: "Amount", type: "number", required: true, hint: "Total bill amount" },
+      { name: "Amount", type: "currency", currencyCode: "BRL", required: true, hint: "Total bill amount" },
       { name: "Due Date", type: "date", required: true, hint: "Payment due date" },
-      { name: "Status", type: "select", options: ["Open", "Partial", "Paid", "Overdue"], hint: "Payment status" },
-      { name: "Paid Amount", type: "number", hint: "Amount paid so far" },
-      { name: "Notes", type: "text", hint: "Payment terms, bank details" },
+      { name: "Status", type: "status", options: [{ value: "Open", label: "Open", color: "#6b7280" }, { value: "Partial", label: "Partial", color: "#d97706" }, { value: "Paid", label: "Paid", color: "#16a34a" }, { value: "Overdue", label: "Overdue", color: "#dc2626" }], hint: "Payment status" },
+      { name: "Paid Amount", type: "currency", currencyCode: "BRL", hint: "Amount paid so far" },
+      { name: "Notes", type: "long_text", hint: "Payment terms, bank details" },
     ],
   },
 
@@ -245,12 +249,12 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Receivables", "Payables", "Expenses"],
     fields: [
       { name: "Date", type: "date", required: true, hint: "Transaction date" },
-      { name: "Description", type: "text", required: true, hint: "What the transaction is for" },
-      { name: "Type", type: "select", required: true, options: ["Income", "Expense"], hint: "Money in or money out" },
+      { name: "Description", type: "long_text", required: true, hint: "What the transaction is for" },
+      { name: "Type", type: "select", required: true, options: [{ value: "Income", label: "Income" }, { value: "Expense", label: "Expense" }], hint: "Money in or money out" },
       { name: "Category", type: "text", hint: "Classification (e.g. Sales, Rent, Utilities)" },
-      { name: "Amount", type: "number", required: true, hint: "Transaction amount" },
-      { name: "Balance", type: "number", hint: "Running balance after this entry" },
-      { name: "Notes", type: "text" },
+      { name: "Amount", type: "currency", currencyCode: "BRL", required: true, hint: "Transaction amount" },
+      { name: "Balance", type: "currency", currencyCode: "BRL", hint: "Running balance after this entry" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -267,12 +271,12 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Cash Flow", "Budgets"],
     fields: [
       { name: "Date", type: "date", required: true, hint: "When the expense occurred" },
-      { name: "Description", type: "text", required: true, hint: "What was purchased" },
-      { name: "Category", type: "select", options: ["Travel", "Office", "Software", "Marketing", "Utilities", "Other"], hint: "Expense category" },
-      { name: "Amount", type: "number", required: true, hint: "Amount spent" },
+      { name: "Description", type: "long_text", required: true, hint: "What was purchased" },
+      { name: "Category", type: "select", options: [{ value: "Travel", label: "Travel" }, { value: "Office", label: "Office" }, { value: "Software", label: "Software" }, { value: "Marketing", label: "Marketing" }, { value: "Utilities", label: "Utilities" }, { value: "Other", label: "Other" }], hint: "Expense category" },
+      { name: "Amount", type: "currency", currencyCode: "BRL", required: true, hint: "Amount spent" },
       { name: "Paid By", type: "text", hint: "Who paid (employee name or company card)" },
       { name: "Receipt", type: "checkbox", hint: "Whether a receipt is attached" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -291,9 +295,9 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Type", type: "text", required: true, hint: "Tax type" },
       { name: "Period", type: "text", hint: "Filing period (e.g. Q1 2026, March 2026)" },
       { name: "Due Date", type: "date", hint: "Filing/payment deadline" },
-      { name: "Amount", type: "number", hint: "Tax amount" },
-      { name: "Status", type: "select", options: ["Pending", "Filed", "Paid"], hint: "Filing status" },
-      { name: "Notes", type: "text" },
+      { name: "Amount", type: "currency", currencyCode: "BRL", hint: "Tax amount" },
+      { name: "Status", type: "status", options: [{ value: "Pending", label: "Pending", color: "#d97706" }, { value: "Filed", label: "Filed", color: "#2563eb" }, { value: "Paid", label: "Paid", color: "#16a34a" }], hint: "Filing status" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -311,11 +315,11 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     fields: [
       { name: "Department", type: "text", required: true, hint: "Department or cost center" },
       { name: "Period", type: "text", required: true, hint: "Budget period (e.g. Q1 2026)" },
-      { name: "Planned", type: "number", required: true, hint: "Budgeted amount" },
-      { name: "Actual", type: "number", hint: "Amount spent so far" },
-      { name: "Variance", type: "number", hint: "Planned minus Actual" },
-      { name: "Status", type: "select", options: ["Draft", "Active", "Closed"], hint: "Budget status" },
-      { name: "Notes", type: "text" },
+      { name: "Planned", type: "currency", currencyCode: "BRL", required: true, hint: "Budgeted amount" },
+      { name: "Actual", type: "currency", currencyCode: "BRL", hint: "Amount spent so far" },
+      { name: "Variance", type: "currency", currencyCode: "BRL", hint: "Planned minus Actual" },
+      { name: "Status", type: "status", options: [{ value: "Draft", label: "Draft", color: "#6b7280" }, { value: "Active", label: "Active", color: "#16a34a" }, { value: "Closed", label: "Closed", color: "#6b7280" }], hint: "Budget status" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -340,7 +344,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Min Stock", type: "number", hint: "Minimum stock level (alert threshold)" },
       { name: "Location", type: "text", hint: "Storage location or warehouse" },
       { name: "Last Updated", type: "date", hint: "Last stock update date" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -360,10 +364,10 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Number", type: "text", required: true, hint: "PO reference number" },
       { name: "Supplier", type: "text", required: true, hint: "Supplier name" },
       { name: "Date", type: "date", required: true, hint: "Order date" },
-      { name: "Total", type: "number", hint: "Total order amount" },
-      { name: "Status", type: "select", options: ["Draft", "Sent", "Confirmed", "Received", "Cancelled"], hint: "Order status" },
+      { name: "Total", type: "currency", currencyCode: "BRL", hint: "Total order amount" },
+      { name: "Status", type: "status", options: [{ value: "Draft", label: "Draft", color: "#6b7280" }, { value: "Sent", label: "Sent", color: "#2563eb" }, { value: "Confirmed", label: "Confirmed", color: "#2563eb" }, { value: "Received", label: "Received", color: "#16a34a" }, { value: "Cancelled", label: "Cancelled", color: "#dc2626" }], hint: "Order status" },
       { name: "Delivery Date", type: "date", hint: "Expected delivery date" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -384,7 +388,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Phone", type: "phone", hint: "Contact phone" },
       { name: "Address", type: "text", hint: "Business address" },
       { name: "Payment Terms", type: "text", hint: "e.g. Net 30, COD, 50% upfront" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -404,9 +408,9 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Name", type: "text", required: true, hint: "Product name" },
       { name: "SKU", type: "text", hint: "Stock keeping unit code" },
       { name: "Category", type: "text", hint: "Product category" },
-      { name: "Price", type: "number", hint: "Selling price" },
-      { name: "Cost", type: "number", hint: "Purchase/production cost" },
-      { name: "Description", type: "text", hint: "Product description" },
+      { name: "Price", type: "currency", currencyCode: "BRL", hint: "Selling price" },
+      { name: "Cost", type: "currency", currencyCode: "BRL", hint: "Purchase/production cost" },
+      { name: "Description", type: "long_text", hint: "Product description" },
       { name: "Active", type: "checkbox", hint: "Whether product is currently for sale" },
     ],
   },
@@ -427,7 +431,7 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Capacity", type: "number", hint: "Total storage capacity (units)" },
       { name: "Used", type: "number", hint: "Currently used capacity" },
       { name: "Manager", type: "text", hint: "Warehouse manager" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -445,9 +449,9 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Date", type: "date", required: true, hint: "Audit date" },
       { name: "Location", type: "text", required: true, hint: "Warehouse or area audited" },
       { name: "Auditor", type: "text", hint: "Person performing the audit" },
-      { name: "Status", type: "select", options: ["Planned", "In Progress", "Completed"], hint: "Audit status" },
+      { name: "Status", type: "status", options: [{ value: "Planned", label: "Planned", color: "#6b7280" }, { value: "In Progress", label: "In Progress", color: "#d97706" }, { value: "Completed", label: "Completed", color: "#16a34a" }], hint: "Audit status" },
       { name: "Discrepancies", type: "number", hint: "Number of items with count differences" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -471,8 +475,8 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Department", type: "text", hint: "Department name" },
       { name: "Position", type: "text", hint: "Job title" },
       { name: "Hire Date", type: "date", hint: "Employment start date" },
-      { name: "Status", type: "select", options: ["Active", "On Leave", "Terminated"], hint: "Employment status" },
-      { name: "Notes", type: "text" },
+      { name: "Status", type: "status", options: [{ value: "Active", label: "Active", color: "#16a34a" }, { value: "On Leave", label: "On Leave", color: "#d97706" }, { value: "Terminated", label: "Terminated", color: "#dc2626" }], hint: "Employment status" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -493,8 +497,8 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Clock In", type: "text", hint: "Clock-in time (HH:MM)" },
       { name: "Clock Out", type: "text", hint: "Clock-out time (HH:MM)" },
       { name: "Hours", type: "number", hint: "Total hours worked" },
-      { name: "Status", type: "select", options: ["Present", "Absent", "Late", "Half Day"], hint: "Attendance status" },
-      { name: "Notes", type: "text" },
+      { name: "Status", type: "status", options: [{ value: "Present", label: "Present", color: "#16a34a" }, { value: "Absent", label: "Absent", color: "#dc2626" }, { value: "Late", label: "Late", color: "#d97706" }, { value: "Half Day", label: "Half Day", color: "#d97706" }], hint: "Attendance status" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -513,10 +517,10 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     fields: [
       { name: "Employee", type: "text", required: true, hint: "Employee name" },
       { name: "Period", type: "text", required: true, hint: "Pay period (e.g. March 2026)" },
-      { name: "Base Salary", type: "number", required: true, hint: "Gross salary amount" },
-      { name: "Deductions", type: "number", hint: "Total deductions (taxes, benefits)" },
-      { name: "Net Pay", type: "number", hint: "Take-home pay" },
-      { name: "Status", type: "select", options: ["Draft", "Processed", "Paid"], hint: "Processing status" },
+      { name: "Base Salary", type: "currency", currencyCode: "BRL", required: true, hint: "Gross salary amount" },
+      { name: "Deductions", type: "currency", currencyCode: "BRL", hint: "Total deductions (taxes, benefits)" },
+      { name: "Net Pay", type: "currency", currencyCode: "BRL", hint: "Take-home pay" },
+      { name: "Status", type: "status", options: [{ value: "Draft", label: "Draft", color: "#6b7280" }, { value: "Processed", label: "Processed", color: "#2563eb" }, { value: "Paid", label: "Paid", color: "#16a34a" }], hint: "Processing status" },
       { name: "Payment Date", type: "date", hint: "Actual payment date" },
     ],
   },
@@ -534,12 +538,12 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Employees", "Attendance"],
     fields: [
       { name: "Employee", type: "text", required: true, hint: "Employee name" },
-      { name: "Type", type: "select", options: ["Vacation", "Sick", "Personal", "Maternity", "Other"], hint: "Leave type" },
+      { name: "Type", type: "select", options: [{ value: "Vacation", label: "Vacation" }, { value: "Sick", label: "Sick" }, { value: "Personal", label: "Personal" }, { value: "Maternity", label: "Maternity" }, { value: "Other", label: "Other" }], hint: "Leave type" },
       { name: "Start Date", type: "date", required: true, hint: "First day of leave" },
       { name: "End Date", type: "date", required: true, hint: "Last day of leave" },
       { name: "Days", type: "number", hint: "Total leave days" },
-      { name: "Status", type: "select", options: ["Pending", "Approved", "Rejected"], hint: "Approval status" },
-      { name: "Notes", type: "text" },
+      { name: "Status", type: "status", options: [{ value: "Pending", label: "Pending", color: "#d97706" }, { value: "Approved", label: "Approved", color: "#16a34a" }, { value: "Rejected", label: "Rejected", color: "#dc2626" }], hint: "Approval status" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -560,8 +564,8 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Phone", type: "phone", hint: "Contact phone" },
       { name: "Position", type: "text", required: true, hint: "Position they applied for" },
       { name: "Source", type: "text", hint: "Where they found the job (LinkedIn, referral, etc.)" },
-      { name: "Stage", type: "select", options: ["Applied", "Screening", "Interview", "Offer", "Hired", "Rejected"], hint: "Pipeline stage" },
-      { name: "Notes", type: "text" },
+      { name: "Stage", type: "status", options: [{ value: "Applied", label: "Applied", color: "#6b7280" }, { value: "Screening", label: "Screening", color: "#d97706" }, { value: "Interview", label: "Interview", color: "#d97706" }, { value: "Offer", label: "Offer", color: "#2563eb" }, { value: "Hired", label: "Hired", color: "#16a34a" }, { value: "Rejected", label: "Rejected", color: "#dc2626" }], hint: "Pipeline stage" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -581,9 +585,9 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Start Date", type: "date", hint: "Training start date" },
       { name: "End Date", type: "date", hint: "Training end date" },
       { name: "Participants", type: "number", hint: "Number of participants" },
-      { name: "Status", type: "select", options: ["Planned", "Active", "Completed"], hint: "Program status" },
+      { name: "Status", type: "status", options: [{ value: "Planned", label: "Planned", color: "#6b7280" }, { value: "Active", label: "Active", color: "#2563eb" }, { value: "Completed", label: "Completed", color: "#16a34a" }], hint: "Program status" },
       { name: "Certification", type: "checkbox", hint: "Leads to a certification" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -604,10 +608,10 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Client", type: "text", hint: "Client this project is for" },
       { name: "Start Date", type: "date", hint: "Project start" },
       { name: "Deadline", type: "date", hint: "Project deadline" },
-      { name: "Budget", type: "number", hint: "Total project budget" },
-      { name: "Status", type: "select", options: ["Planning", "Active", "On Hold", "Completed", "Cancelled"], hint: "Project status" },
+      { name: "Budget", type: "currency", currencyCode: "BRL", hint: "Total project budget" },
+      { name: "Status", type: "status", options: [{ value: "Planning", label: "Planning", color: "#6b7280" }, { value: "Active", label: "Active", color: "#16a34a" }, { value: "On Hold", label: "On Hold", color: "#d97706" }, { value: "Completed", label: "Completed", color: "#16a34a" }, { value: "Cancelled", label: "Cancelled", color: "#dc2626" }], hint: "Project status" },
       { name: "Owner", type: "text", hint: "Project manager/owner" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -625,11 +629,11 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     fields: [
       { name: "Title", type: "text", required: true, hint: "Short description of the issue" },
       { name: "Customer", type: "text", hint: "Customer who reported it" },
-      { name: "Priority", type: "select", options: ["Low", "Medium", "High", "Critical"], hint: "Urgency level" },
-      { name: "Status", type: "select", options: ["Open", "In Progress", "Waiting", "Resolved", "Closed"], hint: "Resolution status" },
+      { name: "Priority", type: "priority", options: [{ value: "Low", label: "Low", color: "#2563eb" }, { value: "Medium", label: "Medium", color: "#d97706" }, { value: "High", label: "High", color: "#ea580c" }, { value: "Critical", label: "Critical", color: "#dc2626" }], hint: "Urgency level" },
+      { name: "Status", type: "status", options: [{ value: "Open", label: "Open", color: "#6b7280" }, { value: "In Progress", label: "In Progress", color: "#d97706" }, { value: "Waiting", label: "Waiting", color: "#d97706" }, { value: "Resolved", label: "Resolved", color: "#16a34a" }, { value: "Closed", label: "Closed", color: "#16a34a" }], hint: "Resolution status" },
       { name: "Assigned To", type: "text", hint: "Person responsible" },
       { name: "Created Date", type: "date", hint: "When the ticket was created" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -649,8 +653,8 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Date", type: "date", required: true, hint: "Appointment date" },
       { name: "Time", type: "text", hint: "Start time (HH:MM)" },
       { name: "Duration", type: "text", hint: "Duration (e.g. 30min, 1h)" },
-      { name: "Status", type: "select", options: ["Scheduled", "Confirmed", "Completed", "Cancelled", "No Show"], hint: "Appointment status" },
-      { name: "Notes", type: "text" },
+      { name: "Status", type: "status", options: [{ value: "Scheduled", label: "Scheduled", color: "#6b7280" }, { value: "Confirmed", label: "Confirmed", color: "#2563eb" }, { value: "Completed", label: "Completed", color: "#16a34a" }, { value: "Cancelled", label: "Cancelled", color: "#dc2626" }, { value: "No Show", label: "No Show", color: "#dc2626" }], hint: "Appointment status" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -668,10 +672,10 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Product", type: "text", required: true, hint: "Product or batch inspected" },
       { name: "Date", type: "date", required: true, hint: "Inspection date" },
       { name: "Inspector", type: "text", hint: "Person who performed the inspection" },
-      { name: "Result", type: "select", options: ["Pass", "Fail", "Conditional"], hint: "Inspection result" },
+      { name: "Result", type: "status", options: [{ value: "Pass", label: "Pass", color: "#16a34a" }, { value: "Fail", label: "Fail", color: "#dc2626" }, { value: "Conditional", label: "Conditional", color: "#d97706" }], hint: "Inspection result" },
       { name: "Defects", type: "number", hint: "Number of defects found" },
       { name: "Batch", type: "text", hint: "Batch or lot number" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -689,10 +693,10 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Model", type: "text", hint: "Vehicle make and model" },
       { name: "Driver", type: "text", hint: "Assigned driver" },
       { name: "Mileage", type: "number", hint: "Current odometer reading" },
-      { name: "Fuel Type", type: "select", options: ["Gasoline", "Diesel", "Electric", "Hybrid"], hint: "Fuel type" },
+      { name: "Fuel Type", type: "select", options: [{ value: "Gasoline", label: "Gasoline" }, { value: "Diesel", label: "Diesel" }, { value: "Electric", label: "Electric" }, { value: "Hybrid", label: "Hybrid" }], hint: "Fuel type" },
       { name: "Last Maintenance", type: "date", hint: "Date of last service" },
-      { name: "Status", type: "select", options: ["Available", "In Use", "Maintenance"], hint: "Current availability" },
-      { name: "Notes", type: "text" },
+      { name: "Status", type: "status", options: [{ value: "Available", label: "Available", color: "#16a34a" }, { value: "In Use", label: "In Use", color: "#2563eb" }, { value: "Maintenance", label: "Maintenance", color: "#d97706" }], hint: "Current availability" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -708,12 +712,12 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Compliance Items"],
     fields: [
       { name: "Title", type: "text", required: true, hint: "Document title" },
-      { name: "Category", type: "select", options: ["Contract", "Certificate", "Report", "Invoice", "Policy", "Other"], hint: "Document type" },
+      { name: "Category", type: "select", options: [{ value: "Contract", label: "Contract" }, { value: "Certificate", label: "Certificate" }, { value: "Report", label: "Report" }, { value: "Invoice", label: "Invoice" }, { value: "Policy", label: "Policy" }, { value: "Other", label: "Other" }], hint: "Document type" },
       { name: "Date", type: "date", hint: "Document date" },
       { name: "Owner", type: "text", hint: "Person responsible" },
       { name: "Expiry Date", type: "date", hint: "When the document expires" },
-      { name: "Status", type: "select", options: ["Draft", "Active", "Expired", "Archived"], hint: "Document status" },
-      { name: "Notes", type: "text" },
+      { name: "Status", type: "status", options: [{ value: "Draft", label: "Draft", color: "#6b7280" }, { value: "Active", label: "Active", color: "#16a34a" }, { value: "Expired", label: "Expired", color: "#dc2626" }, { value: "Archived", label: "Archived", color: "#6b7280" }], hint: "Document status" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -729,12 +733,12 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
     relatedEntities: ["Vehicles", "Employees"],
     fields: [
       { name: "Equipment", type: "text", required: true, hint: "Equipment or asset name" },
-      { name: "Type", type: "select", options: ["Preventive", "Corrective", "Emergency"], hint: "Maintenance type" },
+      { name: "Type", type: "select", options: [{ value: "Preventive", label: "Preventive" }, { value: "Corrective", label: "Corrective" }, { value: "Emergency", label: "Emergency" }], hint: "Maintenance type" },
       { name: "Date", type: "date", required: true, hint: "Scheduled/actual date" },
       { name: "Assigned To", type: "text", hint: "Technician or team" },
-      { name: "Status", type: "select", options: ["Planned", "In Progress", "Completed"], hint: "Work status" },
-      { name: "Cost", type: "number", hint: "Maintenance cost" },
-      { name: "Notes", type: "text" },
+      { name: "Status", type: "status", options: [{ value: "Planned", label: "Planned", color: "#6b7280" }, { value: "In Progress", label: "In Progress", color: "#d97706" }, { value: "Completed", label: "Completed", color: "#16a34a" }], hint: "Work status" },
+      { name: "Cost", type: "currency", currencyCode: "BRL", hint: "Maintenance cost" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 
@@ -753,9 +757,9 @@ export const ENTITY_KNOWLEDGE: EntityKnowledge[] = [
       { name: "Regulation", type: "text", hint: "Governing regulation or law" },
       { name: "Due Date", type: "date", hint: "Compliance deadline" },
       { name: "Responsible", type: "text", hint: "Person responsible" },
-      { name: "Status", type: "select", options: ["Compliant", "Non-Compliant", "In Progress", "Pending Review"], hint: "Compliance status" },
+      { name: "Status", type: "status", options: [{ value: "Compliant", label: "Compliant", color: "#16a34a" }, { value: "Non-Compliant", label: "Non-Compliant", color: "#dc2626" }, { value: "In Progress", label: "In Progress", color: "#d97706" }, { value: "Pending Review", label: "Pending Review", color: "#d97706" }], hint: "Compliance status" },
       { name: "Last Review", type: "date", hint: "Date of last review" },
-      { name: "Notes", type: "text" },
+      { name: "Notes", type: "long_text" },
     ],
   },
 ];

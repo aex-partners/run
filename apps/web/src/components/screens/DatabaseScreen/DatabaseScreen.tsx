@@ -43,7 +43,7 @@ export interface DatabaseScreenProps {
   onAISend?: (value: string) => void
   onRenameEntity?: (id: string, name: string) => void
   onDeleteEntity?: (id: string) => void
-  onCellEdit?: (rowId: string, colId: string, value: string | number) => void
+  onCellEdit?: (rowId: string, colId: string, value: string | number | boolean) => void
   onDeleteRow?: (rowId: string) => void
   groups?: RowGroup[]
   onToggleGroup?: (groupId: string) => void
@@ -60,6 +60,10 @@ export interface DatabaseScreenProps {
   onAddEntityField?: (entityId: string, field: Omit<EntityField, 'id'>) => void
   onUpdateEntityField?: (entityId: string, fieldId: string, updates: Partial<EntityField>) => void
   onDeleteEntityField?: (entityId: string, fieldId: string) => void
+  // DataGrid advanced cell props
+  onFetchRelationshipRecords?: (entityId: string, search: string) => Promise<{ id: string; label: string }[]>
+  workspaceUsers?: { id: string; name: string; avatar?: string }[]
+  onAIGenerate?: (rowId: string, colId: string, prompt: string) => Promise<string>
 }
 
 export function DatabaseScreen({
@@ -93,6 +97,9 @@ export function DatabaseScreen({
   onAddEntityField,
   onUpdateEntityField,
   onDeleteEntityField,
+  onFetchRelationshipRecords,
+  workspaceUsers,
+  onAIGenerate,
 }: DatabaseScreenProps) {
   const { t } = useTranslation()
   const [entities, setEntities] = useState<DatabaseEntity[]>(entitiesProp)
@@ -173,7 +180,7 @@ export function DatabaseScreen({
         : col.type) as EntityFieldType,
       currencyCode: col.currencyCode,
       relationshipEntityId: col.relationshipEntityId,
-      aiPrompt: col.aiPromptTemplate,
+      aiPrompt: col.aiPrompt,
       options: col.options?.map((o) => ({ value: o.value, label: o.label, color: o.color })),
     }))
   })()
@@ -231,6 +238,9 @@ export function DatabaseScreen({
               selectedRows={selectedRows}
               groups={groups}
               onToggleGroup={onToggleGroup}
+              onFetchRelationshipRecords={onFetchRelationshipRecords}
+              workspaceUsers={workspaceUsers}
+              onAIGenerate={onAIGenerate}
               toolbarLeftSlot={
                 <ViewSwitcher activeView={activeView} onViewChange={setActiveView} />
               }
