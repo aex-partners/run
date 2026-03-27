@@ -7,6 +7,7 @@ export const READ_ONLY_TOOLS = new Set([
   "mcp__aex__list_agents",
   "WebSearch",
   "WebFetch",
+  "ToolSearch",
   "Bash",
   "Read",
   "Write",
@@ -18,6 +19,9 @@ export const READ_ONLY_TOOLS = new Set([
   "TodoWrite",
   "mcp__aex__list_files",
   "mcp__aex__search_files",
+  "mcp__aex__query_knowledge",
+  "mcp__aex__web_search",
+  "mcp__aex__fetch_url",
 ]);
 
 // Mutating tools require user confirmation
@@ -32,6 +36,8 @@ export const MUTATING_TOOLS = new Set([
   "mcp__aex__execute_workflow",
   "mcp__aex__send_email",
   "mcp__aex__create_file",
+  "mcp__aex__save_knowledge",
+  "mcp__aex__delete_knowledge",
 ]);
 
 export function isReadOnlyTool(toolName: string): boolean {

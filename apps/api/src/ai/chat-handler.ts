@@ -52,7 +52,7 @@ export async function handleChat(opts: {
   try {
     // Load session and agent config
     const sessionId = await getSessionId(conversationId);
-    const agentConfig = await resolveAgentForConversation(conversationId);
+    const agentConfig = await resolveAgentForConversation(conversationId, userId);
     const memberIds = await getMemberIds(conversationId);
 
     const toolContext: ToolContext = { db, userId, conversationId };
@@ -86,25 +86,23 @@ export async function handleChat(opts: {
       mcpServers: { aex: mcpServer },
       allowedTools: [
         "mcp__aex__*",
-        "WebSearch", "WebFetch",
+        "WebSearch", "WebFetch", "ToolSearch",
         "Bash", "Read", "Write", "Edit", "Glob", "Grep",
         "Agent", "AskUserQuestion", "TodoWrite",
       ],
       canUseTool,
-      tools: [],
       permissionMode: "bypassPermissions",
       maxTurns: 15,
       includePartialMessages: true,
       cwd: process.cwd(),
       // Adaptive thinking: let Claude decide when and how deeply to reason
       thinking: { type: "adaptive" },
-      // Subagent definitions
-      agents: buildSubagents(),
     };
 
-    if (agentConfig.modelId) {
-      queryOptions.model = agentConfig.modelId;
-    }
+    // Use agent model if set, otherwise default to claude-sonnet-4-6
+    queryOptions.model = agentConfig.modelId || "claude-sonnet-4-6";
+
+    console.log(`[chat] Model: ${queryOptions.model}, AllowedTools: ${JSON.stringify(queryOptions.allowedTools)}, Resume: ${!!sessionId}`);
 
     if (sessionId) {
       queryOptions.resume = sessionId;
@@ -124,6 +122,18 @@ export async function handleChat(opts: {
       const msgSubtype = (message as any).subtype;
       if (msgType !== "stream_event") {
         console.log(`[chat] Message: type=${msgType} subtype=${msgSubtype || ""}`);
+      }
+
+      // Log tool usage for debugging
+      if (message.type === "assistant") {
+        const content = (message as any).message?.content ?? (message as any).content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === "tool_use") {
+              console.log(`[chat] Tool call: ${block.name} input=${JSON.stringify(block.input).slice(0, 200)}`);
+            }
+          }
+        }
       }
 
       // Session init
@@ -147,6 +157,10 @@ export async function handleChat(opts: {
           sendSSE(reply, { type: "text_delta", delta: event.delta.text });
           finalText += event.delta.text;
           textFromStreaming = true;
+        }
+        // Thinking deltas (adaptive thinking / extended thinking)
+        if (event?.type === "content_block_delta" && event?.delta?.type === "thinking_delta") {
+          sendSSE(reply, { type: "thinking_delta", delta: event.delta.thinking });
         }
         if (event?.type === "content_block_start" && event?.content_block?.type === "tool_use") {
           const toolId = event.content_block.id;

@@ -5,7 +5,7 @@ import { DEFAULT_AGENT_NAME } from "@aex/shared";
 import { buildSystemPrompt } from "./prompts.js";
 import type { AgentConfig } from "./types.js";
 
-export async function resolveAgentForConversation(conversationId: string): Promise<AgentConfig> {
+export async function resolveAgentForConversation(conversationId: string, userId?: string): Promise<AgentConfig> {
   const [conv] = await db
     .select({ agentId: conversations.agentId })
     .from(conversations)
@@ -55,6 +55,7 @@ export async function resolveAgentForConversation(conversationId: string): Promi
   const systemPrompt = await buildSystemPrompt(db, {
     agentName,
     agentPromptFragments,
+    userId,
   });
 
   return {

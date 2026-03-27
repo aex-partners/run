@@ -39,7 +39,6 @@ const STEP_KEYS = [
   'setup.steps.path',
   'setup.steps.routines',
   'setup.steps.email',
-  'setup.steps.ai',
   'setup.steps.plugins',
 ]
 

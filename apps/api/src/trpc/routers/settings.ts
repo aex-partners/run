@@ -116,10 +116,10 @@ function buildKickoffMessage(input: {
     }
     parts.push("Faça agora uma análise completa da nossa empresa:");
     parts.push("1. Acesse nosso site e analise o que fazemos, nossos produtos/serviços, público-alvo e posicionamento.");
-    if (input.website) parts.push("2. Busque nossas redes sociais (Instagram, Facebook, LinkedIn, etc.) a partir do site ou por busca.");
+    parts.push("2. Pesquise nossas redes sociais (Instagram, Facebook, LinkedIn) via web_search (ex: 'site:instagram.com buenaca'). NÃO acesse perfis diretamente (são bloqueados). Busque posts individuais que aparecem nos resultados.");
     parts.push("3. Busque informações complementares sobre a empresa na internet (CNPJ, endereço, avaliações).");
-    parts.push("4. Com base em tudo isso, se apresente explicando como o AEX Run pode ajudar especificamente o nosso negócio.");
-    parts.push("5. Guarde todas essas informações pois elas serão a base de todo o nosso trabalho juntos.");
+    parts.push("4. Salve tudo que aprendeu sobre a empresa usando a ferramenta save_knowledge com scope 'company'. Salve: o que a empresa vende, quem são os clientes, onde atua, e qualquer informação relevante.");
+    parts.push("5. Com base em tudo isso, se apresente explicando como o AEX Run pode ajudar especificamente o nosso negócio.");
   } else {
     parts.push(`I just set up AEX Run for ${input.orgName}.`);
     if (input.website) parts.push(`Our website is ${input.website}.`);
@@ -128,12 +128,12 @@ function buildKickoffMessage(input: {
       const names = input.selectedRoutines.map((id) => routineNames[id] ?? id);
       parts.push(`We selected these routines: ${names.join(", ")}.`);
     }
-    parts.push("Do a complete analysis of our company now:");
+    parts.push("Analyze our company now:");
     parts.push("1. Visit our website and analyze what we do, our products/services, target audience and positioning.");
-    if (input.website) parts.push("2. Find our social media profiles (Instagram, Facebook, LinkedIn, etc.).");
+    parts.push("2. Search for our social media (Instagram, Facebook, LinkedIn) via web_search (e.g. 'site:instagram.com companyname'). Do NOT access profiles directly (they block scraping). Look for individual posts in search results.");
     parts.push("3. Search for additional company info (registration, address, reviews).");
-    parts.push("4. Based on all this, introduce yourself explaining how AEX Run can specifically help our business.");
-    parts.push("5. Store all this information as it will be the foundation for all our work together.");
+    parts.push("4. Save everything you learn about the company using the save_knowledge tool with scope 'company'. Save: what the company sells, who the customers are, where it operates, and any relevant info.");
+    parts.push("5. Based on all this, introduce yourself explaining how AEX Run can specifically help our business.");
   }
 
   return parts.join(" ");

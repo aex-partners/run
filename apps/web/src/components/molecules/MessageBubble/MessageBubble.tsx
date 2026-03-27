@@ -1,5 +1,6 @@
 import React from 'react'
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Pin, Star } from 'lucide-react'
 import { ReadReceipt } from '../../atoms/ReadReceipt/ReadReceipt'
 import { ReplyQuote } from '../ReplyQuote/ReplyQuote'
@@ -195,6 +196,7 @@ export function MessageBubble({ role, content, author, timestamp, showAuthor = f
         ) : (
           <div>
             <Markdown
+              remarkPlugins={[remarkGfm]}
               components={{
                 p: ({ children, ...props }) => (
                   <p {...props} style={markdownStyles.p}>{children}</p>

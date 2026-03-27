@@ -18,7 +18,7 @@ export function buildEntityTools(ctx: ToolContext) {
           id: e.id,
           name: e.name,
           description: e.description,
-          fields: parseFields(e.fields).map((f) => ({ name: f.name, type: f.type })),
+          fields: parseFields(e.fields).map((f) => ({ name: f.name, slug: f.slug, type: f.type })),
         }));
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
       },
@@ -102,10 +102,10 @@ export function buildEntityTools(ctx: ToolContext) {
 
     tool(
       "insert_record",
-      "Insert a new record into a data entity",
+      "Insert a new record into a data entity. Use the field names from list_entities as keys. The system maps them automatically.",
       {
         entity_name: z.string().describe("Name or ID of the entity"),
-        data: z.record(z.unknown()).describe("Record data as key-value pairs matching entity fields"),
+        data: z.record(z.unknown()).describe("Record data as key-value pairs. Keys MUST match the entity's field names exactly (use list_entities to check)."),
       },
       async ({ entity_name, data }) => {
         const [entity] = await ctx.db
@@ -118,18 +118,37 @@ export function buildEntityTools(ctx: ToolContext) {
           return { content: [{ type: "text" as const, text: `Entity "${entity_name}" not found` }], isError: true };
         }
 
+        // Map input keys to field slugs (the DataGrid reads by slug)
+        const fields = parseFields(entity.fields);
+        const mappedData: Record<string, unknown> = {};
+
+        for (const [key, value] of Object.entries(data)) {
+          const keySlug = slugify(key);
+          // Match by name, slug, or case-insensitive name
+          const matchedField = fields.find(
+            (f) => f.name === key || f.slug === key || f.slug === keySlug || f.name.toLowerCase() === key.toLowerCase(),
+          );
+          if (matchedField) {
+            // Always store by slug (DataGrid reads by slug)
+            mappedData[matchedField.slug] = value;
+          } else {
+            mappedData[keySlug] = value;
+          }
+        }
+
         const id = crypto.randomUUID();
         await ctx.db.insert(entityRecords).values({
           id,
           entityId: entity.id,
-          data: JSON.stringify(data),
+          data: JSON.stringify(mappedData),
           createdBy: ctx.userId,
         });
 
         broadcast({ type: "record_updated", entityId: entity.id });
 
+        const usedFields = Object.keys(mappedData).join(", ");
         return {
-          content: [{ type: "text" as const, text: JSON.stringify({ success: true, id }) }],
+          content: [{ type: "text" as const, text: JSON.stringify({ success: true, id, fields_used: usedFields }) }],
         };
       },
     ),

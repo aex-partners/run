@@ -484,3 +484,24 @@ export const messageEmbeddings = pgTable(
     index("message_embeddings_conversation_id_idx").on(table.conversationId),
   ],
 );
+
+// Knowledge: persistent memory for the AI agent
+// scope: "company" (shared, all users see) | "personal" (only the user who created it)
+export const knowledge = pgTable(
+  "knowledge",
+  {
+    id: text("id").primaryKey(),
+    scope: text("scope").notNull().default("company"), // "company" | "personal"
+    category: text("category").notNull(), // e.g. "company-info", "client", "product", "process", "preference"
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    createdBy: text("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("knowledge_scope_idx").on(table.scope),
+    index("knowledge_category_idx").on(table.category),
+    index("knowledge_created_by_idx").on(table.createdBy),
+  ],
+);

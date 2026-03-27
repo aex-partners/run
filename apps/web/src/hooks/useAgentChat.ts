@@ -70,6 +70,8 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
   const toolInvocationsRef = useRef<ToolInvocation[]>([]);
   const streamingMsgIdRef = useRef<string | null>(null);
   const reasoningStartRef = useRef<number | null>(null);
+  const thinkingTextRef = useRef("");
+  const isStreamingRef = useRef(false);
 
   // Reset when conversation changes
   useEffect(() => {
@@ -79,6 +81,8 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
     toolInvocationsRef.current = [];
     streamingMsgIdRef.current = null;
     reasoningStartRef.current = null;
+    thinkingTextRef.current = "";
+    isStreamingRef.current = false;
     // Abort any in-flight request
     if (abortRef.current) {
       abortRef.current.abort();
@@ -93,6 +97,14 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
     const workTools = tools.filter((t) => t.state !== "approval-requested");
 
     if (workTools.length === 0) {
+      // Show reasoning if there's thinking content or if still streaming (initial state)
+      if (thinkingTextRef.current || isStreamingRef.current) {
+        return {
+          reasoning: { content: thinkingTextRef.current, isStreaming: isStreamingRef.current },
+          queue: undefined,
+          approvalTools,
+        };
+      }
       return { reasoning: undefined, queue: undefined, approvalTools };
     }
 
@@ -121,10 +133,12 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
       ? Math.floor((Date.now() - reasoningStartRef.current) / 1000)
       : 0;
 
+    const thinkingContent = thinkingTextRef.current;
     const reasoning = {
-      content: isToolsRunning
-        ? `Searching and processing... (${completedCount}/${workTools.length} steps)`
-        : `Completed ${workTools.length} steps in ${elapsed}s`,
+      content: thinkingContent
+        || (isToolsRunning
+          ? `Searching and processing... (${completedCount}/${workTools.length} steps)`
+          : `Completed ${workTools.length} steps in ${elapsed}s`),
       isStreaming: isToolsRunning,
     };
 
@@ -168,16 +182,24 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
 
       // Start streaming
       setIsStreaming(true);
+      isStreamingRef.current = true;
       streamingTextRef.current = "";
       toolInvocationsRef.current = [];
       reasoningStartRef.current = null;
+      thinkingTextRef.current = "";
       const aiMsgId = crypto.randomUUID();
       streamingMsgIdRef.current = aiMsgId;
 
-      // Add empty AI message that will be updated via streaming
+      // Add empty AI message with reasoning active so user sees "Thinking..." immediately
       setMessages((prev) => [
         ...prev,
-        { id: aiMsgId, role: "ai", content: "", author: agentName },
+        {
+          id: aiMsgId,
+          role: "ai",
+          content: "",
+          author: agentName,
+          reasoning: { content: "", isStreaming: true },
+        },
       ]);
 
       const controller = new AbortController();
@@ -233,6 +255,11 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
         );
       } finally {
         abortRef.current = null;
+        isStreamingRef.current = false;
+        // Final update to clear reasoning if no thinking content was received
+        if (streamingMsgIdRef.current) {
+          updateMessage(streamingMsgIdRef.current);
+        }
         streamingMsgIdRef.current = null;
         setIsStreaming(false);
       }
@@ -249,6 +276,11 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
 
         case "text_delta":
           streamingTextRef.current += event.delta as string;
+          updateMessage(aiMsgId);
+          break;
+
+        case "thinking_delta":
+          thinkingTextRef.current += event.delta as string;
           updateMessage(aiMsgId);
           break;
 

@@ -4,6 +4,7 @@ import type { Database } from "../db/index.js";
 export type SSEEvent =
   | { type: "session_init"; sessionId: string; agentName: string }
   | { type: "text_delta"; delta: string }
+  | { type: "thinking_delta"; delta: string }
   | { type: "tool_start"; toolUseId: string; toolName: string; input: Record<string, unknown> }
   | { type: "tool_result"; toolUseId: string; result: unknown; isError: boolean }
   | { type: "tool_confirmation_required"; toolUseId: string; toolName: string; input: Record<string, unknown>; description: string }

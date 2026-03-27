@@ -24,7 +24,7 @@ export async function runBackgroundQuery(opts: {
 
   try {
     const sessionId = await getSessionId(conversationId);
-    const agentConfig = await resolveAgentForConversation(conversationId);
+    const agentConfig = await resolveAgentForConversation(conversationId, userId);
     const toolContext: ToolContext = { db, userId, conversationId };
     const mcpServer = buildMcpServer({ agentConfig, toolContext });
 
@@ -42,7 +42,7 @@ export async function runBackgroundQuery(opts: {
       mcpServers: { aex: mcpServer },
       allowedTools: [
         "mcp__aex__*",
-        "WebSearch", "WebFetch",
+        "WebSearch", "WebFetch", "ToolSearch",
         "Bash", "Read", "Write", "Edit", "Glob", "Grep",
         "Agent", "TodoWrite",
       ],
@@ -55,7 +55,7 @@ export async function runBackgroundQuery(opts: {
       maxTurns: 15,
       cwd: process.cwd(),
       thinking: { type: "adaptive" },
-      agents: buildSubagents(),
+      model: agentConfig.modelId || "claude-sonnet-4-6",
     };
 
     if (sessionId) queryOptions.resume = sessionId;
