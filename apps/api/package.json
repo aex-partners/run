@@ -29,6 +29,7 @@
     "@activepieces/pieces-framework": "*",
     "@aex/shared": "*",
     "@anthropic-ai/claude-agent-sdk": "^0.2.84",
+    "@anthropic-ai/claude-code": "*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^9.4.0",
