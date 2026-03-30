@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev-reset-db": "tsx src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
     "db:push": "drizzle-kit push",

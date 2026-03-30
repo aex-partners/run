@@ -1,0 +1,17 @@
+# Config-as-code for Railway (overrides dashboard). Repo path: /apps/api/railway.toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/api/Dockerfile"
+
+[deploy]
+startCommand = "npx tsx src/index.ts"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+watchPatterns = [
+  "apps/api/**",
+  "packages/shared/**",
+  "packages/plugin-common/**",
+  "packages/plugin-framework/**",
+  "package.json",
+  "package-lock.json",
+]
