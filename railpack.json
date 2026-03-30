@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "node",
+  "steps": {
+    "install": {
+      "commands": [
+        "...",
+        "npm install -g @anthropic-ai/claude-code",
+        "mkdir -p /root/.claude",
+        "echo true > /root/.claude/.tosAccepted",
+        "echo {} > /root/.claude/settings.json"
+      ]
+    }
+  }
+}
