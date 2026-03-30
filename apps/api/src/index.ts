@@ -14,7 +14,9 @@ const { startFlowWorker } = await import("./queue/flow-worker.js");
 const { startEmailWorker } = await import("./queue/email-worker.js");
 const { startBlingSyncWorker } = await import("./queue/bling-worker.js");
 const { loadActiveTriggers } = await import("./workflows/triggers.js");
-const { db } = await import("./db/index.js");
+const { db, runMigrations } = await import("./db/index.js");
+
+await runMigrations();
 
 const app = await buildServer();
 
