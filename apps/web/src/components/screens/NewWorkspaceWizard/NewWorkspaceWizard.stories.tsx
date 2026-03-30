@@ -143,8 +143,8 @@ export const Step8_Email: Story = {
   },
 }
 
-export const Step9_AI_OpenAI: Story = {
-  name: '9. AI (OpenAI)',
+export const Step9_Plugins: Story = {
+  name: '9. Plugins',
   args: {
     initialStep: 8,
     initialData: {
@@ -159,72 +159,6 @@ export const Step9_AI_OpenAI: Story = {
       timezone: 'America/Sao_Paulo',
       onboardingPath: 'default',
       selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
-      aiProvider: 'openai',
-    },
-  },
-}
-
-export const Step9_AI_Ollama: Story = {
-  name: '9. AI (Ollama)',
-  args: {
-    initialStep: 8,
-    initialData: {
-      name: 'John Doe',
-      email: 'john@acme.com',
-      password: 'Str0ng!Pass',
-      confirmPassword: 'Str0ng!Pass',
-      orgName: 'Acme Corp',
-      niche: 'retail',
-      country: 'BR',
-      language: 'pt-BR',
-      timezone: 'America/Sao_Paulo',
-      onboardingPath: 'default',
-      selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
-      aiProvider: 'ollama',
-      aiOllamaModel: 'qwen3:14b',
-    },
-  },
-}
-
-export const Step9_AI_OpenRouter: Story = {
-  name: '9. AI (OpenRouter)',
-  args: {
-    initialStep: 8,
-    openRouterConnected: true,
-    initialData: {
-      name: 'John Doe',
-      email: 'john@acme.com',
-      password: 'Str0ng!Pass',
-      confirmPassword: 'Str0ng!Pass',
-      orgName: 'Acme Corp',
-      niche: 'retail',
-      country: 'BR',
-      language: 'pt-BR',
-      timezone: 'America/Sao_Paulo',
-      onboardingPath: 'default',
-      selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
-      aiProvider: 'openrouter',
-    },
-  },
-}
-
-export const Step10_Plugins: Story = {
-  name: '10. Plugins',
-  args: {
-    initialStep: 9,
-    initialData: {
-      name: 'John Doe',
-      email: 'john@acme.com',
-      password: 'Str0ng!Pass',
-      confirmPassword: 'Str0ng!Pass',
-      orgName: 'Acme Corp',
-      niche: 'retail',
-      country: 'BR',
-      language: 'pt-BR',
-      timezone: 'America/Sao_Paulo',
-      onboardingPath: 'default',
-      selectedRoutines: ['daily-sales-report', 'low-stock-alert'],
-      aiProvider: 'openai',
     },
   },
 }

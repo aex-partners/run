@@ -1,55 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { NewWorkspaceWizard, type NewWorkspaceWizardData } from "../components/screens/NewWorkspaceWizard/NewWorkspaceWizard";
 import { trpc } from "../lib/trpc";
-import { startOpenRouterOAuth, getStoredCodeVerifier, clearStoredCodeVerifier, OPENROUTER_CONNECTED_KEY } from "../lib/openrouter-oauth";
 
 export function SetupPage() {
   const [error, setError] = useState("");
-  const [openRouterConnected, setOpenRouterConnected] = useState(false);
   const completeSetup = trpc.settings.completeSetup.useMutation();
-  const exchangeOpenRouter = trpc.settings.exchangeOpenRouterCode.useMutation();
-
-  // Listen for OAuth popup completing via localStorage
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === OPENROUTER_CONNECTED_KEY && e.newValue === "1") {
-        setOpenRouterConnected(true);
-        localStorage.removeItem(OPENROUTER_CONNECTED_KEY);
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, []);
-
-  // Handle OpenRouter OAuth callback: ?code=xxx (runs inside the popup)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const orCode = params.get("code");
-    if (!orCode) return;
-
-    const codeVerifier = getStoredCodeVerifier();
-    if (!codeVerifier) return;
-
-    // Clean URL immediately
-    window.history.replaceState({}, "", "/setup");
-
-    exchangeOpenRouter
-      .mutateAsync({ code: orCode, codeVerifier })
-      .then(() => {
-        clearStoredCodeVerifier();
-        // If running inside a popup, signal parent and close
-        if (window.opener) {
-          localStorage.setItem(OPENROUTER_CONNECTED_KEY, "1");
-          window.close();
-        } else {
-          setOpenRouterConnected(true);
-        }
-      })
-      .catch((err) => {
-        clearStoredCodeVerifier();
-        setError(err instanceof Error ? err.message : "OpenRouter connection failed");
-      });
-  }, []);
 
   const handleCreateAccount = useCallback(async (name: string, email: string, password: string) => {
     const signupRes = await fetch("/api/auth/sign-up/email", {
@@ -76,27 +31,6 @@ export function SetupPage() {
     }
   }, []);
 
-  const handleConnectOpenRouter = useCallback(async () => {
-    const callbackUrl = `${window.location.origin}/setup`;
-    const popup = await startOpenRouterOAuth(callbackUrl);
-
-    return new Promise<boolean>((resolve) => {
-      const interval = setInterval(() => {
-        const connected = localStorage.getItem(OPENROUTER_CONNECTED_KEY);
-        if (connected === "1") {
-          clearInterval(interval);
-          localStorage.removeItem(OPENROUTER_CONNECTED_KEY);
-          setOpenRouterConnected(true);
-          resolve(true);
-        }
-        if (popup?.closed) {
-          clearInterval(interval);
-          resolve(false);
-        }
-      }, 500);
-    });
-  }, []);
-
   const handleSubmit = async (data: NewWorkspaceWizardData) => {
     setError("");
     try {
@@ -121,9 +55,6 @@ export function SetupPage() {
         smtpPass: data.smtpPass || undefined,
         smtpFrom: data.smtpFrom || undefined,
         smtpSecure: data.smtpSecure,
-        aiProvider: data.aiProvider,
-        aiApiKey: data.aiApiKey || undefined,
-        aiOllamaModel: data.aiOllamaModel,
       });
 
       window.location.href = "/";
@@ -156,8 +87,6 @@ export function SetupPage() {
       <NewWorkspaceWizard
         onSubmit={handleSubmit}
         onCreateAccount={handleCreateAccount}
-        onConnectOpenRouter={handleConnectOpenRouter}
-        openRouterConnected={openRouterConnected}
       />
     </div>
   );

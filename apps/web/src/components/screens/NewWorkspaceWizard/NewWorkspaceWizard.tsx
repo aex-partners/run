@@ -21,8 +21,6 @@ import { PathPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/Pat
 import { RoutinesPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/RoutinesPreviewPanel'
 import { EmailPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/EmailPreviewPanel'
 import { PluginsPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/PluginsPreviewPanel'
-import { AIPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/AIPreviewPanel'
-import type { AIProvider, OllamaModel } from '../../molecules/WizardShowcasePanel/panels/AIPreviewPanel'
 import { useTranslation } from 'react-i18next'
 import { NICHES } from '../../../data/niches'
 import { COUNTRIES, LANGUAGES, TIMEZONES, CURRENCIES, type CountryLocale } from '../../../data/locale-options'
@@ -75,10 +73,6 @@ export interface NewWorkspaceWizardData {
   smtpPass: string
   smtpFrom: string
   smtpSecure: boolean
-  // AI
-  aiProvider: AIProvider
-  aiApiKey: string
-  aiOllamaModel: OllamaModel
   // Plugins
   selectedPlugins: string[]
 }
@@ -87,10 +81,6 @@ export interface NewWorkspaceWizardProps {
   onSubmit?: (data: NewWorkspaceWizardData) => void
   /** Called when leaving step 0 to create and authenticate the user account. */
   onCreateAccount?: (name: string, email: string, password: string) => Promise<void>
-  /** Called when user wants to connect OpenRouter via OAuth. Should return true on success. */
-  onConnectOpenRouter?: () => Promise<boolean>
-  /** Whether OpenRouter is already connected */
-  openRouterConnected?: boolean
   /** Start on a specific step (for Storybook previews) */
   initialStep?: number
   /** Pre-fill form data (for Storybook previews) */
@@ -162,7 +152,11 @@ function loadSavedState(): { step: number; data: Partial<NewWorkspaceWizardData>
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw) as { step?: number; data?: Partial<NewWorkspaceWizardData> }
+    if (typeof parsed.step !== 'number') return null
+    // Plugins were step 9 before the AI step was removed; clamp to new last step index.
+    const step = parsed.step > 8 ? 8 : parsed.step
+    return { step, data: parsed.data ?? {} }
   } catch {
     return null
   }
@@ -173,14 +167,12 @@ function clearSavedState() {
   localStorage.removeItem('aex-tour-completed')
 }
 
-export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectOpenRouter, openRouterConnected = false, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
+export function NewWorkspaceWizard({ onSubmit, onCreateAccount, initialStep = 0, initialData }: NewWorkspaceWizardProps) {
   const { t } = useTranslation()
 
   const STEPS = useMemo(() => STEP_KEYS.map((key) => ({ label: t(key) })), [t])
   const STRENGTH_LABELS = useMemo(() => STRENGTH_LABEL_KEYS.map((key) => t(key)), [t])
 
-  const [connectingOpenRouter, setConnectingOpenRouter] = useState(false)
-  const [orConnected, setOrConnected] = useState(openRouterConnected)
   const [accountCreated, setAccountCreated] = useState(false)
   const saved = useMemo(() => loadSavedState(), [])
   const source = saved?.data ?? initialData
@@ -215,15 +207,12 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectOpenRou
     smtpPass: '',
     smtpFrom: source?.smtpFrom ?? '',
     smtpSecure: source?.smtpSecure ?? true,
-    aiProvider: source?.aiProvider ?? null,
-    aiApiKey: '',
-    aiOllamaModel: source?.aiOllamaModel ?? null,
     selectedPlugins: source?.selectedPlugins ?? [],
   })
 
   // Persist wizard state to localStorage (excluding passwords)
   useEffect(() => {
-    const { password, confirmPassword, smtpPass, aiApiKey, ...safe } = data
+    const { password, confirmPassword, smtpPass, ...safe } = data
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data: safe }))
   }, [step, data])
 
@@ -295,16 +284,10 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectOpenRou
       case 5:
         if (!data.onboardingPath) errs.onboardingPath = t('setup.validation.pathRequired')
         break
-      case 8:
-        if (!data.aiProvider) errs.aiProvider = t('setup.ai.providerRequired')
-        if (data.aiProvider === 'openai' && !data.aiApiKey.trim()) errs.aiApiKey = t('setup.ai.apiKeyRequired')
-        if (data.aiProvider === 'openrouter' && !orConnected) errs.aiProvider = t('setup.ai.openrouter.connectButton')
-        if (data.aiProvider === 'ollama' && !data.aiOllamaModel) errs.aiOllamaModel = t('setup.ai.modelRequired')
-        break
     }
     setErrors(errs)
     return Object.keys(errs).length === 0
-  }, [step, data, orConnected])
+  }, [step, data, t])
 
   const handleNext = useCallback(async () => {
     if (!validate()) return
@@ -415,8 +398,6 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectOpenRou
       case 7:
         return <EmailPreviewPanel provider={data.emailProvider} />
       case 8:
-        return <AIPreviewPanel provider={data.aiProvider} ollamaModel={data.aiOllamaModel} />
-      case 9:
         return <PluginsPreviewPanel selectedPlugins={data.selectedPlugins} />
       default:
         return <WelcomePanel />
@@ -443,8 +424,6 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectOpenRou
       case 7:
         return { title: t('setup.email.title'), description: t('setup.email.description') }
       case 8:
-        return { title: t('setup.ai.title'), description: t('setup.ai.description') }
-      case 9:
         return { title: t('setup.plugins.title'), description: t('setup.plugins.description') }
       default:
         return { title: '', description: '' }
@@ -859,150 +838,8 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, onConnectOpenRou
         </div>
       )}
 
-      {/* Step 8: AI Provider */}
+      {/* Step 8: Plugins */}
       {step === 8 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-          {/* Provider selection */}
-          <div style={{ display: 'flex', gap: 16 }}>
-            <OnboardingPathCard
-              title={t('setup.ai.openrouter.title')}
-              description={t('setup.ai.openrouter.description')}
-              icon="Zap"
-              badge={t('setup.showcase.ai.recommended')}
-              selected={data.aiProvider === 'openrouter'}
-              onClick={() => update('aiProvider', data.aiProvider === 'openrouter' ? null : 'openrouter')}
-            />
-            <OnboardingPathCard
-              title={t('setup.ai.openai.title')}
-              description={t('setup.ai.openai.description')}
-              icon="Cloud"
-              selected={data.aiProvider === 'openai'}
-              onClick={() => update('aiProvider', data.aiProvider === 'openai' ? null : 'openai')}
-            />
-            <OnboardingPathCard
-              title={t('setup.ai.ollama.title')}
-              description={t('setup.ai.ollama.description')}
-              icon="Server"
-              selected={data.aiProvider === 'ollama'}
-              onClick={() => update('aiProvider', data.aiProvider === 'ollama' ? null : 'ollama')}
-            />
-          </div>
-          {errors.aiProvider && (
-            <span style={{ fontSize: 12, color: 'var(--danger)' }}>{errors.aiProvider}</span>
-          )}
-
-          {/* OpenRouter: OAuth connect */}
-          {data.aiProvider === 'openrouter' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {orConnected ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
-                  <Check size={18} color="#16a34a" />
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#15803d' }}>{t('setup.ai.openrouter.connected')}</div>
-                    <div style={{ fontSize: 12, color: '#166534', marginTop: 2 }}>{t('setup.ai.openrouter.connectedHint')}</div>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  onClick={async () => {
-                    if (!onConnectOpenRouter) return
-                    setConnectingOpenRouter(true)
-                    try {
-                      const ok = await onConnectOpenRouter()
-                      if (ok) setOrConnected(true)
-                    } finally {
-                      setConnectingOpenRouter(false)
-                    }
-                  }}
-                  disabled={connectingOpenRouter}
-                  style={{ alignSelf: 'flex-start' }}
-                >
-                  {connectingOpenRouter ? t('setup.ai.openrouter.connecting') : t('setup.ai.openrouter.connectButton')}
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* OpenAI: API Key input */}
-          {data.aiProvider === 'openai' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
-                  {t('setup.ai.apiKey')}
-                </label>
-                <Input
-                  placeholder={t('setup.ai.apiKeyPlaceholder')}
-                  value={data.aiApiKey}
-                  onChange={(e) => update('aiApiKey', e.target.value)}
-                  type="password"
-                  error={errors.aiApiKey}
-                />
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', lineHeight: 1.4 }}>
-                  {t('setup.ai.apiKeyHint')}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Ollama: Model selection */}
-          {data.aiProvider === 'ollama' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
-                {t('setup.ai.selectModel')}
-              </label>
-              {([
-                { id: 'qwen3:72b' as OllamaModel, name: 'Qwen 3 72B', size: '~42 GB', badge: t('setup.showcase.ai.bestQuality'), badgeColor: '#00c875' },
-                { id: 'qwen3:14b' as OllamaModel, name: 'Qwen 3 14B', size: '~9 GB', badge: t('setup.showcase.ai.recommended'), badgeColor: 'var(--accent)' },
-                { id: 'qwen3:8b' as OllamaModel, name: 'Qwen 3 8B', size: '~5 GB', badge: t('setup.showcase.ai.budgetFriendly'), badgeColor: '#fdab3d' },
-                { id: 'llama3.1:8b' as OllamaModel, name: 'Llama 3.1 8B', size: '~4.7 GB', badge: t('setup.showcase.ai.minimalSetup'), badgeColor: '#fdab3d' },
-              ]).map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  onClick={() => update('aiOllamaModel', data.aiOllamaModel === model.id ? null : model.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '14px 16px',
-                    borderRadius: 10,
-                    border: data.aiOllamaModel === model.id ? '2px solid var(--accent)' : '1px solid var(--border)',
-                    background: data.aiOllamaModel === model.id ? 'var(--accent-light)' : '#fff',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    width: '100%',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{model.name}</span>
-                      <span style={{ fontSize: 10, fontWeight: 600, color: '#fff', background: model.badgeColor, padding: '2px 8px', borderRadius: 10 }}>{model.badge}</span>
-                    </div>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>{t('setup.showcase.ai.downloadSize', { size: model.size })}</span>
-                  </div>
-                  <div
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: '50%',
-                      border: data.aiOllamaModel === model.id ? '6px solid var(--accent)' : '2px solid var(--border)',
-                      flexShrink: 0,
-                      transition: 'border 0.15s ease',
-                    }}
-                  />
-                </button>
-              ))}
-              {errors.aiOllamaModel && (
-                <span style={{ fontSize: 12, color: 'var(--danger)' }}>{errors.aiOllamaModel}</span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Step 9: Plugins */}
-      {step === 9 && (
         <PluginSetupStep
           selectedPlugins={data.selectedPlugins}
           onToggle={(id) => {
