@@ -18,6 +18,8 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "db:seed-buenaca": "tsx src/scripts/seed-buenaca.ts",
     "db:provision-staging": "tsx src/scripts/provision-staging-users.ts",
+    "db:railway-patch": "tsx src/scripts/railway-patch-schema.ts",
+    "db:delete-buenaca-team": "tsx src/scripts/delete-buenaca-team-users.ts",
     "db:reset": "tsx src/scripts/reset-db.ts",
     "test": "vitest run",
     "test:watch": "vitest",

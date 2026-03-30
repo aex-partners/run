@@ -42,7 +42,9 @@ async function provisionStagingUsers() {
   await ensureDefaultEricWorkspace(db);
   console.log("Provisioning staging users (Eric membership + roles)...");
   if (!process.env.BUENACA_STAGING_PASSWORD) {
-    console.log("Generated one-time password for new accounts:", password);
+    console.log(
+      "BUENACA_STAGING_PASSWORD not set: new accounts use an auto-generated password (not printed). Re-run with BUENACA_STAGING_PASSWORD=... or use password reset in the app.",
+    );
   }
 
   for (const u of team) {

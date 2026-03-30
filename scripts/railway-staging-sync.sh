@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-PUB="$(RAILWAY_SERVICE=postgres railway run -- printenv DATABASE_PUBLIC_URL | tr -d '\r\n')"
+PUB="$(railway run -s Postgres -- printenv DATABASE_PUBLIC_URL | tr -d '\r\n')"
 if [[ -z "$PUB" ]]; then
   echo "Could not read DATABASE_PUBLIC_URL from Postgres service."
   exit 1
@@ -13,11 +13,11 @@ fi
 
 run_db() {
   local cmd="$1"
-  RAILWAY_SERVICE=api railway run -- bash -c "export DATABASE_URL=\"$PUB\" && cd \"$ROOT\" && $cmd"
+  railway run -s api -- bash -c "export DATABASE_URL=\"$PUB\" && cd \"$ROOT\" && $cmd"
 }
 
-echo "==> drizzle-kit push (public DB URL)"
-run_db "npm run db:push -w @aex/api"
+echo "==> schema patch (non-interactive; avoids drizzle-kit push prompts on drift)"
+run_db "npm run db:railway-patch -w @aex/api"
 
 echo "==> db:seed (admin@aex.app)"
 run_db "npm run db:seed -w @aex/api"
