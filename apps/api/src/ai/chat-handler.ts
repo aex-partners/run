@@ -91,7 +91,7 @@ export async function handleChat(opts: {
         "Agent", "AskUserQuestion", "TodoWrite",
       ],
       canUseTool,
-      permissionMode: "bypassPermissions",
+      permissionMode: "allowEdits",
       maxTurns: 15,
       includePartialMessages: true,
       cwd: process.cwd(),

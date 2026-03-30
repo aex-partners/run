@@ -51,7 +51,7 @@ export async function runBackgroundQuery(opts: {
         return { behavior: "allow" };
       },
       tools: [],
-      permissionMode: "bypassPermissions",
+      permissionMode: "allowEdits",
       maxTurns: 15,
       cwd: process.cwd(),
       thinking: { type: "adaptive" },
