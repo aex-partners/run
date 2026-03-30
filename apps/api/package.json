@@ -16,6 +16,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/scripts/seed.ts",
+    "db:seed-buenaca": "tsx src/scripts/seed-buenaca.ts",
+    "db:provision-staging": "tsx src/scripts/provision-staging-users.ts",
     "db:reset": "tsx src/scripts/reset-db.ts",
     "test": "vitest run",
     "test:watch": "vitest",

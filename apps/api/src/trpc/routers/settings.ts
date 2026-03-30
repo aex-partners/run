@@ -312,6 +312,9 @@ export const settingsRouter = router({
         .set({ role: "owner" })
         .where(eq(users.id, ctx.session.user.id));
 
+      // Collect invited user ids so they are also added to the Eric conversation below
+      const invitedUserIds: string[] = [];
+
       // Process pending invites: create users and DM conversations
       if (input.invites && input.invites.length > 0) {
         const validEmails = input.invites.filter((e) => e.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()));
@@ -326,6 +329,7 @@ export const settingsRouter = router({
             });
 
             if (res.user) {
+              invitedUserIds.push(res.user.id);
               // Create DM conversation
               const dmId = crypto.randomUUID();
               await ctx.db.insert(conversations).values({
@@ -399,6 +403,11 @@ export const settingsRouter = router({
         conversationId: convId,
         userId: ctx.session.user.id,
       });
+      if (invitedUserIds.length > 0) {
+        await ctx.db.insert(conversationMembers).values(
+          invitedUserIds.map((userId) => ({ conversationId: convId, userId })),
+        );
+      }
 
       // Send a kickoff message so Eric starts researching the company (in the user's language)
       const kickoffContent = buildKickoffMessage(input);

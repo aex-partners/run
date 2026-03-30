@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { eq, and, inArray, desc, sql } from "drizzle-orm";
+import { eq, and, inArray, desc, sql, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../index.js";
 import {
   conversations,
   conversationMembers,
   messages,
+  users,
 } from "../../db/schema/index.js";
 
 export const conversationsRouter = router({
@@ -90,11 +91,45 @@ export const conversationsRouter = router({
       );
     const flagMap = new Map(flagRows.map((r) => [r.conversationId, r]));
 
+    const dmIds = rows.filter((r) => r.type === "dm").map((r) => r.id);
+    const dmPeerNameByConv = new Map<string, string>();
+    if (dmIds.length > 0) {
+      const peerRows = await ctx.db
+        .select({
+          conversationId: conversationMembers.conversationId,
+          displayName: users.name,
+          email: users.email,
+        })
+        .from(conversationMembers)
+        .innerJoin(users, eq(conversationMembers.userId, users.id))
+        .where(
+          and(inArray(conversationMembers.conversationId, dmIds), ne(conversationMembers.userId, ctx.session.user.id)),
+        );
+
+      const byConv = new Map<string, { displayName: string | null; email: string }[]>();
+      for (const pr of peerRows) {
+        const list = byConv.get(pr.conversationId) ?? [];
+        list.push({ displayName: pr.displayName, email: pr.email });
+        byConv.set(pr.conversationId, list);
+      }
+      for (const [convId, peers] of byConv) {
+        const parts = peers.map((p) => {
+          const n = p.displayName?.trim();
+          if (n) return n;
+          const local = p.email.split("@")[0];
+          return local || "Direct message";
+        });
+        dmPeerNameByConv.set(convId, parts.join(", "));
+      }
+    }
+
     return rows.map((r) => {
       const flags = flagMap.get(r.id);
+      const name =
+        r.type === "dm" ? (dmPeerNameByConv.get(r.id) ?? r.name ?? "Direct message") : (r.name ?? "");
       return {
         id: r.id,
-        name: r.name,
+        name,
         type: r.type,
         agentId: r.agentId,
         createdAt: r.createdAt,
