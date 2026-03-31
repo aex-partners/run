@@ -14,6 +14,8 @@ export interface MailAttachment {
   name: string
   size: string
   type: string
+  fileId?: string
+  externalId?: string
 }
 
 export interface MailMessage {
@@ -50,30 +52,38 @@ export interface MailDetailProps {
   onPrint?: () => void
   availableLabels?: { name: string; color: string }[]
   onApplyAiDraft?: () => void
+  onDownloadAttachment?: (attachment: MailAttachment) => void
 }
 
-function AttachmentChip({ name, size }: MailAttachment) {
+function AttachmentChip({ attachment, onDownload }: { attachment: MailAttachment; onDownload?: (att: MailAttachment) => void }) {
+  const { t } = useTranslation()
+  const downloadable = !!attachment.fileId
   return (
-    <div style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 6,
-      padding: '6px 10px',
-      borderRadius: 8,
-      border: '1px solid var(--border)',
-      background: 'var(--surface-2)',
-      fontSize: 12,
-      color: 'var(--text)',
-      cursor: 'pointer',
-    }}>
+    <div
+      onClick={() => downloadable && onDownload?.(attachment)}
+      title={downloadable ? t('mail.downloadAttachment') : t('mail.attachmentNotDownloaded')}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '6px 10px',
+        borderRadius: 8,
+        border: '1px solid var(--border)',
+        background: 'var(--surface-2)',
+        fontSize: 12,
+        color: downloadable ? 'var(--text)' : 'var(--text-muted)',
+        cursor: downloadable ? 'pointer' : 'default',
+        opacity: downloadable ? 1 : 0.6,
+      }}
+    >
       <Paperclip size={12} color="var(--text-muted)" />
-      <span>{name}</span>
-      <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>({size})</span>
+      <span>{attachment.name}</span>
+      <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>({attachment.size})</span>
     </div>
   )
 }
 
-function MessageItem({ message, isLast }: { message: MailMessage; isLast: boolean }) {
+function MessageItem({ message, isLast, onDownloadAttachment }: { message: MailMessage; isLast: boolean; onDownloadAttachment?: (att: MailAttachment) => void }) {
   const [collapsed, setCollapsed] = React.useState(!isLast)
 
   return (
@@ -130,7 +140,7 @@ function MessageItem({ message, isLast }: { message: MailMessage; isLast: boolea
           {message.attachments && message.attachments.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12, paddingLeft: 50 }}>
               {message.attachments.map((att) => (
-                <AttachmentChip key={att.name} {...att} />
+                <AttachmentChip key={att.name} attachment={att} onDownload={onDownloadAttachment} />
               ))}
             </div>
           )}
@@ -211,6 +221,7 @@ export function MailDetail({
   onPrint,
   availableLabels = [],
   onApplyAiDraft,
+  onDownloadAttachment,
 }: MailDetailProps) {
   const { t } = useTranslation()
   const [snoozeOpen, setSnoozeOpen] = React.useState(false)
@@ -400,7 +411,7 @@ export function MailDetail({
               </div>
             ) : (
               messages.map((msg, i) => (
-                <MessageItem key={msg.id} message={msg} isLast={i === messages.length - 1} />
+                <MessageItem key={msg.id} message={msg} isLast={i === messages.length - 1} onDownloadAttachment={onDownloadAttachment} />
               ))
             )}
           </div>
