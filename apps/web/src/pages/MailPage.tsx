@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "../lib/trpc";
 import { MailScreen, type MailFolder, type MailEmail, type MailAccount } from "../components/screens/MailScreen/MailScreen";
 import type { EmailAccountConfig } from "../components/organisms/EmailSetup/EmailSetup";
+import type { MailAttachment } from "../components/organisms/MailDetail/MailDetail";
 
 export function MailPage() {
+  const { t } = useTranslation();
   const [activeFolder, setActiveFolder] = useState<MailFolder>("inbox");
   const [activeEmailId, setActiveEmailId] = useState<string | undefined>();
   const [activeAccountId, setActiveAccountId] = useState<string | undefined>();
@@ -77,6 +80,12 @@ export function MailPage() {
     { accountId: selectedAccountId! },
     { enabled: hasAccount && !!selectedAccountId },
   );
+  const createLabelMut = trpc.emails.labels.create.useMutation({
+    onSuccess: () => labelsQuery.refetch(),
+  });
+  const deleteLabelMut = trpc.emails.labels.delete.useMutation({
+    onSuccess: () => labelsQuery.refetch(),
+  });
 
   const emailDetailQuery = trpc.emails.getById.useQuery(
     { id: activeEmailId! },
@@ -115,6 +124,8 @@ export function MailPage() {
           name: a.name,
           size: a.size ? `${Math.round(a.size / 1024)} KB` : '',
           type: a.mimeType,
+          fileId: a.fileId ?? undefined,
+          externalId: a.externalId ?? undefined,
         })),
       }];
     }
@@ -151,6 +162,25 @@ export function MailPage() {
 
   const handleVerifyImap = async (config: { host: string; port: number; user: string; pass: string; secure: boolean }) => {
     return verifyImapMut.mutateAsync(config);
+  };
+
+  const handleCreateLabel = () => {
+    if (!selectedAccountId) return;
+    const name = window.prompt(t("mail.createLabelPrompt"));
+    if (!name?.trim()) return;
+    const color = window.prompt(t("mail.createLabelColorPrompt"), "#6b7280");
+    createLabelMut.mutate({ accountId: selectedAccountId, name: name.trim(), color: color || "#6b7280" });
+  };
+
+  const handleDeleteLabel = (labelId: string) => {
+    if (!window.confirm(t("mail.deleteLabelConfirm"))) return;
+    deleteLabelMut.mutate({ id: labelId });
+  };
+
+  const handleDownloadAttachment = (attachment: MailAttachment) => {
+    if (attachment.fileId) {
+      window.open(`/api/files/${attachment.fileId}/download`, "_blank");
+    }
   };
 
   return (
@@ -190,6 +220,9 @@ export function MailPage() {
         });
       }}
       labels={(labelsQuery.data ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color }))}
+      onCreateLabel={handleCreateLabel}
+      onDeleteLabel={handleDeleteLabel}
+      onDownloadAttachment={handleDownloadAttachment}
       onArchive={(ids) => archiveMut.mutate({ ids })}
       onDelete={(ids) => deleteMut.mutate({ ids })}
       onMarkRead={(ids) => markReadMut.mutate({ ids })}

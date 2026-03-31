@@ -2,11 +2,11 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Inbox, Send, FileText, AlertTriangle, Trash2, Star, Tag,
-  Search, PenSquare, Plus, Menu, Sparkles, Mail,
+  Search, PenSquare, Plus, Menu, Sparkles, Mail, X,
 } from 'lucide-react'
 import { MailFolderItem } from '../../molecules/MailFolderItem/MailFolderItem'
 import { MailList } from '../../organisms/MailList/MailList'
-import { MailDetail, type MailMessage } from '../../organisms/MailDetail/MailDetail'
+import { MailDetail, type MailMessage, type MailAttachment } from '../../organisms/MailDetail/MailDetail'
 import { MailCompose } from '../../organisms/MailCompose/MailCompose'
 import { EmailSetup, type EmailAccountConfig } from '../../organisms/EmailSetup/EmailSetup'
 import { Button } from '../../atoms/Button/Button'
@@ -71,6 +71,9 @@ export interface MailScreenProps {
   onSnooze?: (emailId: string, until: string) => void
   onLabelToggle?: (emailId: string, labelName: string) => void
   onMoveToSpam?: (ids: string[]) => void
+  onCreateLabel?: () => void
+  onDeleteLabel?: (labelId: string) => void
+  onDownloadAttachment?: (attachment: MailAttachment) => void
   onRefresh?: () => void
   onAiAction?: (prompt: string) => void
   onAiDraft?: (prompt: string) => void
@@ -118,6 +121,9 @@ export function MailScreen({
   onSnooze,
   onLabelToggle,
   onMoveToSpam,
+  onCreateLabel,
+  onDeleteLabel,
+  onDownloadAttachment,
   onRefresh,
   onAiAction,
   onAiDraft,
@@ -435,7 +441,7 @@ export function MailScreen({
         </div>
 
         {/* Labels - only when expanded */}
-        {sidebarExpanded && labels.length > 0 && (
+        {sidebarExpanded && (
           <>
             <div style={{
               padding: '16px 14px 6px',
@@ -449,21 +455,38 @@ export function MailScreen({
               justifyContent: 'space-between',
             }}>
               {t('mail.labels')}
-              <button style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex',
-                color: 'var(--text-muted)',
-              }}>
+              <button
+                onClick={onCreateLabel}
+                title={t('mail.createLabel')}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex',
+                  color: 'var(--text-muted)',
+                }}
+              >
                 <Plus size={12} />
               </button>
             </div>
             {labels.map((label) => (
-              <MailFolderItem
-                key={label.id}
-                icon={<Tag size={14} fill={label.color} color={label.color} />}
-                label={label.name}
-                count={label.count}
-                onClick={() => {}}
-              />
+              <div key={label.id} style={{ display: 'flex', alignItems: 'center', paddingRight: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <MailFolderItem
+                    icon={<Tag size={14} fill={label.color} color={label.color} />}
+                    label={label.name}
+                    count={label.count}
+                    onClick={() => {}}
+                  />
+                </div>
+                <button
+                  onClick={() => onDeleteLabel?.(label.id)}
+                  title={t('mail.deleteLabel')}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex',
+                    color: 'var(--text-muted)', flexShrink: 0, borderRadius: 4,
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
             ))}
           </>
         )}
@@ -562,6 +585,7 @@ export function MailScreen({
             onLabelToggle={(labelName) => onLabelToggle?.(activeEmail.id, labelName)}
             onMoveToSpam={() => { onMoveToSpam?.([activeEmail.id]); handleBack() }}
             onPrint={() => window.print()}
+            onDownloadAttachment={onDownloadAttachment}
             availableLabels={labels}
           />
         ) : (
