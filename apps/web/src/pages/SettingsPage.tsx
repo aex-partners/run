@@ -66,6 +66,9 @@ export function SettingsPage() {
   const updateStatus = trpc.users.updateStatus.useMutation({
     onSuccess: () => utils.users.list.invalidate(),
   });
+  const updateName = trpc.users.updateName.useMutation({
+    onSuccess: () => utils.users.list.invalidate(),
+  });
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({ name: "", email: "", password: "" });
@@ -430,7 +433,7 @@ export function SettingsPage() {
         companyInfo={companyInfo}
         onSaveCompany={handleSaveCompany}
         onInviteUser={() => setInviteOpen(true)}
-        onEditUser={() => {}}
+        onEditUser={(id, name) => updateName.mutate({ userId: id, name })}
         onDeleteUser={(id) => deleteUser.mutate({ userId: id })}
         onChangeRole={(id, role) => updateRole.mutate({ userId: id, role })}
         onChangeStatus={(id, status) => updateStatus.mutate({ userId: id, status: status === "inactive" ? "inactive" : "active" })}

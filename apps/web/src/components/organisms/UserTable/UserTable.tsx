@@ -15,7 +15,7 @@ export interface User {
 
 export interface UserTableProps {
   users: User[]
-  onEdit?: (userId: string) => void
+  onEdit?: (userId: string, name: string) => void
   onInvite?: () => void
   onDelete?: (userId: string) => void
   onChangeRole?: (userId: string, role: string) => void
@@ -37,6 +37,8 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
+  const [editingNameId, setEditingNameId] = useState<string | null>(null)
+  const [editingNameValue, setEditingNameValue] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // Keep local state in sync if parent re-renders with new users
@@ -66,6 +68,26 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
     const nextStatus = STATUS_CYCLE[(currentIndex + 1) % STATUS_CYCLE.length]
     setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus } : u)))
     onChangeStatus?.(user.id, nextStatus)
+  }
+
+  const handleStartEditName = (user: User) => {
+    setEditingNameId(user.id)
+    setEditingNameValue(user.name)
+  }
+
+  const handleSaveEditName = (userId: string) => {
+    const trimmed = editingNameValue.trim()
+    if (trimmed && trimmed !== users.find((u) => u.id === userId)?.name) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, name: trimmed } : u)))
+      onEdit?.(userId, trimmed)
+    }
+    setEditingNameId(null)
+    setEditingNameValue('')
+  }
+
+  const handleCancelEditName = () => {
+    setEditingNameId(null)
+    setEditingNameValue('')
   }
 
   const allSelected = users.length > 0 && selectedIds.size === users.length
@@ -223,7 +245,35 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
 
                   <div role="cell" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar name={user.name} size="md" />
-                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{user.name}</span>
+                    {editingNameId === user.id ? (
+                      <input
+                        type="text"
+                        value={editingNameValue}
+                        onChange={(e) => setEditingNameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEditName(user.id)
+                          if (e.key === 'Escape') handleCancelEditName()
+                        }}
+                        onBlur={() => handleSaveEditName(user.id)}
+                        autoFocus
+                        aria-label={`Edit name for ${user.name}`}
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: 'var(--text)',
+                          background: 'var(--surface)',
+                          border: '1px solid var(--accent)',
+                          borderRadius: 5,
+                          padding: '3px 8px',
+                          fontFamily: 'inherit',
+                          outline: 'none',
+                          width: '100%',
+                          maxWidth: 200,
+                        }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{user.name}</span>
+                    )}
                   </div>
 
                   <div role="cell">
@@ -278,7 +328,7 @@ export function UserTable({ users: initialUsers, onEdit, onInvite, onDelete, onC
                   {/* Actions cell */}
                   <div role="cell" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <button
-                      onClick={() => onEdit?.(user.id)}
+                      onClick={() => handleStartEditName(user)}
                       aria-label={`Edit ${user.name}`}
                       style={{
                         background: 'none',

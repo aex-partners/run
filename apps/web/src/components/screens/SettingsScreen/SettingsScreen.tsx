@@ -77,7 +77,7 @@ export interface SettingsScreenProps {
   companyInfo?: CompanyInfo
   activeSection?: SettingsSection
   onSectionChange?: (section: SettingsSection) => void
-  onEditUser?: (userId: string) => void
+  onEditUser?: (userId: string, name: string) => void
   onDeleteUser?: (userId: string) => void
   onChangeRole?: (userId: string, role: string) => void
   onChangeStatus?: (userId: string, status: string) => void
