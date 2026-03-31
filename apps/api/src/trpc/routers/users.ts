@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../index.js";
 import { users, conversations, conversationMembers } from "../../db/schema/index.js";
 import { auth } from "../../auth/index.js";
-import { addUserToEricConversation } from "../../services/eric-conversation.js";
+import { ensureEricConversationForUser } from "../../services/eric-conversation.js";
 
 const isAdminOrOwner = (role: string) => role === "admin" || role === "owner";
 
@@ -67,7 +67,7 @@ export const usersRouter = router({
         { conversationId: dmId, userId: res.user.id },
       ]);
 
-      await addUserToEricConversation(ctx.db, res.user.id);
+      await ensureEricConversationForUser(ctx.db, res.user.id);
 
       return { id: res.user.id, email: input.email };
     }),

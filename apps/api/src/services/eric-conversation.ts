@@ -3,7 +3,29 @@ import type { Database } from "../db/index.js";
 import { agents, conversationMembers, conversations, users } from "../db/schema/index.js";
 
 /**
- * Creates the default Eric agent + AI conversation and adds every existing user as a member
+ * Creates a private Eric AI conversation for a single user.
+ */
+export async function createEricConversationForUser(
+  db: Database,
+  agentId: string,
+  userId: string,
+): Promise<string> {
+  const convId = crypto.randomUUID();
+  await db.insert(conversations).values({
+    id: convId,
+    name: "Eric",
+    type: "ai",
+    agentId,
+  });
+  await db.insert(conversationMembers).values({
+    conversationId: convId,
+    userId,
+  });
+  return convId;
+}
+
+/**
+ * Creates the default Eric agent and one private AI conversation per existing user
  * when the workspace has no Eric yet (e.g. after db:seed without setup wizard).
  */
 export async function ensureDefaultEricWorkspace(db: Database): Promise<void> {
@@ -28,36 +50,37 @@ export async function ensureDefaultEricWorkspace(db: Database): Promise<void> {
     createdBy,
   });
 
-  const convId = crypto.randomUUID();
-  await db.insert(conversations).values({
-    id: convId,
-    name: "Eric",
-    type: "ai",
-    agentId: ericId,
-  });
-
+  // Create one private conversation per user
   const everyone = await db.select({ id: users.id }).from(users);
-  if (everyone.length === 0) return;
-
-  await db
-    .insert(conversationMembers)
-    .values(everyone.map((u) => ({ conversationId: convId, userId: u.id })))
-    .onConflictDoNothing();
+  for (const user of everyone) {
+    await createEricConversationForUser(db, ericId, user.id);
+  }
 }
 
-/** Adds a user to the default Eric AI conversation when it exists (single workspace assistant). */
-export async function addUserToEricConversation(db: Database, userId: string): Promise<void> {
-  const [ericConv] = await db
+/**
+ * Ensures a user has their own private Eric AI conversation.
+ * Creates one if it doesn't exist yet. Returns the conversation ID, or null if Eric agent is missing.
+ */
+export async function ensureEricConversationForUser(db: Database, userId: string): Promise<string | null> {
+  const [ericAgent] = await db.select({ id: agents.id }).from(agents).where(eq(agents.slug, "eric")).limit(1);
+  if (!ericAgent) return null;
+
+  // Check if this user already has their own Eric conversation
+  const existing = await db
     .select({ id: conversations.id })
     .from(conversations)
-    .innerJoin(agents, eq(conversations.agentId, agents.id))
-    .where(and(eq(agents.slug, "eric"), eq(conversations.type, "ai")))
+    .innerJoin(conversationMembers, eq(conversations.id, conversationMembers.conversationId))
+    .where(
+      and(
+        eq(conversations.agentId, ericAgent.id),
+        eq(conversations.type, "ai"),
+        eq(conversationMembers.userId, userId),
+      ),
+    )
     .limit(1);
 
-  if (!ericConv) return;
+  if (existing.length > 0) return existing[0].id;
 
-  await db
-    .insert(conversationMembers)
-    .values({ conversationId: ericConv.id, userId })
-    .onConflictDoNothing();
+  // Create new private conversation
+  return createEricConversationForUser(db, ericAgent.id, userId);
 }
