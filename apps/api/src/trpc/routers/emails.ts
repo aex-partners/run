@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eq, desc, and, sql, ilike, or, inArray } from "drizzle-orm";
+import Anthropic from "@anthropic-ai/sdk";
 import { router, protectedProcedure } from "../index.js";
 import { emails, emailAttachments, emailLabels, emailAccounts, mailAccountMembers } from "../../db/schema/index.js";
 import { broadcast } from "../../ws/index.js";
@@ -779,7 +780,20 @@ export const emailsRouter = router({
       if (!email) return { error: "Email not found" };
 
       const bodyText = email.bodyText || email.bodyHtml?.replace(/<[^>]+>/g, "") || "";
-      const result = { text: "" };
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error("ANTHROPIC_API_KEY is not configured.");
+      }
+
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const aiResponse = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 256,
+        system: "Summarize this email in 1-2 concise sentences. Return only the summary.",
+        messages: [{ role: "user", content: bodyText }],
+      });
+      const firstBlock = aiResponse.content[0];
+      const result = { text: firstBlock.type === "text" ? firstBlock.text : "" };
 
       await ctx.db
         .update(emails)
@@ -797,7 +811,28 @@ export const emailsRouter = router({
       if (!email) return { error: "Email not found" };
 
       const bodyText = email.bodyText || email.bodyHtml?.replace(/<[^>]+>/g, "") || "";
-      const result = { text: "" };
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error("ANTHROPIC_API_KEY is not configured.");
+      }
+
+      const userPrompt = [
+        `Subject: ${email.subject || "(no subject)"}`,
+        `From: ${email.from || "unknown"}`,
+        "",
+        bodyText,
+        ...(input.prompt ? ["", `Additional instruction: ${input.prompt}`] : []),
+      ].join("\n");
+
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const aiResponse = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1024,
+        system: "Draft a professional reply to this email. Be concise and helpful. Return only the reply text, no subject line or greeting format.",
+        messages: [{ role: "user", content: userPrompt }],
+      });
+      const firstBlock = aiResponse.content[0];
+      const result = { text: firstBlock.type === "text" ? firstBlock.text : "" };
 
       await ctx.db
         .update(emails)
