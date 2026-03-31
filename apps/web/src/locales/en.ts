@@ -610,6 +610,7 @@ const en = {
     workflowOptions: 'Workflow options',
     deleteWorkflow: 'Delete workflow',
     duplicateWorkflow: 'Duplicate workflow',
+    run: 'Run',
     noExecutions: 'No executions recorded',
     displayName: 'Display Name',
     triggerType: 'Trigger Type',

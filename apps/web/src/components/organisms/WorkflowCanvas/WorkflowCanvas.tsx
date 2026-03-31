@@ -486,6 +486,7 @@ export interface WorkflowCanvasProps {
   readOnly?: boolean
   onNodeDelete?: (nodeId: string) => void
   onNodeEdit?: (nodeId: string, data: Record<string, unknown>) => void
+  onNodeAdd?: (node: Node) => void
 }
 
 export function WorkflowCanvas({
@@ -497,6 +498,7 @@ export function WorkflowCanvas({
   readOnly = false,
   onNodeDelete,
   onNodeEdit,
+  onNodeAdd,
 }: WorkflowCanvasProps) {
   const { t } = useTranslation()
   const [localNodes, setLocalNodes] = useState<Node[]>(nodesProp)
@@ -581,8 +583,9 @@ export function WorkflowCanvas({
       data: { label: type.charAt(0).toUpperCase() + type.slice(1), description: '' },
     }
     setLocalNodes((prev) => [...prev, newNode])
+    onNodeAdd?.(newNode)
     setPaneMenu(null)
-  }, [paneMenu])
+  }, [paneMenu, onNodeAdd])
 
   return (
     <div

@@ -8,7 +8,7 @@ import {
   type Node,
   type Edge,
 } from '@xyflow/react'
-import { GitBranch, Clock, Pause, Play, MoreHorizontal } from 'lucide-react'
+import { GitBranch, Clock, Pause, Play, MoreHorizontal, Loader2 } from 'lucide-react'
 import { WorkflowSidebar, type Workflow } from '../../organisms/WorkflowSidebar/WorkflowSidebar'
 import { WorkflowCanvas } from '../../organisms/WorkflowCanvas/WorkflowCanvas'
 import { HistoryEntry, type HistoryEntryProps } from '../../molecules/HistoryEntry/HistoryEntry'
@@ -32,6 +32,8 @@ export interface WorkflowsScreenProps {
   onDeleteWorkflow?: (id: string) => void
   onDuplicateWorkflow?: (id: string) => void
   onGraphChange?: (workflowId: string, graph: WorkflowGraph) => void
+  onExecute?: (id: string) => void
+  isExecuting?: boolean
 }
 
 export function WorkflowsScreen({
@@ -46,6 +48,8 @@ export function WorkflowsScreen({
   onDeleteWorkflow,
   onDuplicateWorkflow,
   onGraphChange,
+  onExecute,
+  isExecuting = false,
 }: WorkflowsScreenProps) {
   const { t } = useTranslation()
   const [workflows, setWorkflows] = useState<Workflow[]>(workflowsProp)
@@ -97,6 +101,21 @@ export function WorkflowsScreen({
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
+  )
+
+  const handleNodeAdd = useCallback(
+    (node: Node) => {
+      setNodes((prev) => [...prev, node])
+    },
+    [setNodes]
+  )
+
+  const handleNodeDelete = useCallback(
+    (nodeId: string) => {
+      setNodes((prev) => prev.filter((n) => n.id !== nodeId))
+      setEdges((prev) => prev.filter((e) => e.source !== nodeId && e.target !== nodeId))
+    },
+    [setNodes, setEdges]
   )
 
   // Debounced graph save
@@ -242,6 +261,28 @@ export function WorkflowsScreen({
             </button>
 
             <button
+              onClick={() => onExecute?.(selectedWf.id)}
+              disabled={isExecuting}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '5px 12px',
+                background: 'var(--accent)',
+                border: 'none',
+                borderRadius: 6,
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: isExecuting ? 'not-allowed' : 'pointer',
+                opacity: isExecuting ? 0.7 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              {isExecuting ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={12} />} {t('workflows.run')}
+            </button>
+
+            <button
               onClick={() => onToggleStatus?.(selectedWf.id)}
               style={{
                 display: 'flex',
@@ -340,6 +381,8 @@ export function WorkflowsScreen({
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              onNodeAdd={handleNodeAdd}
+              onNodeDelete={handleNodeDelete}
             />
           </div>
 

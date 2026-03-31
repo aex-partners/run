@@ -608,6 +608,7 @@ const ptBR = {
     workflowOptions: 'Opções do workflow',
     deleteWorkflow: 'Excluir workflow',
     duplicateWorkflow: 'Duplicar workflow',
+    run: 'Executar',
     noExecutions: 'Nenhuma execução registrada',
     displayName: 'Nome de Exibição',
     triggerType: 'Tipo de Gatilho',
