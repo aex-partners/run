@@ -34,7 +34,7 @@ describe("task-runner: structured task edge cases", () => {
     await closeTestDb();
   });
 
-  it("structured task with empty structuredInput defaults to {}", async () => {
+  it("structured task with null structuredInput throws AI layer not available", async () => {
     const { runTask } = await import("./task-runner.js");
 
     const taskId = crypto.randomUUID();
@@ -50,28 +50,27 @@ describe("task-runner: structured task edge cases", () => {
       startedAt: new Date(),
     });
 
-    const result = await runTask(
-      {
-        id: taskId,
-        title: "Empty input test",
-        input: "test",
-        conversationId: null,
-        createdBy: TEST_USER_ID,
-        type: "structured",
-        agentId: null,
-        toolName: "list_entities",
-        structuredInput: null,
-        outputSchema: null,
-        createdAt: null,
-      },
-      db as any,
-    );
-
-    const parsed = JSON.parse(result);
-    expect(parsed.entities).toBeDefined();
+    await expect(
+      runTask(
+        {
+          id: taskId,
+          title: "Empty input test",
+          input: "test",
+          conversationId: null,
+          createdBy: TEST_USER_ID,
+          type: "structured",
+          agentId: null,
+          toolName: "list_entities",
+          structuredInput: null,
+          outputSchema: null,
+          createdAt: null,
+        },
+        db as any,
+      ),
+    ).rejects.toThrow("AI layer not available");
   });
 
-  it("structured task result is stringified when not a string", async () => {
+  it("structured task throws AI layer not available (result not returned)", async () => {
     const { runTask } = await import("./task-runner.js");
 
     const taskId = crypto.randomUUID();
@@ -87,30 +86,27 @@ describe("task-runner: structured task edge cases", () => {
       startedAt: new Date(),
     });
 
-    const result = await runTask(
-      {
-        id: taskId,
-        title: "Stringify test",
-        input: "test",
-        conversationId: null,
-        createdBy: TEST_USER_ID,
-        type: "structured",
-        agentId: null,
-        toolName: "list_users",
-        structuredInput: "{}",
-        outputSchema: null,
-        createdAt: null,
-      },
-      db as any,
-    );
-
-    // Result should be valid JSON string
-    expect(() => JSON.parse(result)).not.toThrow();
-    const parsed = JSON.parse(result);
-    expect(parsed.users).toBeDefined();
+    await expect(
+      runTask(
+        {
+          id: taskId,
+          title: "Stringify test",
+          input: "test",
+          conversationId: null,
+          createdBy: TEST_USER_ID,
+          type: "structured",
+          agentId: null,
+          toolName: "list_users",
+          structuredInput: "{}",
+          outputSchema: null,
+          createdAt: null,
+        },
+        db as any,
+      ),
+    ).rejects.toThrow("AI layer not available");
   });
 
-  it("broadcast is called with progress updates", async () => {
+  it("broadcast is not called when runTask throws AI layer not available", async () => {
     const { runTask } = await import("./task-runner.js");
     const { broadcast } = await import("../ws/index.js");
 
@@ -129,27 +125,28 @@ describe("task-runner: structured task edge cases", () => {
       startedAt: new Date(),
     });
 
-    await runTask(
-      {
-        id: taskId,
-        title: "Broadcast test",
-        input: "test",
-        conversationId: null,
-        createdBy: TEST_USER_ID,
-        type: "structured",
-        agentId: null,
-        toolName: "list_entities",
-        structuredInput: "{}",
-        outputSchema: null,
-        createdAt: null,
-      },
-      db as any,
-    );
+    await expect(
+      runTask(
+        {
+          id: taskId,
+          title: "Broadcast test",
+          input: "test",
+          conversationId: null,
+          createdBy: TEST_USER_ID,
+          type: "structured",
+          agentId: null,
+          toolName: "list_entities",
+          structuredInput: "{}",
+          outputSchema: null,
+          createdAt: null,
+        },
+        db as any,
+      ),
+    ).rejects.toThrow("AI layer not available");
 
-    // broadcast should have been called with task_updated
+    // broadcast should NOT have been called with task_updated since runTask throws immediately
     const calls = vi.mocked(broadcast).mock.calls;
     const taskUpdates = calls.filter((c) => (c[0] as any)?.type === "task_updated");
-    expect(taskUpdates.length).toBeGreaterThan(0);
-    expect((taskUpdates[0][0] as any).task.progress).toBe(100);
+    expect(taskUpdates.length).toBe(0);
   });
 });

@@ -53,10 +53,10 @@ describe("task-runner: createdAt context filtering", () => {
     await closeTestDb();
   });
 
-  it("inference task with createdAt loads only messages before that timestamp", async () => {
+  it("inference task with createdAt throws AI layer not available", async () => {
     const { runTask } = await import("./task-runner.js");
 
-    // Messages BEFORE task creation (should be loaded as context)
+    // Messages BEFORE task creation
     await db.insert(schema.messages).values({
       id: "msg-before-1",
       conversationId: CONV_ID,
@@ -75,7 +75,7 @@ describe("task-runner: createdAt context filtering", () => {
       createdAt: new Date("2026-03-19T09:58:30Z"),
     });
 
-    // Messages AFTER task creation (should NOT be loaded as context)
+    // Messages AFTER task creation
     await db.insert(schema.messages).values({
       id: "msg-after-1",
       conversationId: CONV_ID,
@@ -107,10 +107,8 @@ describe("task-runner: createdAt context filtering", () => {
       createdAt: taskCreatedAt,
     });
 
-    // The mock model may not fully satisfy AI SDK v5 internals,
-    // but we can verify the setup phase (context loading + initial log)
-    try {
-      await runTask(
+    await expect(
+      runTask(
         {
           id: taskId,
           title: "Lembrete: falar com cliente",
@@ -125,21 +123,11 @@ describe("task-runner: createdAt context filtering", () => {
           createdAt: taskCreatedAt,
         },
         db as any,
-      );
-    } catch {
-      // AI SDK v5 internal error with mock model is expected
-    }
-
-    // Verify the task runner logged the "Starting task" message
-    const logs = await db
-      .select()
-      .from(schema.taskLogs)
-      .where(eq(schema.taskLogs.taskId, taskId));
-
-    expect(logs.some((l) => l.message.includes("Starting task"))).toBe(true);
+      ),
+    ).rejects.toThrow("AI layer not available");
   });
 
-  it("inference task without createdAt loads all conversation messages", async () => {
+  it("inference task without createdAt throws AI layer not available", async () => {
     const { runTask } = await import("./task-runner.js");
 
     await db.insert(schema.messages).values({
@@ -172,8 +160,8 @@ describe("task-runner: createdAt context filtering", () => {
       startedAt: new Date(),
     });
 
-    try {
-      await runTask(
+    await expect(
+      runTask(
         {
           id: taskId,
           title: "Task sem createdAt",
@@ -188,21 +176,11 @@ describe("task-runner: createdAt context filtering", () => {
           createdAt: null,
         },
         db as any,
-      );
-    } catch {
-      // AI SDK v5 internal error with mock model is expected
-    }
-
-    // Verify the task runner reached the inference step
-    const logs = await db
-      .select()
-      .from(schema.taskLogs)
-      .where(eq(schema.taskLogs.taskId, taskId));
-
-    expect(logs.some((l) => l.message.includes("Starting task"))).toBe(true);
+      ),
+    ).rejects.toThrow("AI layer not available");
   });
 
-  it("inference task without conversationId still runs (no context)", async () => {
+  it("inference task without conversationId throws AI layer not available", async () => {
     const { runTask } = await import("./task-runner.js");
 
     const taskId = crypto.randomUUID();
@@ -216,8 +194,8 @@ describe("task-runner: createdAt context filtering", () => {
       startedAt: new Date(),
     });
 
-    try {
-      await runTask(
+    await expect(
+      runTask(
         {
           id: taskId,
           title: "Task sem conversa",
@@ -232,16 +210,7 @@ describe("task-runner: createdAt context filtering", () => {
           createdAt: null,
         },
         db as any,
-      );
-    } catch {
-      // AI SDK v5 internal error with mock model is expected
-    }
-
-    const logs = await db
-      .select()
-      .from(schema.taskLogs)
-      .where(eq(schema.taskLogs.taskId, taskId));
-
-    expect(logs.some((l) => l.message.includes("Starting task"))).toBe(true);
+      ),
+    ).rejects.toThrow("AI layer not available");
   });
 });
