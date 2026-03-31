@@ -8,6 +8,7 @@ import { slugify, serializeFields, type EntityField } from "../../db/entity-fiel
 import { auth } from "../../auth/index.js";
 import { runBackgroundQuery as runBackgroundQueryFn } from "../../ai/background-query.js";
 import { getSkillsForRoutines } from "../../ai/skill-templates.js";
+import { createEricConversationForUser } from "../../services/eric-conversation.js";
 
 // Niche display names per locale (keyed by niche ID)
 const NICHE_NAMES: Record<string, Record<string, string>> = {
@@ -391,22 +392,12 @@ export const settingsRouter = router({
         createdBy: ctx.session.user.id,
       });
 
-      // Create the default Eric conversation
-      const convId = crypto.randomUUID();
-      await ctx.db.insert(conversations).values({
-        id: convId,
-        name: "Eric",
-        type: "ai",
-        agentId: ericId,
-      });
-      await ctx.db.insert(conversationMembers).values({
-        conversationId: convId,
-        userId: ctx.session.user.id,
-      });
-      if (invitedUserIds.length > 0) {
-        await ctx.db.insert(conversationMembers).values(
-          invitedUserIds.map((userId) => ({ conversationId: convId, userId })),
-        );
+      // Create a private Eric conversation for the setup user
+      const setupConvId = await createEricConversationForUser(ctx.db, ericId, ctx.session.user.id);
+
+      // Create a private Eric conversation for each invited user
+      for (const userId of invitedUserIds) {
+        await createEricConversationForUser(ctx.db, ericId, userId);
       }
 
       // Send a kickoff message so Eric starts researching the company (in the user's language)
@@ -415,7 +406,7 @@ export const settingsRouter = router({
       const msgId = crypto.randomUUID();
       await ctx.db.insert(messages).values({
         id: msgId,
-        conversationId: convId,
+        conversationId: setupConvId,
         authorId: ctx.session.user.id,
         content: kickoffContent,
         role: "user",
@@ -423,7 +414,7 @@ export const settingsRouter = router({
 
       // Trigger AI analysis in background
       runBackgroundQueryFn({
-        conversationId: convId,
+        conversationId: setupConvId,
         prompt: kickoffContent,
         userId: ctx.session.user.id,
       }).catch((err: unknown) => console.error("Setup AI kickoff error:", err));

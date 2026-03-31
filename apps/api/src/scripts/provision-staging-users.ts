@@ -10,7 +10,7 @@ config({ path: resolve(__dirname, "../../../../.env") });
 const { db } = await import("../db/index.js");
 const { auth } = await import("../auth/index.js");
 const { users } = await import("../db/schema/index.js");
-const { addUserToEricConversation, ensureDefaultEricWorkspace } = await import("../services/eric-conversation.js");
+const { ensureEricConversationForUser, ensureDefaultEricWorkspace } = await import("../services/eric-conversation.js");
 
 /** Default Buenaça team (Gmail plus-addressing → same inbox as buenacagaucha@gmail.com). */
 const DEFAULT_TEAM: { email: string; name: string; role: "owner" | "admin" | "user" }[] = [
@@ -55,7 +55,7 @@ async function provisionStagingUsers() {
         await db.update(users).set({ role: u.role }).where(eq(users.id, existing.id));
         console.log(`Updated role for ${u.email} -> ${u.role}`);
       }
-      await addUserToEricConversation(db, existing.id);
+      await ensureEricConversationForUser(db, existing.id);
       console.log(`Eric membership ensured for existing ${u.email}`);
       continue;
     }
@@ -70,15 +70,15 @@ async function provisionStagingUsers() {
     }
 
     await db.update(users).set({ role: u.role }).where(eq(users.id, res.user.id));
-    await addUserToEricConversation(db, res.user.id);
+    await ensureEricConversationForUser(db, res.user.id);
     console.log(`Created ${u.email} (${u.name}) role=${u.role}`);
   }
 
   const everyone = await db.select({ id: users.id }).from(users);
   for (const row of everyone) {
-    await addUserToEricConversation(db, row.id);
+    await ensureEricConversationForUser(db, row.id);
   }
-  console.log(`Eric conversation membership backfilled for ${everyone.length} user(s).`);
+  console.log(`Eric conversation ensured for ${everyone.length} user(s).`);
   console.log("Done.");
   process.exit(0);
 }
