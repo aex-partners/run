@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Users, Puzzle, Shield, Building2, ChevronRight, Bot, Sparkles, Wrench, Plus, Search } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
@@ -117,6 +117,10 @@ export interface SettingsScreenProps {
 
   // Form loading state
   formLoading?: boolean
+
+  // Permissions persistence
+  onLoadPermissions?: () => Promise<PermissionMatrix | null>
+  onSavePermissions?: (matrix: PermissionMatrix) => Promise<void>
 }
 
 const ROLES = ['Administrator', 'Manager', 'Sales Rep', 'Stock Clerk', 'Finance', 'Support'] as const
@@ -233,6 +237,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
     skills = [], systemToolOptions = [], onCreateSkill, onUpdateSkill, onDeleteSkill,
     customTools = [], pieceTools = [], integrationOptions = [], onCreateTool, onUpdateTool, onDeleteTool, onTestTool, testResult,
     formLoading = false,
+    onLoadPermissions, onSavePermissions,
   } = props
 
   const [internalSection, setInternalSection] = useState<SettingsSection>('users')
@@ -326,6 +331,43 @@ export function SettingsScreen(props: SettingsScreenProps) {
 
   // Permissions state
   const [permissions, setPermissions] = useState<PermissionMatrix>(defaultPermissions)
+  const savedPermissionsRef = useRef<string>(JSON.stringify(defaultPermissions))
+  const [permissionsDirty, setPermissionsDirty] = useState(false)
+  const [permissionsSaving, setPermissionsSaving] = useState(false)
+  const [permissionsSaved, setPermissionsSaved] = useState(false)
+  const permissionsLoaded = useRef(false)
+
+  // Load persisted permissions when section becomes active
+  useEffect(() => {
+    if (activeSection === 'permissions' && onLoadPermissions && !permissionsLoaded.current) {
+      permissionsLoaded.current = true
+      onLoadPermissions().then((saved) => {
+        if (saved) {
+          setPermissions(saved)
+          savedPermissionsRef.current = JSON.stringify(saved)
+        }
+      })
+    }
+  }, [activeSection, onLoadPermissions])
+
+  // Track dirty state
+  useEffect(() => {
+    setPermissionsDirty(JSON.stringify(permissions) !== savedPermissionsRef.current)
+    setPermissionsSaved(false)
+  }, [permissions])
+
+  const handleSavePermissions = async () => {
+    if (!onSavePermissions) return
+    setPermissionsSaving(true)
+    try {
+      await onSavePermissions(permissions)
+      savedPermissionsRef.current = JSON.stringify(permissions)
+      setPermissionsDirty(false)
+      setPermissionsSaved(true)
+    } finally {
+      setPermissionsSaving(false)
+    }
+  }
 
   // Company info state
   const [localCompany, setLocalCompany] = useState<CompanyInfo>(
@@ -726,9 +768,29 @@ export function SettingsScreen(props: SettingsScreenProps) {
       case 'permissions':
         return (
           <div style={{ padding: '24px' }}>
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('settings.permissions')}</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('settings.permissionsSubtitle')}</p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t('settings.permissions')}</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('settings.permissionsSubtitle')}</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                {permissionsSaved && !permissionsDirty && (
+                  <span style={{ fontSize: 13, color: 'var(--success, #16a34a)' }}>{t('settings.permissionsSaved')}</span>
+                )}
+                {permissionsDirty && (
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('settings.unsavedChanges')}</span>
+                )}
+                {permissionsDirty && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSavePermissions}
+                    disabled={permissionsSaving}
+                  >
+                    {permissionsSaving ? t('settings.saving') : t('settings.savePermissions')}
+                  </Button>
+                )}
+              </div>
             </div>
             <div style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>

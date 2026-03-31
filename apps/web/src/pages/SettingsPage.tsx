@@ -9,6 +9,8 @@ import type { AgentFormData } from "../components/organisms/AgentForm/AgentForm"
 import type { SkillFormData } from "../components/organisms/SkillForm/SkillForm";
 import type { CustomToolFormData } from "../components/organisms/CustomToolForm/CustomToolForm";
 
+type PermissionMatrix = Record<string, Record<string, boolean>>;
+
 export function SettingsPage() {
   const utils = trpc.useUtils();
 
@@ -408,6 +410,17 @@ export function SettingsPage() {
     createSkill.isPending || updateSkill.isPending ||
     createTool.isPending || updateTool.isPending;
 
+  // ─── Permissions Persistence ──────────────────────────────────
+  const handleLoadPermissions = async (): Promise<PermissionMatrix | null> => {
+    const result = await utils.settings.get.fetch({ key: "permissions.matrix" });
+    if (result && typeof result === "object") return result as PermissionMatrix;
+    return null;
+  };
+
+  const handleSavePermissions = async (matrix: PermissionMatrix) => {
+    await setSetting.mutateAsync({ key: "permissions.matrix", value: JSON.stringify(matrix) });
+  };
+
   return (
     <>
       <SettingsScreen
@@ -446,6 +459,8 @@ export function SettingsPage() {
         onTestTool={handleTestTool}
         testResult={testResult}
         formLoading={formLoading}
+        onLoadPermissions={handleLoadPermissions}
+        onSavePermissions={handleSavePermissions}
       />
 
       {/* Invite user dialog */}
