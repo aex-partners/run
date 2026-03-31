@@ -229,6 +229,8 @@ export function WorkflowsPage() {
         onDuplicateWorkflow={handleDuplicateWorkflow}
         onAISend={handleAISend}
         onGraphChange={(workflowId, graph) => saveGraphMut.mutate({ id: workflowId, graph })}
+        onExecute={(id) => executeMut.mutate({ id })}
+        isExecuting={executeMut.isPending}
       />
     </div>
   );
