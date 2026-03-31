@@ -4,6 +4,7 @@ import { router, protectedProcedure } from "../index.js";
 import { files, fileShares, users } from "../../db/schema/index.js";
 import { localStorage, formatFileSize } from "../../files/storage.js";
 import { broadcast } from "../../ws/index.js";
+import { enqueueFileIndexing } from "../../queue/file-indexing-queue.js";
 
 export const filesRouter = router({
   list: protectedProcedure
@@ -233,6 +234,14 @@ export const filesRouter = router({
         .update(files)
         .set({ aiIndexed: input.enabled ? 1 : 0, updatedAt: new Date() })
         .where(eq(files.id, input.id));
+
+      // Enqueue file indexing/de-indexing job
+      await enqueueFileIndexing({
+        fileId: input.id,
+        userId: ctx.session.user.id,
+        action: input.enabled ? "index" : "deindex",
+      });
+
       broadcast({ type: "file_updated" });
       return { aiIndexed: input.enabled };
     }),

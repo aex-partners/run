@@ -1,4 +1,4 @@
-import { eq, or, and } from "drizzle-orm";
+import { eq, or, and, ne } from "drizzle-orm";
 import { entities, settings, workflows, knowledge } from "../db/schema/index.js";
 import { parseFields } from "../db/entity-fields.js";
 import type { Database } from "../db/index.js";
@@ -96,12 +96,15 @@ export async function buildSystemPrompt(
 
   // Knowledge (persistent memory)
   try {
-    const knowledgeConditions = options?.userId
-      ? or(
-          eq(knowledge.scope, "company"),
-          and(eq(knowledge.scope, "personal"), eq(knowledge.createdBy, options.userId)),
-        )
-      : eq(knowledge.scope, "company");
+    const knowledgeConditions = and(
+      ne(knowledge.category, "file-content"),
+      options?.userId
+        ? or(
+            eq(knowledge.scope, "company"),
+            and(eq(knowledge.scope, "personal"), eq(knowledge.createdBy, options.userId)),
+          )
+        : eq(knowledge.scope, "company"),
+    );
 
     const knowledgeRows = await db
       .select({
