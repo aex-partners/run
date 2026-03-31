@@ -18,6 +18,7 @@ export function PersonCell({
   const names = String(value).split(',').map(n => n.trim()).filter(Boolean)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync popover state with editing
     if (isEditing) setOpen(true)
   }, [isEditing])
 

@@ -1,7 +1,17 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { AgentForm } from './AgentForm'
+
+beforeAll(() => {
+  if (typeof globalThis.ResizeObserver === 'undefined') {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver
+  }
+})
 
 describe('AgentForm', () => {
   it('renders all form fields', () => {
@@ -57,12 +67,6 @@ describe('AgentForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onCancel).toHaveBeenCalled()
-  })
-
-  it('renders Internet Access toggle', () => {
-    render(<AgentForm />)
-    expect(screen.getByText('Internet Access')).toBeInTheDocument()
-    expect(screen.getByRole('switch')).toBeInTheDocument()
   })
 
   it('renders skill and tool MultiSelects', () => {

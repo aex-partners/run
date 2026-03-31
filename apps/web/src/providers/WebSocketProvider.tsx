@@ -1,10 +1,10 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, type MutableRefObject } from "react";
 import { useWebSocket as useWebSocketHook, type StreamEntry } from "../hooks/useWebSocket";
 
 interface WebSocketContextValue {
   isConnected: boolean;
-  streams: Map<string, StreamEntry>;
-  typingConversations: Set<string>;
+  streams: MutableRefObject<Map<string, StreamEntry>>;
+  typingConversations: MutableRefObject<Set<string>>;
 }
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
@@ -18,6 +18,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useWS(): WebSocketContextValue {
   const ctx = useContext(WebSocketContext);
   if (!ctx) throw new Error("useWS must be used within WebSocketProvider");

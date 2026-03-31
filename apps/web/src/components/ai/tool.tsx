@@ -15,6 +15,7 @@ const statusConfig: Record<ToolState, { label: string; Icon: typeof CheckCircle2
   "approval-responded": { label: "Responded", Icon: CheckCircle2Icon, className: "text-blue-600" },
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getStatusBadge(state: ToolState) {
   const config = statusConfig[state]
   const { Icon } = config

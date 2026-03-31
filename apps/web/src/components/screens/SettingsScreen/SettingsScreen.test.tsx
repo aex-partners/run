@@ -28,8 +28,8 @@ describe('SettingsScreen', () => {
     expect(within(sidebar).getByText('Users')).toBeInTheDocument()
     expect(within(sidebar).getByText('Agents')).toBeInTheDocument()
     expect(within(sidebar).getByText('Skills')).toBeInTheDocument()
-    expect(within(sidebar).getByText('Custom Tools')).toBeInTheDocument()
-    expect(within(sidebar).getByText('Integrations')).toBeInTheDocument()
+    expect(within(sidebar).getByText('Tools')).toBeInTheDocument()
+    expect(within(sidebar).getByText('Plugins')).toBeInTheDocument()
     expect(within(sidebar).getByText('Permissions')).toBeInTheDocument()
     expect(within(sidebar).getByText('Company')).toBeInTheDocument()
   })
@@ -91,7 +91,7 @@ describe('SettingsScreen', () => {
     expect(screen.getByText('Order Management')).toBeInTheDocument()
   })
 
-  it('clicking "Custom Tools" nav shows custom tools section', async () => {
+  it('clicking "Tools" nav shows tools section', async () => {
     const user = userEvent.setup()
     render(
       <SettingsScreen
@@ -104,30 +104,30 @@ describe('SettingsScreen', () => {
     )
 
     const sidebar = screen.getByText('Settings').closest('aside')!
-    await user.click(within(sidebar).getByText('Custom Tools'))
+    await user.click(within(sidebar).getByText('Tools'))
 
-    expect(screen.getByRole('heading', { name: 'Custom Tools' })).toBeInTheDocument()
+    // The heading uses customTools.title which is "Custom Tools" (appears in both h2 and h3)
+    const headings = screen.getAllByRole('heading', { name: 'Custom Tools' })
+    expect(headings.length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('get_orders')).toBeInTheDocument()
   })
 
-  it('clicking "Integrations" nav shows integrations section with toggle', async () => {
+  it('clicking "Plugins" nav shows plugins section', async () => {
     const user = userEvent.setup()
-    const onToggleIntegration = vi.fn()
     render(
       <SettingsScreen
         {...minProps}
-        integrations={[
-          { id: 'i1', name: 'WhatsApp', description: 'WA Business', type: 'rest', enabled: true },
+        installedPlugins={[
+          { name: 'WhatsApp', description: 'WA Business', installed: true },
         ]}
-        onCreateIntegration={vi.fn()}
-        onToggleIntegration={onToggleIntegration}
       />
     )
 
     const sidebar = screen.getByText('Settings').closest('aside')!
-    await user.click(within(sidebar).getByText('Integrations'))
+    await user.click(within(sidebar).getByText('Plugins'))
 
-    expect(screen.getByRole('heading', { name: 'Integrations' })).toBeInTheDocument()
+    // The heading uses settings.plugins which is "Plugins"
+    expect(screen.getByRole('heading', { name: 'Plugins' })).toBeInTheDocument()
     expect(screen.getByText('WhatsApp')).toBeInTheDocument()
   })
 
@@ -139,11 +139,9 @@ describe('SettingsScreen', () => {
         agents={[]}
         skills={[]}
         customTools={[]}
-        integrations={[]}
         onCreateAgent={vi.fn()}
         onCreateSkill={vi.fn()}
         onCreateTool={vi.fn()}
-        onCreateIntegration={vi.fn()}
       />
     )
 
@@ -155,10 +153,8 @@ describe('SettingsScreen', () => {
     await user.click(within(sidebar).getByText('Skills'))
     expect(screen.getByText('No skills created yet.')).toBeInTheDocument()
 
-    await user.click(within(sidebar).getByText('Custom Tools'))
-    expect(screen.getByText('No custom tools created yet.')).toBeInTheDocument()
-
-    await user.click(within(sidebar).getByText('Integrations'))
-    expect(screen.getByText('No integrations configured yet.')).toBeInTheDocument()
+    await user.click(within(sidebar).getByText('Tools'))
+    // When both customTools and pieceTools are empty, shows "No tools available..." message
+    expect(screen.getByText(/No tools available/)).toBeInTheDocument()
   })
 })

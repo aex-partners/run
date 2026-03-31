@@ -161,6 +161,7 @@ export function OnboardingTour({ isAdmin = false, onComplete }: OnboardingTourPr
 }
 
 /** Reset the tour so it runs again on next mount */
+// eslint-disable-next-line react-refresh/only-export-components
 export function resetOnboardingTour() {
   localStorage.removeItem(TOUR_STORAGE_KEY)
 }

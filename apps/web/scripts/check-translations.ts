@@ -15,7 +15,7 @@
  * Inspired by apache/airflow#62983
  */
 
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { resolve, basename } from 'node:path'
 
 // ── Config ──────────────────────────────────────────────────────────────────

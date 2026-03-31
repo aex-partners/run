@@ -69,7 +69,7 @@ export function GridToolbar({
   onColumnsToggle,
   onColumnVisibilityToggle,
   columnsPopoverRef,
-  onAddColumn,
+  onAddColumn: _onAddColumn,
   onAddRow,
   sortConfig = [],
   onRemoveSort,

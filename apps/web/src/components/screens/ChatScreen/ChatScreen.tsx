@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Bot, Users, Search, Sparkles, MessageSquarePlus, Database, ListTodo, Mic } from 'lucide-react'
 import { Avatar } from '../../atoms/Avatar/Avatar'

@@ -40,7 +40,7 @@ const menuItemStyle: React.CSSProperties = {
 }
 
 export function ColumnHeaderMenu({
-  column,
+  column: _column,
   sortDirection,
   children,
   onSortAsc,

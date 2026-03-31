@@ -33,7 +33,7 @@ describe('MultiSelect', () => {
     const user = userEvent.setup()
     render(<MultiSelect options={options} selected={[]} />)
 
-    await user.click(screen.getByRole('button', { name: /select/i }).closest('button') || screen.getByText('Select...'))
+    await user.click(screen.getByText('Select...'))
     expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument()
   })
 

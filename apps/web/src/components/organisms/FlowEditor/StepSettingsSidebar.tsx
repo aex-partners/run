@@ -281,7 +281,7 @@ const ACTION_TYPE_OPTIONS: { value: ActionType; label: string; icon: typeof Code
 
 function ActionTypeSelector({ action }: { action: FlowAction }) {
   const { t } = useTranslation();
-  const updateStepSettings = useFlowBuilderStore((s) => s.updateStepSettings);
+  const _updateStepSettings = useFlowBuilderStore((s) => s.updateStepSettings);
   const flowVersion = useFlowBuilderStore((s) => s.flowVersion);
 
   // We need to update the type in the linked list. Since type isn't in settings,

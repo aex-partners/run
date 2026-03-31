@@ -23,7 +23,7 @@ import { EmailPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/Em
 import { PluginsPreviewPanel } from '../../molecules/WizardShowcasePanel/panels/PluginsPreviewPanel'
 import { useTranslation } from 'react-i18next'
 import { NICHES } from '../../../data/niches'
-import { COUNTRIES, LANGUAGES, TIMEZONES, CURRENCIES, type CountryLocale } from '../../../data/locale-options'
+import { COUNTRIES, LANGUAGES, TIMEZONES, CURRENCIES } from '../../../data/locale-options'
 import { ROUTINE_TEMPLATES } from '../../../data/routine-templates'
 import type { OnboardingPath } from '../../molecules/WizardShowcasePanel/panels/PathPreviewPanel'
 
@@ -212,7 +212,7 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, initialStep = 0,
 
   // Persist wizard state to localStorage (excluding passwords)
   useEffect(() => {
-    const { password, confirmPassword, smtpPass, ...safe } = data
+    const { password: _pw, confirmPassword: _cpw, smtpPass: _sp, ...safe } = data
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data: safe }))
   }, [step, data])
 
@@ -376,7 +376,7 @@ export function NewWorkspaceWizard({ onSubmit, onCreateAccount, initialStep = 0,
 
   // Determine next button label
   const isLastStep = step === STEPS.length - 1
-  const nextLabel = isLastStep ? t('setup.navigation.finish') : t('setup.navigation.next')
+  const _nextLabel = isLastStep ? t('setup.navigation.finish') : t('setup.navigation.next')
 
   // Build showcase content
   const showcaseContent = useMemo(() => {
@@ -916,7 +916,7 @@ function PluginSetupStep({ selectedPlugins, onToggle }: { selectedPlugins: strin
   const hasMore = visible.length < filtered.length
 
   // Reset page on filter change
-  useEffect(() => { setPage(1) }, [search, category])
+  useEffect(() => { setPage(1) }, [search, category]) // eslint-disable-line react-hooks/set-state-in-effect
 
 
   return (

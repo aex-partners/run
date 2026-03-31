@@ -2,7 +2,7 @@ import { useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import type { CellProps } from '../types'
 
-export function SelectCell({ column, value, isEditing, onDirectCommit }: CellProps) {
+export function SelectCell({ column, value, isEditing: _isEditing, onDirectCommit }: CellProps) {
   const [open, setOpen] = useState(false)
   const options = column.options ?? []
   const selected = options.find(o => o.value === String(value))

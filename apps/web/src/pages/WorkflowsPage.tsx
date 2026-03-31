@@ -109,6 +109,7 @@ export function WorkflowsPage() {
   // Auto-select first workflow
   useEffect(() => {
     if (!activeWorkflowId && workflows.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional auto-select
       setActiveWorkflowId(workflows[0].id);
     }
   }, [activeWorkflowId, workflows]);

@@ -32,8 +32,10 @@ export function Reasoning({ content, isStreaming = false, defaultOpen = false }:
 
   useEffect(() => {
     if (isStreaming && !prevStreaming.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with streaming prop
       setOpen(true)
     } else if (!isStreaming && prevStreaming.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with streaming prop
       setOpen(false)
     }
     prevStreaming.current = isStreaming

@@ -11,7 +11,7 @@ interface RowDetailPanelProps {
   onCellEdit?: (rowId: string, colId: string, value: string | number | boolean) => void
 }
 
-export function RowDetailPanel({ row, rowId, columns, onClose, onCellEdit }: RowDetailPanelProps) {
+export function RowDetailPanel({ row, rowId, columns, onClose, onCellEdit: _onCellEdit }: RowDetailPanelProps) {
   const { t } = useTranslation()
   if (!row) return null
 
