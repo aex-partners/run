@@ -4,6 +4,7 @@ import {
   Mail,
   HardDrive,
   Database,
+  BookOpen,
   CheckSquare,
   GitBranch,
   Settings,
@@ -15,12 +16,13 @@ import { NavItem } from '../../molecules/NavItem/NavItem'
 import { Separator } from '../../atoms/Separator/Separator'
 import { AexLogo } from '../../atoms/AexLogo/AexLogo'
 
-export type Section = 'chat' | 'mail' | 'files' | 'database' | 'tasks' | 'workflows' | 'settings'
+export type Section = 'chat' | 'mail' | 'files' | 'knowledge' | 'database' | 'tasks' | 'workflows' | 'settings'
 
 const navItems: Array<{ id: Section; icon: React.ReactNode; label: string }> = [
   { id: 'chat', icon: <MessageSquare size={20} />, label: 'Chat' },
   { id: 'mail', icon: <Mail size={20} />, label: 'Mail' },
   { id: 'files', icon: <HardDrive size={20} />, label: 'Files' },
+  { id: 'knowledge', icon: <BookOpen size={20} />, label: 'Knowledge' },
   { id: 'database', icon: <Database size={20} />, label: 'Database' },
   { id: 'tasks', icon: <CheckSquare size={20} />, label: 'Tasks' },
   { id: 'workflows', icon: <GitBranch size={20} />, label: 'Workflows' },

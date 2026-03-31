@@ -9,10 +9,11 @@ import { SettingsPage } from "./SettingsPage";
 import { TasksPage } from "./TasksPage";
 import { DatabasePage } from "./DatabasePage";
 import { FlowsPage } from "./FlowsPage";
+import { KnowledgePage } from "./KnowledgePage";
 import { WebSocketProvider, useWS } from "../providers/WebSocketProvider";
 import { OnboardingTour } from "../components/organisms/OnboardingTour/OnboardingTour";
 
-const allSections: Section[] = ['chat', 'mail', 'files', 'database', 'tasks', 'workflows', 'settings']
+const allSections: Section[] = ['chat', 'mail', 'files', 'knowledge', 'database', 'tasks', 'workflows', 'settings']
 
 function MainAppInner() {
   const { user, logout } = useAuth();
@@ -81,6 +82,7 @@ function MainAppInner() {
             {section === 'chat' && <ChatPage onNavigate={openSection} />}
             {section === 'mail' && <MailPage />}
             {section === 'files' && <FilesPage />}
+            {section === 'knowledge' && <KnowledgePage />}
             {section === 'tasks' && <TasksPage />}
             {section === 'database' && <DatabasePage />}
             {section === 'workflows' && <FlowsPage />}

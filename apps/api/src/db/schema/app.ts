@@ -496,6 +496,8 @@ export const knowledge = pgTable(
     title: text("title").notNull(),
     content: text("content").notNull(),
     createdBy: text("created_by").references(() => users.id),
+    embedding: vector("embedding", { dimensions: 1024 }),
+    sourceFileId: text("source_file_id").references(() => files.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -503,5 +505,6 @@ export const knowledge = pgTable(
     index("knowledge_scope_idx").on(table.scope),
     index("knowledge_category_idx").on(table.category),
     index("knowledge_created_by_idx").on(table.createdBy),
+    index("knowledge_source_file_id_idx").on(table.sourceFileId),
   ],
 );

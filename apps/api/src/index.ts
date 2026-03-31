@@ -13,6 +13,7 @@ const { startWorkflowWorker } = await import("./queue/workflow-worker.js");
 const { startFlowWorker } = await import("./queue/flow-worker.js");
 const { startEmailWorker } = await import("./queue/email-worker.js");
 const { startBlingSyncWorker } = await import("./queue/bling-worker.js");
+const { startFileIndexingWorker } = await import("./queue/file-indexing-worker.js");
 const { loadActiveTriggers } = await import("./workflows/triggers.js");
 const { db, runMigrations } = await import("./db/index.js");
 
@@ -27,6 +28,7 @@ try {
   startFlowWorker();
   startEmailWorker();
   startBlingSyncWorker();
+  startFileIndexingWorker();
   await loadActiveTriggers(db);
 } catch (err) {
   app.log.error(err);

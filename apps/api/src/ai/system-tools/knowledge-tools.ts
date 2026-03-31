@@ -1,8 +1,12 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
 import type { ToolContext } from "../types.js";
 import { knowledge } from "../../db/schema/index.js";
+import {
+  generateEmbedding,
+  generateQueryEmbedding,
+} from "../embedding-service.js";
 
 export function buildKnowledgeTools(ctx: ToolContext) {
   return [
@@ -31,6 +35,25 @@ Rules:
           content,
           createdBy: ctx.userId,
         });
+
+        // Generate embedding async (don't block on failure)
+        try {
+          generateEmbedding(`${title}\n${content}`)
+            .then(async (emb) => {
+              if (emb) {
+                const vectorLiteral = sql`'[${sql.raw(emb.join(","))}]'::vector`;
+                await ctx.db.execute(
+                  sql`UPDATE knowledge SET embedding = ${vectorLiteral} WHERE id = ${id}`,
+                );
+              }
+            })
+            .catch((err) => {
+              console.error("[knowledge] Embedding failed for", id, err);
+            });
+        } catch {
+          // Embedding generation is best-effort
+        }
+
         return {
           content: [{ type: "text" as const, text: `Knowledge saved: "${title}" (${scope} scope, ${category})` }],
         };
@@ -45,36 +68,76 @@ Rules:
         query: z.string().optional().describe("Search term to filter by title or content"),
       },
       async ({ category, query: searchQuery }) => {
-        const conditions = [
-          or(
-            eq(knowledge.scope, "company"),
-            and(eq(knowledge.scope, "personal"), eq(knowledge.createdBy, ctx.userId)),
-          ),
-        ];
+        let results: Array<{ id: string; scope: string; category: string; title: string; content: string }>;
 
-        if (category) {
-          conditions.push(eq(knowledge.category, category));
-        }
-
-        const rows = await ctx.db
-          .select({
-            id: knowledge.id,
-            scope: knowledge.scope,
-            category: knowledge.category,
-            title: knowledge.title,
-            content: knowledge.content,
-          })
-          .from(knowledge)
-          .where(and(...conditions))
-          .limit(50);
-
-        // Filter by search query in-memory if provided
-        let results = rows;
+        // Try semantic search first when query is provided
         if (searchQuery) {
-          const q = searchQuery.toLowerCase();
-          results = rows.filter(
-            (r) => r.title.toLowerCase().includes(q) || r.content.toLowerCase().includes(q),
-          );
+          let usedSemantic = false;
+          try {
+            const queryEmb = await generateQueryEmbedding(searchQuery);
+            if (queryEmb) {
+              const vectorLiteral = sql`'[${sql.raw(queryEmb.join(","))}]'::vector`;
+              const categoryFilter = category
+                ? sql` AND category = ${category}`
+                : sql``;
+              const rows = await ctx.db.execute(sql`
+                SELECT id, scope, category, title, content
+                FROM knowledge
+                WHERE (scope = 'company' OR (scope = 'personal' AND created_by = ${ctx.userId}))
+                  AND embedding IS NOT NULL
+                  ${categoryFilter}
+                ORDER BY embedding <=> ${vectorLiteral} ASC
+                LIMIT 20
+              `);
+              results = ((rows.rows ?? rows) as any[]).map((r: any) => ({
+                id: r.id,
+                scope: r.scope,
+                category: r.category,
+                title: r.title,
+                content: r.content,
+              }));
+              usedSemantic = true;
+            }
+          } catch {
+            // Fall through to text search
+          }
+
+          if (!usedSemantic) {
+            // Fall back to text search
+            const conditions = [
+              or(
+                eq(knowledge.scope, "company"),
+                and(eq(knowledge.scope, "personal"), eq(knowledge.createdBy, ctx.userId)),
+              ),
+            ];
+            if (category) conditions.push(eq(knowledge.category, category));
+
+            const rows = await ctx.db
+              .select({ id: knowledge.id, scope: knowledge.scope, category: knowledge.category, title: knowledge.title, content: knowledge.content })
+              .from(knowledge)
+              .where(and(...conditions))
+              .limit(50);
+
+            const q = searchQuery.toLowerCase();
+            results = rows.filter(
+              (r) => r.title.toLowerCase().includes(q) || r.content.toLowerCase().includes(q),
+            );
+          }
+        } else {
+          // No query: list all matching entries
+          const conditions = [
+            or(
+              eq(knowledge.scope, "company"),
+              and(eq(knowledge.scope, "personal"), eq(knowledge.createdBy, ctx.userId)),
+            ),
+          ];
+          if (category) conditions.push(eq(knowledge.category, category));
+
+          results = await ctx.db
+            .select({ id: knowledge.id, scope: knowledge.scope, category: knowledge.category, title: knowledge.title, content: knowledge.content })
+            .from(knowledge)
+            .where(and(...conditions))
+            .limit(50);
         }
 
         if (results.length === 0) {
