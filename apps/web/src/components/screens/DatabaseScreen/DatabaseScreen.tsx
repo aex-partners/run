@@ -141,7 +141,7 @@ export function DatabaseScreen({
     onRenameEntity?.(id, name)
   }
 
-  const _handleDeleteEntity = (id: string) => {
+  const handleDeleteEntity = (id: string) => {
     onDeleteEntity?.(id)
     setEntities(prev => {
       const next = prev.filter(e => e.id !== id)
@@ -200,6 +200,7 @@ export function DatabaseScreen({
         onEntitySelect={handleEntitySelect}
         onNewEntity={onNewEntity}
         onRenameEntity={handleRenameEntity}
+        onDeleteEntity={handleDeleteEntity}
         onManageEntity={handleManageEntity}
         onViewLogs={handleViewLogs}
       />

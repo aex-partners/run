@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search, ScrollText, Settings2 } from 'lucide-react'
+import { Plus, Search, ScrollText, Settings2, Trash2 } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import type { DatabaseEntity } from './DatabaseScreen'
 
@@ -12,6 +12,7 @@ interface EntitySidebarProps {
   onEntitySelect: (id: string) => void
   onNewEntity?: () => void
   onRenameEntity?: (id: string, name: string) => void
+  onDeleteEntity?: (id: string) => void
   onManageEntity?: (id: string) => void
   onViewLogs?: (id: string) => void
 }
@@ -39,6 +40,7 @@ export function EntitySidebar({
   onEntitySelect,
   onNewEntity,
   onRenameEntity,
+  onDeleteEntity,
   onManageEntity,
   onViewLogs,
 }: EntitySidebarProps) {
@@ -47,8 +49,11 @@ export function EntitySidebar({
   const [editingId, setEditingId] = React.useState<string | undefined>(undefined)
   const [editValue, setEditValue] = React.useState('')
   const [contextMenu, setContextMenu] = React.useState<{ entityId: string; x: number; y: number } | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = React.useState<{ entityId: string; entityName: string } | null>(null)
+  const [deleteInput, setDeleteInput] = React.useState('')
   const editInputRef = useRef<HTMLInputElement>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
+  const deleteInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -56,6 +61,21 @@ export function EntitySidebar({
       editInputRef.current.select()
     }
   }, [editingId])
+
+  useEffect(() => {
+    if (deleteConfirm && deleteInputRef.current) {
+      deleteInputRef.current.focus()
+    }
+  }, [deleteConfirm])
+
+  const confirmDelete = () => {
+    if (!deleteConfirm) return
+    if (deleteInput === deleteConfirm.entityName) {
+      onDeleteEntity?.(deleteConfirm.entityId)
+      setDeleteConfirm(null)
+      setDeleteInput('')
+    }
+  }
 
   // Close context menu on outside click
   useEffect(() => {
@@ -316,8 +336,124 @@ export function EntitySidebar({
             }}
             style={contextMenuItemStyle}
           >
-            <Settings2 size={13} /> Manage
+            <Settings2 size={13} /> {t('database.manageEntity')}
           </button>
+          {onDeleteEntity && (
+            <>
+              <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+              <button
+                onClick={() => {
+                  const entity = entities.find((e) => e.id === contextMenu.entityId)
+                  if (entity) {
+                    setDeleteConfirm({ entityId: entity.id, entityName: entity.name })
+                    setDeleteInput('')
+                  }
+                  setContextMenu(null)
+                }}
+                style={{ ...contextMenuItemStyle, color: '#dc2626' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#fef2f2' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+              >
+                <Trash2 size={13} /> {t('database.deleteEntity')}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deleteConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 300,
+          }}
+          onClick={() => { setDeleteConfirm(null); setDeleteInput('') }}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 12,
+              padding: 24,
+              width: 380,
+              maxWidth: '90vw',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              border: '1px solid var(--border)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <Trash2 size={18} color="#dc2626" />
+              <span style={{ fontWeight: 600, fontSize: 15 }}>{t('database.deleteEntityTitle')}</span>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.5 }}>
+              {t('database.deleteEntityWarning', { name: deleteConfirm.entityName })}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 8px' }}>
+              {t('database.deleteEntityConfirmLabel', { name: deleteConfirm.entityName })}
+            </p>
+            <input
+              ref={deleteInputRef}
+              value={deleteInput}
+              onChange={(e) => setDeleteInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmDelete()
+                if (e.key === 'Escape') { setDeleteConfirm(null); setDeleteInput('') }
+              }}
+              placeholder={deleteConfirm.entityName}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: 13,
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                outline: 'none',
+                fontFamily: 'inherit',
+                color: 'var(--text)',
+                background: 'var(--surface-2)',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <button
+                onClick={() => { setDeleteConfirm(null); setDeleteInput('') }}
+                style={{
+                  padding: '7px 16px',
+                  fontSize: 13,
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteInput !== deleteConfirm.entityName}
+                style={{
+                  padding: '7px 16px',
+                  fontSize: 13,
+                  borderRadius: 6,
+                  border: 'none',
+                  background: deleteInput === deleteConfirm.entityName ? '#dc2626' : '#fca5a5',
+                  color: '#fff',
+                  cursor: deleteInput === deleteConfirm.entityName ? 'pointer' : 'not-allowed',
+                  fontFamily: 'inherit',
+                  fontWeight: 500,
+                }}
+              >
+                {t('database.deleteEntityConfirm')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </aside>
