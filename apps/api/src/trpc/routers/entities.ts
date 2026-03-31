@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { eq, desc, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../index.js";
@@ -486,7 +487,20 @@ export const entitiesRouter = router({
         resolvedPrompt = resolvedPrompt.replaceAll(placeholder, String(value ?? ""));
       }
 
-      const result = { text: "" };
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error("ANTHROPIC_API_KEY is not configured. Please set it in your environment to use AI field generation.");
+      }
+
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const aiResponse = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 256,
+        system: "You are a field value generator for a database record. Return ONLY the generated value with no explanation, formatting, or surrounding quotes.",
+        messages: [{ role: "user", content: resolvedPrompt }],
+      });
+
+      const firstBlock = aiResponse.content[0];
+      const result = { text: firstBlock.type === "text" ? firstBlock.text : "" };
 
       // Save the generated value to the record
       const fieldDef = fields.find(f => f.id === input.fieldId);
