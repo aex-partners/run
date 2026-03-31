@@ -158,7 +158,7 @@ export function SettingsPage() {
   const { data: serverPlugins = [] } = trpc.plugins.list.useQuery();
   const installPlugin = trpc.plugins.install.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
   const uninstallPlugin = trpc.plugins.uninstall.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
-  const configurePlugin = trpc.plugins.configure.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
+  const _configurePlugin = trpc.plugins.configure.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
   const togglePlugin = trpc.plugins.setEnabled.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
   const syncPluginRegistry = trpc.plugins.syncRegistry.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
 

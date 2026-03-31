@@ -1,6 +1,6 @@
 import type { CellProps } from '../types'
 
-export function CheckboxCell({ value, rowId, column, onCommit, onEditChange }: CellProps) {
+export function CheckboxCell({ value, rowId: _rowId, column, onCommit, onEditChange }: CellProps) {
   const checked = value === true || value === 'true' || value === 1 || value === '1'
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>

@@ -46,6 +46,7 @@ export function useSpeechToText(options: UseSpeechToTextOptions = {}) {
     const SR =
       (window as unknown as Record<string, unknown>).SpeechRecognition ||
       (window as unknown as Record<string, unknown>).webkitSpeechRecognition
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time capability check
     if (!SR) setSupported(false)
   }, [])
 
@@ -128,7 +129,7 @@ export function useSpeechToText(options: UseSpeechToTextOptions = {}) {
     setTranscript('')
     setInterimTranscript('')
     transcriptRef.current = ''
-  }, [onTranscript, resetSilenceTimer, clearSilenceTimer])
+  }, [onTranscript, resetSilenceTimer, clearSilenceTimer, lang])
 
   const stop = useCallback(() => {
     clearSilenceTimer()

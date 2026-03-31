@@ -20,7 +20,6 @@ import {
   collectSteps,
   generateStepName,
   type FlowTrigger,
-  type FlowAction,
   type ActionType,
 } from "../../../stores/flow-builder-store";
 
@@ -405,4 +404,5 @@ export function FlowCanvas() {
 }
 
 // Re-export for convenience
+// eslint-disable-next-line react-refresh/only-export-components
 export { collectSteps };

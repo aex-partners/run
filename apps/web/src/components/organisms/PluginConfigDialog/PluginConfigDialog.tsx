@@ -64,8 +64,9 @@ export function PluginConfigDialog({
     for (const field of fields) {
       initial[field.key] = currentConfig[field.key] ?? field.default ?? (field.type === 'boolean' ? false : '')
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync from props
     setValues(initial)
-  }, [configSchema, currentConfig])
+  }, [configSchema, currentConfig]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (key: string, value: unknown) => {
     setValues((prev) => ({ ...prev, [key]: value }))

@@ -61,7 +61,7 @@ export function CalendarView({ columns, rows, dateColumnId, onEventClick }: Cale
       map.get(key)!.push({ row, rowId: getRowId(row) })
     })
     return map
-  }, [rows, dateColumnId])
+  }, [rows, dateColumnId, getRowId])
 
   const prevMonth = () => setViewDate(new Date(year, month - 1, 1))
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1))

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Trash2, Copy, ArrowRight, Download, X } from 'lucide-react'
+import { Trash2, Copy, Download, X } from 'lucide-react'
 
 interface BulkActionsBarProps {
   selectedCount: number

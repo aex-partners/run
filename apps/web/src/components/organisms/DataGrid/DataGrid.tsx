@@ -224,7 +224,7 @@ export function DataGrid({
   const handleSelectRow = (rowId: string, checked: boolean) => {
     state.setInternalSelected((prev) => {
       const next = new Set(prev)
-      checked ? next.add(rowId) : next.delete(rowId)
+      if (checked) { next.add(rowId) } else { next.delete(rowId) }
       return next
     })
     onSelectRow?.(rowId, checked)
@@ -281,7 +281,7 @@ export function DataGrid({
   const selectedIds = Array.from(allSelectedIds)
   const detailRow = detailRowId ? mergedRows.find(r => getRowId(r) === detailRowId) ?? null : null
 
-  const handleRowClickForDetail = (rowId: string, col: GridColumn) => {
+  const _handleRowClickForDetail = (rowId: string, col: GridColumn) => {
     // If clicking on a cell that is not the ID column and not an editable action, open detail panel
     if (onRowClick) {
       onRowClick(rowId)

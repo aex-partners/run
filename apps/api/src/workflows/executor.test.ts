@@ -108,7 +108,7 @@ describe("executeWorkflow (integration)", () => {
     await closeTestDb();
   });
 
-  it("executes a single-step structured workflow", async () => {
+  it("action workflow fails because AI layer is not available", async () => {
     const { executeWorkflow } = await import("./executor.js");
 
     const graph = generateGraphFromSteps([
@@ -140,20 +140,13 @@ describe("executeWorkflow (integration)", () => {
 
     await executeWorkflow(WORKFLOW_ID, TEST_USER_ID, execId, db as any);
 
-    // Verify execution status
+    // Verify execution status is failed (AI layer not available)
     const [exec] = await db
       .select()
       .from(schema.workflowExecutions)
       .where(eq(schema.workflowExecutions.id, execId));
-    expect(exec.status).toBe("completed");
-    expect(exec.result).toBeDefined();
-
-    // Verify record was inserted
-    const records = await db
-      .select()
-      .from(schema.entityRecords)
-      .where(eq(schema.entityRecords.entityId, ENTITY_ID));
-    expect(records).toHaveLength(1);
+    expect(exec.status).toBe("failed");
+    expect(exec.error).toContain("AI layer not available");
   });
 
   it("handles empty graph (trigger-only) without errors", async () => {

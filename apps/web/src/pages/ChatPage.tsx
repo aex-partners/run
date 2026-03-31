@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { X, ArrowLeft, Search, Bot, Check, ImagePlus } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { formatRelativeTime, formatTime } from "../lib/formatTime";
@@ -199,10 +199,11 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
   useEffect(() => {
     if (!activeConversationId && serverConversations.length > 0) {
       const first = serverConversations[0];
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional auto-select
       setActiveConversationId(first.id);
       markRead.mutate({ id: first.id });
     }
-  }, [serverConversations]);
+  }, [serverConversations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeAgent: AgentOption | null = useMemo(() => {
     if (!activeConversationId) return null;
@@ -242,6 +243,7 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
     }
   }, [isAIConversation, serverMessages, activeConversationId]);
 
+  /* eslint-disable react-hooks/preserve-manual-memoization */
   const messages: ThreadMessage[] = useMemo(() => {
     // AI conversation: use agent chat messages
     if (isAIConversation && agentChat.messages.length > 0) {
@@ -353,7 +355,7 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
     });
 
     // Append streaming message for DM/channel (WebSocket-based)
-    const activeStream = activeConversationId ? streams.get(activeConversationId) : null;
+    const activeStream = activeConversationId ? streams.current.get(activeConversationId) : null;
     if (activeStream && activeStream.content) {
       mapped.push({
         id: activeStream.messageId,
@@ -364,12 +366,13 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
     }
 
     return mapped;
-  }, [isAIConversation, agentChat.messages, serverMessages, activeConversationId, streams, confirmAction]);
+  }, [isAIConversation, agentChat.messages, serverMessages, activeConversationId, streams, confirmAction]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* eslint-enable react-hooks/preserve-manual-memoization */
 
   const isTyping = isAIConversation
     ? agentChat.isStreaming
     : activeConversationId
-      ? typingConversations.has(activeConversationId)
+      ? typingConversations.current.has(activeConversationId)
       : false;
 
   const handleSendMessage = (content: string) => {

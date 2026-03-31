@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import type { GridColumn, GridRow, RowGroup } from '../types'
+import type { GridRow, RowGroup } from '../types'
 
 export interface GridState {
   hoveredRow: string | null
@@ -61,7 +61,7 @@ export function useGridState(
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev)
-      next.has(groupId) ? next.delete(groupId) : next.add(groupId)
+      if (next.has(groupId)) { next.delete(groupId) } else { next.add(groupId) }
       return next
     })
     onToggleGroup?.(groupId)
@@ -70,7 +70,7 @@ export function useGridState(
   const toggleColumn = (colId: string) => {
     setHiddenColumns(prev => {
       const next = new Set(prev)
-      next.has(colId) ? next.delete(colId) : next.add(colId)
+      if (next.has(colId)) { next.delete(colId) } else { next.add(colId) }
       return next
     })
   }

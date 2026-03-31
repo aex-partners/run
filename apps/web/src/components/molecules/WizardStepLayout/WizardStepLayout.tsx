@@ -19,7 +19,7 @@ export interface WizardStepLayoutProps {
 }
 
 export function WizardStepLayout({
-  steps,
+  steps: _steps,
   currentStep,
   title,
   description,

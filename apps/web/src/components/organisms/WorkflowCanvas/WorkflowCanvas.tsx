@@ -5,7 +5,6 @@ import {
   Background,
   Controls,
   MiniMap,
-  addEdge,
   Handle,
   Position,
   BackgroundVariant,

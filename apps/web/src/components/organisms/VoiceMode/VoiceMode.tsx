@@ -43,7 +43,7 @@ async function playTTS(text: string, signal: AbortSignal): Promise<void> {
     source.connect(audioCtx.destination)
     source.onended = () => { audioCtx.close(); resolve() }
     signal.addEventListener('abort', () => {
-      try { source.stop() } catch {}
+      try { source.stop() } catch { /* ignore stop errors */ }
       audioCtx.close()
       reject(new DOMException('Aborted', 'AbortError'))
     })
@@ -299,7 +299,7 @@ export function VoiceMode({
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
   }
-  const dragRefState = useRef<typeof dragRef.current>(null)
+  const _dragRefState = useRef<typeof dragRef.current>(null)
   // reuse pos from state
 
   const stateLabel =

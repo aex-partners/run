@@ -22,6 +22,7 @@ export function RelationshipCell({
   const displayValue = String(value)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync popover state with editing
     if (isEditing) setOpen(true)
   }, [isEditing])
 
@@ -44,6 +45,7 @@ export function RelationshipCell({
 
   useEffect(() => {
     if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch triggers setState in callback
     fetchResults('')
   }, [open, fetchResults])
 

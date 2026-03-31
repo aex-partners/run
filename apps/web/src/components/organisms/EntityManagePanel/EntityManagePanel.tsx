@@ -54,6 +54,7 @@ export type EntityFieldType =
   | 'updated_by'
   | 'ai'
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getFieldTypeLabel(t: (key: string) => string, type: EntityFieldType): string {
   return t(`database.entityManage.fieldTypes.${type}`)
 }
@@ -204,7 +205,7 @@ export function EntityManagePanel({
       relationshipEntityId: ['relationship', 'lookup', 'rollup'].includes(newFieldType) ? newFieldRelationshipEntityId || undefined : undefined,
       relationshipEntityName: ['relationship', 'lookup', 'rollup'].includes(newFieldType) ? newFieldRelationshipEntityName || undefined : undefined,
       lookupFieldId: newFieldType === 'lookup' ? newFieldLookupFieldId || undefined : undefined,
-      rollupFunction: newFieldType === 'rollup' ? newFieldRollupFunction as any : undefined,
+      rollupFunction: newFieldType === 'rollup' ? newFieldRollupFunction as EntityField['rollupFunction'] : undefined,
       aiPrompt: newFieldType === 'ai' ? newFieldAiPrompt || undefined : undefined,
       maxRating: newFieldType === 'rating' ? newFieldMaxRating : undefined,
       decimalPlaces: ['decimal', 'percent'].includes(newFieldType) ? newFieldDecimalPlaces : undefined,
@@ -951,7 +952,7 @@ function FieldRow({ field, isExpanded, isEditing, onToggleExpand, onStartEdit, o
       relationshipEntityId: ['relationship', 'lookup', 'rollup'].includes(editType) ? editRelationshipEntityId || undefined : undefined,
       relationshipEntityName: ['relationship', 'lookup', 'rollup'].includes(editType) ? editRelationshipEntityName || undefined : undefined,
       lookupFieldId: editType === 'lookup' ? editLookupFieldId || undefined : undefined,
-      rollupFunction: editType === 'rollup' ? editRollupFunction as any : undefined,
+      rollupFunction: editType === 'rollup' ? editRollupFunction as EntityField['rollupFunction'] : undefined,
     })
     onStopEdit()
   }

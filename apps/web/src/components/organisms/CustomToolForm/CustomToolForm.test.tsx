@@ -18,22 +18,15 @@ describe('CustomToolForm', () => {
 
   it('selects a type when clicked', async () => {
     const user = userEvent.setup()
-    render(<CustomToolForm />)
-
-    // Click on "Code" type button
-    await user.click(screen.getByText('Code'))
-
-    // The Code button should now be selected (we can verify by submitting and checking the data)
     const onSubmit = vi.fn()
-    const { unmount } = render(<CustomToolForm onSubmit={onSubmit} />)
+    render(<CustomToolForm onSubmit={onSubmit} />)
 
-    await user.click(screen.getAllByText('Code')[1])
-    await user.click(screen.getAllByRole('button', { name: 'Create Tool' })[1])
+    await user.click(screen.getByText('Code'))
+    await user.click(screen.getByRole('button', { name: 'Create Tool' }))
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'code' })
     )
-    unmount()
   })
 
   it('renders input schema and config JSON editors', () => {

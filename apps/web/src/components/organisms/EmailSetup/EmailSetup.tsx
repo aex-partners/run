@@ -127,7 +127,7 @@ export function EmailSetup({
   const [discovering, setDiscovering] = useState(false)
   const [currentStep, setCurrentStep] = useState<DiscoverStep>('idle')
   const [completedSteps, setCompletedSteps] = useState<DiscoverStep[]>([])
-  const [discoveredSettings, setDiscoveredSettings] = useState<{
+  const [_discoveredSettings, setDiscoveredSettings] = useState<{
     smtpHost: string; smtpPort: number; smtpSecure: boolean
     imapHost: string; imapPort: number; imapSecure: boolean
   } | null>(null)
@@ -155,7 +155,7 @@ export function EmailSetup({
 
   const markStep = (step: DiscoverStep) => {
     setCurrentStep(step)
-    setCompletedSteps((prev) => {
+    setCompletedSteps((_prev) => {
       const idx = STEP_ORDER.indexOf(step)
       return STEP_ORDER.slice(0, idx)
     })

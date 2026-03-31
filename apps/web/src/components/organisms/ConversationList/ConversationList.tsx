@@ -48,9 +48,9 @@ export function ConversationList({
   onSelect,
   onNewGroup,
   onInviteMember,
-  onPin,
-  onFavorite,
-  onMute,
+  onPin: _onPin,
+  onFavorite: _onFavorite,
+  onMute: _onMute,
 }: ConversationListProps) {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')

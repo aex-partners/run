@@ -42,6 +42,7 @@ export function PathPreviewPanel({ selectedPath }: PathPreviewPanelProps) {
 
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset state on path change
     setLines([])
     idxRef.current = 0
 

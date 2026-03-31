@@ -276,12 +276,14 @@ export function DatabasePage() {
   // Auto-select first entity when loaded and none selected
   useEffect(() => {
     if (!activeEntityId && entities.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional auto-select
       setActiveEntityId(entities[0].id);
     }
   }, [activeEntityId, entities]);
 
   // Clear selected rows when switching entities
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on entity change
     setSelectedRows([]);
   }, [activeEntityId]);
 
@@ -452,6 +454,7 @@ export function DatabasePage() {
     return { [activeEntityId]: versions };
   }, [activeEntityId, entityDetail.data, fields.length]);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const entityDescriptions = useMemo<Record<string, string>>(() => {
     if (!activeEntityId || !entityDetail.data?.description) return {};
     return { [activeEntityId]: entityDetail.data.description };

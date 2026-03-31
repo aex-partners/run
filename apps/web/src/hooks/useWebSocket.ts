@@ -21,6 +21,7 @@ export function useWebSocket() {
   const typingRef = useRef<Set<string>>(new Set());
   const [, setTick] = useState(0);
   const tick = useCallback(() => setTick((n) => n + 1), []);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     if (disposed.current) return;
@@ -45,7 +46,7 @@ export function useWebSocket() {
         wsRef.current = null;
         reconnectTimeout.current = setTimeout(() => {
           backoffRef.current = Math.min(backoffRef.current * 2, 30000);
-          connect();
+          connectRef.current();
         }, backoffRef.current);
       }
     };
@@ -189,6 +190,10 @@ export function useWebSocket() {
   }, [queryClient, user.id, tick]);
 
   useEffect(() => {
+    connectRef.current = connect;
+  });
+
+  useEffect(() => {
     disposed.current = false;
     connect();
     return () => {
@@ -201,7 +206,7 @@ export function useWebSocket() {
 
   return {
     isConnected,
-    streams: streamsRef.current,
-    typingConversations: typingRef.current,
+    streams: streamsRef,
+    typingConversations: typingRef,
   };
 }

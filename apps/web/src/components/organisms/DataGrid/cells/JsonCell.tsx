@@ -9,7 +9,9 @@ export function JsonCell({ value, isEditing, editValue, onEditChange, onCommit, 
 
   useEffect(() => {
     if (isEditing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync popover state with editing
       setOpen(true)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDirty(false)
     }
   }, [isEditing])

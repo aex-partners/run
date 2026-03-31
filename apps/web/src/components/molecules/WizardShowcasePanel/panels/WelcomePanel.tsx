@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   MessageSquare, Database, Zap, BarChart3, Users, ShieldCheck,
   Bell, CheckCircle2, TrendingUp, Package, FileText, Bot,

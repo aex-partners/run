@@ -6,3 +6,4 @@ dist
 storybook-static
 debug-storybook.log
 uploads/
+.claude/worktrees/

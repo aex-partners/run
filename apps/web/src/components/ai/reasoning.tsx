@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 import { useControllableState } from "@radix-ui/react-use-controllable-state"
 import { BrainIcon, ChevronDownIcon } from "lucide-react"
 import type { ComponentProps } from "react"
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react"
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { Shimmer } from "./shimmer"
 
 interface ReasoningContextValue {
@@ -23,7 +23,7 @@ export type ReasoningProps = ComponentProps<typeof Collapsible> & {
 export const Reasoning = ({ className, isStreaming = false, duration, children, open: openProp, onOpenChange, defaultOpen, ...props }: ReasoningProps) => {
   const [open, setOpen] = useControllableState({ prop: openProp, onChange: onOpenChange, defaultProp: defaultOpen ?? isStreaming })
   const hasAutoClosedRef = useRef(false)
-  const elapsedRef = useRef(0)
+  const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
     if (isStreaming) {
@@ -31,7 +31,7 @@ export const Reasoning = ({ className, isStreaming = false, duration, children, 
       hasAutoClosedRef.current = false
       const start = Date.now()
       const interval = setInterval(() => {
-        elapsedRef.current = Math.floor((Date.now() - start) / 1000)
+        setElapsed(Math.floor((Date.now() - start) / 1000))
       }, 1000)
       return () => clearInterval(interval)
     }
@@ -44,7 +44,7 @@ export const Reasoning = ({ className, isStreaming = false, duration, children, 
     }
   }, [isStreaming, setOpen])
 
-  const contextValue = useMemo(() => ({ isStreaming, duration: duration ?? elapsedRef.current }), [isStreaming, duration])
+  const contextValue = useMemo(() => ({ isStreaming, duration: duration ?? elapsed }), [isStreaming, duration, elapsed])
 
   return (
     <ReasoningContext.Provider value={contextValue}>

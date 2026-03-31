@@ -24,8 +24,9 @@ export interface ShimmerProps {
   spread?: number
 }
 
+/* eslint-disable react-hooks/static-components -- motion.create components are cached via module-level Map */
 const ShimmerComponent = ({ children, as: Component = "p", className, duration = 2, spread = 2 }: ShimmerProps) => {
-  const MotionComponent = getMotionComponent(Component as keyof JSX.IntrinsicElements)
+  const MotionComponent = useMemo(() => getMotionComponent(Component as keyof JSX.IntrinsicElements), [Component])
   const dynamicSpread = useMemo(() => (children?.length ?? 0) * spread, [children, spread])
 
   return (

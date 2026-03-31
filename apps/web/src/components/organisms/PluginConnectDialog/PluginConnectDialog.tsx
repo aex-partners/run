@@ -26,7 +26,7 @@ export interface PluginConnectDialogProps {
 export function PluginConnectDialog({
   open,
   onClose,
-  pluginName,
+  pluginName: _pluginName,
   pluginDisplayName,
   pluginLogoUrl,
   authType,
@@ -49,12 +49,19 @@ export function PluginConnectDialog({
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on dialog open
       setApiKey('')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUsername('')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPassword('')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOauthClientId('')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOauthClientSecret('')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setConnecting(false)
     }
   }, [open])

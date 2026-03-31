@@ -21,7 +21,7 @@ export function FilesPage() {
   const deleteMut = trpc.files.delete.useMutation({
     onSuccess: () => { filesQuery.refetch(); countsQuery.refetch(); },
   });
-  const restoreMut = trpc.files.restore.useMutation({
+  const _restoreMut = trpc.files.restore.useMutation({
     onSuccess: () => { filesQuery.refetch(); countsQuery.refetch(); },
   });
   const createFolderMut = trpc.files.createFolder.useMutation({

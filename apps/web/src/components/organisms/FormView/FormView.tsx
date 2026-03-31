@@ -57,12 +57,14 @@ export function FormView({ entityId, entityFields }: FormViewProps) {
   // Auto-select first form
   useEffect(() => {
     if (!activeFormId && formsQuery.data && formsQuery.data.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional auto-select on data load
       setActiveFormId(formsQuery.data[0].id)
     }
   }, [activeFormId, formsQuery.data])
 
   // Reset when entity changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on entity change
     setActiveFormId(undefined)
   }, [entityId])
 

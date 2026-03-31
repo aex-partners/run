@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DataGrid, type GridColumn, type GridRow, type RowGroup } from '../../organisms/DataGrid/DataGrid'
 import type { ViewType } from '../../organisms/DataGrid/types'
@@ -141,7 +141,7 @@ export function DatabaseScreen({
     onRenameEntity?.(id, name)
   }
 
-  const handleDeleteEntity = (id: string) => {
+  const _handleDeleteEntity = (id: string) => {
     onDeleteEntity?.(id)
     setEntities(prev => {
       const next = prev.filter(e => e.id !== id)

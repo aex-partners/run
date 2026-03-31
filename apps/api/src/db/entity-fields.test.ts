@@ -23,7 +23,7 @@ describe("validateRecordData", () => {
   const fields: EntityField[] = [
     { id: "1", name: "Nome", slug: "nome", type: "text", required: true },
     { id: "2", name: "Email", slug: "email", type: "email", required: false },
-    { id: "3", name: "Categoria", slug: "categoria", type: "select", required: false, options: ["A", "B", "C"] },
+    { id: "3", name: "Categoria", slug: "categoria", type: "select", required: false, options: [{ value: "A", label: "A" }, { value: "B", label: "B" }, { value: "C", label: "C" }] },
     { id: "4", name: "Quantidade", slug: "quantidade", type: "number", required: false },
   ];
 

@@ -29,7 +29,7 @@ const ghostBtn: React.CSSProperties = {
   flexShrink: 0,
 }
 
-export function AgentCard({ id, name, description, avatar, skillCount = 0, toolCount = 0, onEdit, onDelete }: AgentCardProps) {
+export function AgentCard({ id, name, description, avatar: _avatar, skillCount = 0, toolCount = 0, onEdit, onDelete }: AgentCardProps) {
   const [hovered, setHovered] = useState(false)
 
   return (

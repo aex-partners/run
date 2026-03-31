@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest";
 import { slugify, parseFields, serializeFields, validateFieldType, validateRecordData, type EntityField } from "./entity-fields.js";
 
 describe("slugify edge cases", () => {
-  it("returns empty string for all-emoji input", () => {
+  it("returns fallback field_XXXX for all-emoji input", () => {
     const result = slugify("🔥🚀");
-    expect(result).toBe("");
+    expect(result).toMatch(/^field_[a-f0-9]{8}$/);
   });
 
-  it("handles CJK characters", () => {
+  it("handles CJK characters with fallback", () => {
     const result = slugify("产品名称");
-    expect(result).toBe("");
+    expect(result).toMatch(/^field_[a-f0-9]{8}$/);
   });
 
   it("handles mixed ASCII and accents", () => {
@@ -20,8 +20,9 @@ describe("slugify edge cases", () => {
     expect(slugify("A")).toBe("a");
   });
 
-  it("handles empty string", () => {
-    expect(slugify("")).toBe("");
+  it("returns fallback field_XXXX for empty string", () => {
+    const result = slugify("");
+    expect(result).toMatch(/^field_[a-f0-9]{8}$/);
   });
 });
 
@@ -44,9 +45,14 @@ describe("serializeFields", () => {
   it("roundtrips with parseFields", () => {
     const fields: EntityField[] = [
       { id: "1", name: "Nome", slug: "nome", type: "text", required: true },
-      { id: "2", name: "Status", slug: "status", type: "select", required: false, options: ["A", "B"] },
+      { id: "2", name: "Status", slug: "status", type: "select", required: false, options: [{ value: "A", label: "A" }, { value: "B", label: "B" }] },
     ];
-    expect(parseFields(serializeFields(fields))).toEqual(fields);
+    const result = parseFields(serializeFields(fields));
+    expect(result).toHaveLength(2);
+    expect(result[0].name).toBe("Nome");
+    expect(result[0].options).toBeUndefined();
+    expect(result[1].name).toBe("Status");
+    expect(result[1].options).toEqual([{ value: "A", label: "A" }, { value: "B", label: "B" }]);
   });
 });
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
 import { fn } from '@storybook/test'
-import { FileShareDialog, type SharedUser, type ShareAccess } from './FileShareDialog'
+import { FileShareDialog, type SharedUser } from './FileShareDialog'
 
 // Stateful wrapper for interactive stories
 function StatefulShareDialog(props: React.ComponentProps<typeof FileShareDialog>) {
