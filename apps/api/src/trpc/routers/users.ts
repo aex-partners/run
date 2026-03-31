@@ -129,6 +129,32 @@ export const usersRouter = router({
       return { success: true };
     }),
 
+  updateName: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        name: z.string().min(1).max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [target] = await ctx.db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, input.userId))
+        .limit(1);
+
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({ name: input.name })
+        .where(eq(users.id, input.userId));
+
+      return { success: true };
+    }),
+
   delete: adminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
