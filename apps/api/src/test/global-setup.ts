@@ -20,11 +20,19 @@ export async function setup() {
     await adminSql.end();
   }
 
+  // Ensure pgvector extension exists
+  const testSql = postgres(mainUrl, { max: 1 });
+  try {
+    await testSql.unsafe("CREATE EXTENSION IF NOT EXISTS vector");
+  } finally {
+    await testSql.end();
+  }
+
   // Push schema using drizzle-kit
   execSync("npx drizzle-kit push --force", {
     cwd: resolve(import.meta.dirname, "../.."),
     env: { ...process.env, DATABASE_URL: mainUrl },
-    stdio: "pipe",
+    stdio: "inherit",
   });
 }
 
