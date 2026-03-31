@@ -39,7 +39,7 @@ export interface FlowVersion {
   updatedAt: string;
 }
 
-export type RightSidebar = "none" | "settings";
+export type RightSidebar = "none" | "settings" | "runs";
 
 export interface FlowBuilderState {
   flowId: string | null;
@@ -65,6 +65,7 @@ export interface FlowBuilderActions {
   setSaving: (saving: boolean) => void;
   setDirty: (dirty: boolean) => void;
   getTriggerJson: () => string;
+  toggleRunsSidebar: () => void;
 }
 
 // Walk the linked list to find a step and its parent
@@ -298,6 +299,10 @@ export const useFlowBuilderStore = create<FlowBuilderState & FlowBuilderActions>
 
   setSaving: (saving) => set({ saving }),
   setDirty: (dirty) => set({ dirty }),
+  toggleRunsSidebar: () => {
+    const current = get().rightSidebar;
+    set({ rightSidebar: current === "runs" ? "none" : "runs", selectedStep: null });
+  },
 
   getTriggerJson: () => {
     const { flowVersion } = get();

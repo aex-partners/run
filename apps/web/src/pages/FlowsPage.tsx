@@ -206,6 +206,8 @@ export function FlowsPage() {
           onExecute={handleExecute}
           publishing={publishMut.isPending}
           executing={executeMut.isPending}
+          runs={runsQuery.data as import("../components/organisms/FlowEditor/FlowRunHistory").FlowRun[] | undefined}
+          runsLoading={runsQuery.isLoading}
         />
       </div>
     );

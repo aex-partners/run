@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Save, Upload, Play, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Upload, Play, Loader2, History } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useFlowBuilderStore } from "../../../stores/flow-builder-store";
 
@@ -18,6 +18,8 @@ export function FlowToolbar({ onBack, onSave, onPublish, onExecute, publishing, 
   const saving = useFlowBuilderStore((s) => s.saving);
   const dirty = useFlowBuilderStore((s) => s.dirty);
   const updateFlowName = useFlowBuilderStore((s) => s.updateFlowName);
+  const rightSidebar = useFlowBuilderStore((s) => s.rightSidebar);
+  const toggleRunsSidebar = useFlowBuilderStore((s) => s.toggleRunsSidebar);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -143,6 +145,20 @@ export function FlowToolbar({ onBack, onSave, onPublish, onExecute, publishing, 
       )}
 
       <div style={{ flex: 1 }} />
+
+      {/* History toggle */}
+      <button
+        onClick={toggleRunsSidebar}
+        style={{
+          ...buttonBase,
+          background: rightSidebar === "runs" ? "var(--accent-light)" : "var(--surface)",
+          borderColor: rightSidebar === "runs" ? "var(--accent-border)" : "var(--border)",
+          color: rightSidebar === "runs" ? "var(--accent)" : "var(--text)",
+        }}
+      >
+        <History size={14} />
+        Runs
+      </button>
 
       {/* Save */}
       <button
