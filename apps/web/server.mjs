@@ -1,7 +1,8 @@
 import { createServer } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import { join, extname } from "node:path";
-import { createProxyServer } from "http-proxy";
+import httpProxy from "http-proxy";
+const { createProxyServer } = httpProxy;
 
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const API_URL = process.env.API_URL || "http://localhost:3001";
