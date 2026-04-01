@@ -41,6 +41,7 @@ interface GridBodyProps {
   onFetchRelationshipRecords?: (entityId: string, search: string) => Promise<{ id: string; label: string }[]>
   workspaceUsers?: { id: string; name: string; avatar?: string }[]
   onAIGenerate?: (rowId: string, colId: string, prompt: string) => Promise<string>
+  onRowDoubleClick?: (rowId: string) => void
   inlineNewRow?: {
     isActive: boolean
     values: Record<string, string>
@@ -81,6 +82,7 @@ export function GridBody({
   onFetchRelationshipRecords,
   workspaceUsers,
   onAIGenerate,
+  onRowDoubleClick,
   inlineNewRow,
 }: GridBodyProps) {
   const showSkeleton = visibleRows.length === 0 && !emptyMessage
@@ -114,6 +116,7 @@ export function GridBody({
         onFetchRelationshipRecords={onFetchRelationshipRecords}
         workspaceUsers={workspaceUsers}
         onAIGenerate={onAIGenerate}
+        onDoubleClick={onRowDoubleClick}
       />
     )
   }

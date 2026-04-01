@@ -124,6 +124,15 @@ export interface DataGridProps {
   onAIGenerate?: (rowId: string, colId: string, prompt: string) => Promise<string>
   groupByColumn?: string
   onGroupByChange?: (colId: string | null) => void
+  /** Inline new row state and callbacks */
+  inlineNewRow?: {
+    isActive: boolean
+    values: Record<string, string>
+    onStart: () => void
+    onValueChange: (colId: string, value: string) => void
+    onCommit: () => void
+    onCancel: () => void
+  }
   /** Optional slot rendered at the start of the toolbar (e.g. ViewSwitcher) */
   toolbarLeftSlot?: React.ReactNode
   /** Callback to fetch records from a related entity (for relationship cells) */

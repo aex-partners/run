@@ -183,6 +183,10 @@ export function DatabasePage() {
   const [showNewRecord, setShowNewRecord] = useState(false);
   const [newRecordData, setNewRecordData] = useState<Record<string, string>>({});
 
+  // Inline new row state (Issue #16)
+  const [inlineNewRowActive, setInlineNewRowActive] = useState(false);
+  const [inlineNewRowValues, setInlineNewRowValues] = useState<Record<string, string>>({});
+
   // AI chat for database context
   const createContextConv = trpc.conversations.getOrCreateContext.useMutation();
   const sendAI = trpc.messages.send.useMutation();
@@ -553,6 +557,79 @@ export function DatabasePage() {
     [activeEntityId, fields, generateFieldValue],
   );
 
+  // Issue #10: Column rename callback
+  const handleColumnRename = useCallback(
+    (colId: string, newLabel: string) => {
+      if (!activeEntityId || !newLabel) return;
+      const field = fields.find((f) => f.slug === colId);
+      if (!field) return;
+      updateField.mutate({
+        entityId: activeEntityId,
+        fieldId: field.id,
+        updates: { name: newLabel },
+      });
+    },
+    [activeEntityId, fields, updateField],
+  );
+
+  // Issue #10: Column delete callback
+  const handleColumnDelete = useCallback(
+    (colId: string) => {
+      if (!activeEntityId) return;
+      const field = fields.find((f) => f.slug === colId);
+      if (!field) return;
+      const confirmed = window.confirm(`Delete column "${field.name}"? This cannot be undone.`);
+      if (!confirmed) return;
+      removeField.mutate({ entityId: activeEntityId, fieldId: field.id });
+    },
+    [activeEntityId, fields, removeField],
+  );
+
+  // Issue #10: Column insert callback (opens AddField dialog)
+  const handleColumnInsert = useCallback(
+    (_position: 'left' | 'right', _referenceColId: string) => {
+      setShowAddField(true);
+    },
+    [],
+  );
+
+  // Issue #16: Inline new row commit
+  const handleInlineNewRowCommit = useCallback(() => {
+    if (!activeEntityId) return;
+    const data: Record<string, unknown> = {};
+    for (const field of fields) {
+      const val = inlineNewRowValues[field.slug];
+      if (val === undefined || val === "") continue;
+      if (field.type === "number" || field.type === "decimal" || field.type === "currency" || field.type === "percent" || field.type === "duration") {
+        data[field.slug] = Number(val);
+      } else if (field.type === "checkbox") {
+        data[field.slug] = val === "true";
+      } else if (field.type === "rating") {
+        data[field.slug] = Number(val);
+      } else {
+        data[field.slug] = val;
+      }
+    }
+    if (Object.keys(data).length > 0) {
+      createRecord.mutate({ entityId: activeEntityId, data });
+    }
+    setInlineNewRowActive(false);
+    setInlineNewRowValues({});
+  }, [activeEntityId, fields, inlineNewRowValues, createRecord]);
+
+  const inlineNewRow = useMemo(() => ({
+    isActive: inlineNewRowActive,
+    values: inlineNewRowValues,
+    onStart: () => setInlineNewRowActive(true),
+    onValueChange: (colId: string, value: string) =>
+      setInlineNewRowValues((prev) => ({ ...prev, [colId]: value })),
+    onCommit: handleInlineNewRowCommit,
+    onCancel: () => {
+      setInlineNewRowActive(false);
+      setInlineNewRowValues({});
+    },
+  }), [inlineNewRowActive, inlineNewRowValues, handleInlineNewRowCommit]);
+
   if (entitiesQuery.isSuccess && entities.length === 0) {
     return (
       <div
@@ -619,6 +696,10 @@ export function DatabasePage() {
         onAddEntityField={handleManageAddField}
         onUpdateEntityField={handleManageUpdateField}
         onDeleteEntityField={handleManageDeleteField}
+        onColumnRename={handleColumnRename}
+        onColumnDelete={handleColumnDelete}
+        onColumnInsert={handleColumnInsert}
+        inlineNewRow={inlineNewRow}
         onFetchRelationshipRecords={handleFetchRelationshipRecords}
         workspaceUsers={workspaceUsers}
         onAIGenerate={handleAIGenerate}

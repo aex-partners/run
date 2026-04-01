@@ -42,6 +42,7 @@ export function DataGrid({
   onGroupByChange: externalGroupByChange,
   filterConfig: externalFilterConfig,
   onFilterChange: externalFilterChange,
+  inlineNewRow,
   toolbarLeftSlot,
   onAIGenerate,
   onFetchRelationshipRecords,
@@ -281,12 +282,9 @@ export function DataGrid({
   const selectedIds = Array.from(allSelectedIds)
   const detailRow = detailRowId ? mergedRows.find(r => getRowId(r) === detailRowId) ?? null : null
 
-  const _handleRowClickForDetail = (rowId: string, col: GridColumn) => {
-    // If clicking on a cell that is not the ID column and not an editable action, open detail panel
-    if (onRowClick) {
-      onRowClick(rowId)
-    }
-    handleCellClick(rowId, col)
+  const handleRowDoubleClick = (rowId: string) => {
+    setDetailRowId(rowId)
+    onRowClick?.(rowId)
   }
 
   const handleClearSelection = () => {
@@ -345,7 +343,11 @@ export function DataGrid({
               onSortDesc={handleSortDesc}
               onHideColumn={state.toggleColumn}
               onStartResize={startResize}
-              onColumnRename={onColumnRename ? (colId) => onColumnRename(colId, '') : undefined}
+              onColumnRename={onColumnRename ? (colId) => {
+                const col = columns.find(c => c.id === colId)
+                const newName = window.prompt('Rename column:', col?.label ?? colId)
+                if (newName && newName.trim()) onColumnRename(colId, newName.trim())
+              } : undefined}
               onColumnDelete={onColumnDelete}
               onColumnInsert={onColumnInsert}
             />
@@ -380,6 +382,8 @@ export function DataGrid({
               onFetchRelationshipRecords={onFetchRelationshipRecords}
               workspaceUsers={workspaceUsers}
               onAIGenerate={onAIGenerate}
+              onRowDoubleClick={handleRowDoubleClick}
+              inlineNewRow={inlineNewRow}
             />
           </div>
         </ScrollArea.Viewport>

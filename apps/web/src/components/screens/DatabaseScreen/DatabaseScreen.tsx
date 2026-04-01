@@ -60,6 +60,19 @@ export interface DatabaseScreenProps {
   onAddEntityField?: (entityId: string, field: Omit<EntityField, 'id'>) => void
   onUpdateEntityField?: (entityId: string, fieldId: string, updates: Partial<EntityField>) => void
   onDeleteEntityField?: (entityId: string, fieldId: string) => void
+  // DataGrid column operations (Issue #10)
+  onColumnRename?: (colId: string, newLabel: string) => void
+  onColumnDelete?: (colId: string) => void
+  onColumnInsert?: (position: 'left' | 'right', referenceColId: string) => void
+  // DataGrid inline new row (Issue #16)
+  inlineNewRow?: {
+    isActive: boolean
+    values: Record<string, string>
+    onStart: () => void
+    onValueChange: (colId: string, value: string) => void
+    onCommit: () => void
+    onCancel: () => void
+  }
   // DataGrid advanced cell props
   onFetchRelationshipRecords?: (entityId: string, search: string) => Promise<{ id: string; label: string }[]>
   workspaceUsers?: { id: string; name: string; avatar?: string }[]
@@ -97,6 +110,10 @@ export function DatabaseScreen({
   onAddEntityField,
   onUpdateEntityField,
   onDeleteEntityField,
+  onColumnRename,
+  onColumnDelete,
+  onColumnInsert,
+  inlineNewRow,
   onFetchRelationshipRecords,
   workspaceUsers,
   onAIGenerate,
@@ -239,6 +256,10 @@ export function DatabaseScreen({
               selectedRows={selectedRows}
               groups={groups}
               onToggleGroup={onToggleGroup}
+              onColumnRename={onColumnRename}
+              onColumnDelete={onColumnDelete}
+              onColumnInsert={onColumnInsert}
+              inlineNewRow={inlineNewRow}
               onFetchRelationshipRecords={onFetchRelationshipRecords}
               workspaceUsers={workspaceUsers}
               onAIGenerate={onAIGenerate}
