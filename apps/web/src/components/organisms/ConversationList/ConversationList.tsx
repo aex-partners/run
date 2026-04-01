@@ -48,9 +48,9 @@ export function ConversationList({
   onSelect,
   onNewGroup,
   onInviteMember,
-  onPin: _onPin,
-  onFavorite: _onFavorite,
-  onMute: _onMute,
+  onPin,
+  onFavorite,
+  onMute,
 }: ConversationListProps) {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -270,7 +270,12 @@ export function ConversationList({
                 online={conv.online}
                 agentName={conv.agentName}
                 pinned={conv.pinned}
+                favorite={conv.favorite}
+                muted={conv.muted}
                 onClick={() => onSelect?.(conv.id)}
+                onPin={onPin ? () => onPin(conv.id) : undefined}
+                onFavorite={onFavorite ? () => onFavorite(conv.id) : undefined}
+                onMute={onMute ? () => onMute(conv.id) : undefined}
               />
             ))}
           </div>
