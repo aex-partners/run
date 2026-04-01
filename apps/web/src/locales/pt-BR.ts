@@ -97,6 +97,18 @@ const ptBR = {
     manageUsersDesc: 'Listar ou convidar membros',
     queryData: 'Consultar dados',
     queryDataDesc: 'Pergunte sobre seus dados do ERP',
+    searchMessagesPlaceholder: 'Buscar mensagens...',
+    searchResultCount: 'encontradas',
+    closeSearch: 'Fechar busca',
+    conversationMenu: {
+      pin: 'Fixar',
+      unpin: 'Desafixar',
+      favorite: 'Favoritar',
+      unfavorite: 'Desfavoritar',
+      mute: 'Silenciar',
+      unmute: 'Reativar',
+      delete: 'Excluir',
+    },
     contextMenu: {
       reply: 'Responder',
       copy: 'Copiar',
@@ -267,6 +279,13 @@ const ptBR = {
       noPermission: 'Você não tem permissão para excluir isto.',
       noPermissionHint: 'Contate o dono do arquivo ou um administrador para solicitar acesso.',
     },
+    renamePrompt: 'Digite um novo nome:',
+    moveToTitle: 'Mover para...',
+    moveToRoot: 'Meus Arquivos (raiz)',
+    moveConfirm: 'Mover para aqui',
+    emptyTrash: 'Esvaziar Lixeira',
+    emptyTrashConfirm: 'Excluir permanentemente todos os itens na Lixeira? Essa ação não pode ser desfeita.',
+    restore: 'Restaurar',
   },
 
   // Database
