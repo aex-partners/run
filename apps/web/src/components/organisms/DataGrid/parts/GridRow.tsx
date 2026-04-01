@@ -30,6 +30,7 @@ interface GridRowProps {
   onFetchRelationshipRecords?: (entityId: string, search: string) => Promise<{ id: string; label: string }[]>
   workspaceUsers?: { id: string; name: string; avatar?: string }[]
   onAIGenerate?: (rowId: string, colId: string, prompt: string) => Promise<string>
+  onDoubleClick?: (rowId: string) => void
 }
 
 export function GridRow({
@@ -57,6 +58,7 @@ export function GridRow({
   onFetchRelationshipRecords,
   workspaceUsers,
   onAIGenerate,
+  onDoubleClick,
 }: GridRowProps) {
   const { t } = useTranslation()
   return (
@@ -76,6 +78,7 @@ export function GridRow({
       }}
       onMouseEnter={() => onHover(rowId)}
       onMouseLeave={() => onHover(null)}
+      onDoubleClick={() => onDoubleClick?.(rowId)}
     >
       <div role="cell" style={{ width: 40, padding: '9px 12px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
         <input
