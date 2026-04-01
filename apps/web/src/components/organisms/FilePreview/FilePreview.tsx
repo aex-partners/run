@@ -2,6 +2,7 @@ import {
   Download, Share2, Trash2, Star, ExternalLink,
   FileText, FileSpreadsheet, Image, File, ArrowLeft,
   Sparkles, Mail, MessageSquare, Zap, Upload, Brain,
+  Pencil, FolderInput,
 } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
 import type { FileSource } from '../../molecules/FileItem/FileItem'
@@ -26,6 +27,8 @@ export interface FilePreviewProps {
   onShare?: () => void
   onDelete?: () => void
   onStar?: () => void
+  onRename?: () => void
+  onMove?: () => void
   onOpenSource?: () => void
   onToggleAiIndex?: (enabled: boolean) => void
 }
@@ -73,6 +76,8 @@ export function FilePreview({
   onShare,
   onDelete,
   onStar,
+  onRename,
+  onMove,
   onOpenSource,
   onToggleAiIndex,
 }: FilePreviewProps) {
@@ -108,6 +113,8 @@ export function FilePreview({
           <button onClick={onDownload} title={t('download')} style={iconBtnStyle}><Download size={16} /></button>
         )}
         <button onClick={onShare} title={t('share')} style={iconBtnStyle}><Share2 size={16} /></button>
+        <button onClick={onRename} title={t('files.rename')} style={iconBtnStyle}><Pencil size={16} /></button>
+        <button onClick={onMove} title={t('files.moveTo')} style={iconBtnStyle}><FolderInput size={16} /></button>
         <button onClick={onDelete} title={t('delete')} style={iconBtnStyle}><Trash2 size={16} /></button>
         <button onClick={onStar} title={starred ? 'Unstar' : 'Star'} style={iconBtnStyle}>
           <Star size={16} fill={starred ? '#f59e0b' : 'none'} color={starred ? '#f59e0b' : 'var(--text-muted)'} />

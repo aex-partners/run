@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   HardDrive, Star, Clock, Trash2, Share2, Upload, FolderPlus,
   Search, Menu, Sparkles, Mail, MessageSquare, Zap, FileUp,
+  FolderOpen,
 } from 'lucide-react'
 import { MailFolderItem } from '../../molecules/MailFolderItem/MailFolderItem'
 import { FileGrid } from '../../organisms/FileGrid/FileGrid'
@@ -39,6 +40,11 @@ export interface FilesScreenProps {
   onRemoveShareUser?: (id: string, userId: string) => void
   onChangeShareAccess?: (id: string, userId: string, access: ShareAccess) => void
   getShareData?: (id: string) => { publicLink?: string | null; publicEnabled?: boolean; sharedWith?: SharedUser[] }
+  // Rename / Move / Trash
+  onRename?: (id: string, newName: string) => void
+  onMove?: (id: string, parentId: string | null) => void
+  onEmptyTrash?: () => void
+  onRestore?: (id: string) => void
   // Permission
   canDelete?: (ids: string[]) => boolean
   loading?: boolean
@@ -87,6 +93,10 @@ export function FilesScreen({
   onRemoveShareUser,
   onChangeShareAccess,
   getShareData,
+  onRename,
+  onMove,
+  onEmptyTrash,
+  onRestore: _onRestore,
   canDelete,
   loading = false,
 }: FilesScreenProps) {
@@ -102,6 +112,8 @@ export function FilesScreen({
   const [folderHistory, setFolderHistory] = useState<{ id: string | null; name: string }[]>([])
   const [shareDialogId, setShareDialogId] = useState<string | null>(null)
   const [deleteDialogIds, setDeleteDialogIds] = useState<string[] | null>(null)
+  const [moveDialogFileId, setMoveDialogFileId] = useState<string | null>(null)
+  const [moveTargetId, setMoveTargetId] = useState<string | null>(null)
   const [internalFiles, setInternalFiles] = useState<FileItemData[]>(files)
 
   // Sync internal files when prop changes
@@ -263,6 +275,41 @@ export function FilesScreen({
       }
     }
   }
+
+  const handleRename = (id: string) => {
+    const file = internalFiles.find((f) => f.id === id)
+    if (!file) return
+    const newName = window.prompt(t('files.renamePrompt'), file.name)
+    if (newName && newName !== file.name) {
+      setInternalFiles((prev) =>
+        prev.map((f) => (f.id === id ? { ...f, name: newName } : f))
+      )
+      onRename?.(id, newName)
+    }
+  }
+
+  const handleMove = (id: string) => {
+    setMoveDialogFileId(id)
+    setMoveTargetId(null)
+  }
+
+  const handleConfirmMove = () => {
+    if (moveDialogFileId) {
+      setInternalFiles((prev) =>
+        prev.map((f) => (f.id === moveDialogFileId ? { ...f, parentId: moveTargetId } : f))
+      )
+      onMove?.(moveDialogFileId, moveTargetId)
+      setMoveDialogFileId(null)
+    }
+  }
+
+  const handleEmptyTrash = () => {
+    if (window.confirm(t('files.emptyTrashConfirm'))) {
+      onEmptyTrash?.()
+    }
+  }
+
+  const folders = internalFiles.filter((f) => f.isFolder && f.id !== moveDialogFileId)
 
   const deleteFileNames = (deleteDialogIds ?? []).map((id) => internalFiles.find((f) => f.id === id)?.name ?? id)
   const deleteHasFolder = (deleteDialogIds ?? []).some((id) => internalFiles.find((f) => f.id === id)?.isFolder)
@@ -454,6 +501,11 @@ export function FilesScreen({
               {t('clear')}
             </button>
           )}
+          {activeCategory === 'trash' && (
+            <Button variant="danger" size="sm" leftIcon={<Trash2 size={13} />} onClick={handleEmptyTrash}>
+              {t('files.emptyTrash')}
+            </Button>
+          )}
         </div>
 
         {/* Content: file grid or preview */}
@@ -475,6 +527,8 @@ export function FilesScreen({
             onShare={() => handleOpenShare([activeFile.id])}
             onDelete={() => handleRequestDelete([activeFile.id])}
             onStar={() => handleToggleStar(activeFile.id)}
+            onRename={() => handleRename(activeFile.id)}
+            onMove={() => handleMove(activeFile.id)}
             onToggleAiIndex={(enabled) => handleToggleAiIndex(activeFile.id, enabled)}
           />
         ) : (
@@ -494,6 +548,8 @@ export function FilesScreen({
             onFileDownload={(id) => onDownload?.([id])}
             onFileShare={(id) => handleOpenShare([id])}
             onFileDelete={(id) => handleRequestDelete([id])}
+            onFileRename={handleRename}
+            onFileMove={handleMove}
             onViewChange={setViewMode}
             onNavigateUp={handleNavigateUp}
             onBreadcrumbClick={handleBreadcrumbClick}
@@ -527,6 +583,82 @@ export function FilesScreen({
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteDialogIds(null)}
       />
+
+      {/* Move dialog */}
+      {moveDialogFileId && (
+        <>
+          <div
+            onClick={() => setMoveDialogFileId(null)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)',
+              zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--surface)', borderRadius: 12,
+                border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.16)',
+                width: 360, maxHeight: 420, display: 'flex', flexDirection: 'column',
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{
+                padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                fontSize: 14, fontWeight: 600, color: 'var(--text)',
+              }}>
+                {t('files.moveToTitle')}
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+                <button
+                  onClick={() => setMoveTargetId(null)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 16px', border: 'none', cursor: 'pointer',
+                    fontSize: 13, fontFamily: 'inherit',
+                    background: moveTargetId === null ? 'var(--accent-light)' : 'transparent',
+                    color: moveTargetId === null ? 'var(--accent)' : 'var(--text)',
+                  }}
+                  onMouseEnter={(e) => { if (moveTargetId !== null) e.currentTarget.style.background = 'var(--surface-2)' }}
+                  onMouseLeave={(e) => { if (moveTargetId !== null) e.currentTarget.style.background = 'transparent' }}
+                >
+                  <HardDrive size={16} />
+                  {t('files.moveToRoot')}
+                </button>
+                {folders.map((folder) => (
+                  <button
+                    key={folder.id}
+                    onClick={() => setMoveTargetId(folder.id)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '10px 16px 10px 28px', border: 'none', cursor: 'pointer',
+                      fontSize: 13, fontFamily: 'inherit',
+                      background: moveTargetId === folder.id ? 'var(--accent-light)' : 'transparent',
+                      color: moveTargetId === folder.id ? 'var(--accent)' : 'var(--text)',
+                    }}
+                    onMouseEnter={(e) => { if (moveTargetId !== folder.id) e.currentTarget.style.background = 'var(--surface-2)' }}
+                    onMouseLeave={(e) => { if (moveTargetId !== folder.id) e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <FolderOpen size={16} color="#f59e0b" />
+                    {folder.name}
+                  </button>
+                ))}
+              </div>
+              <div style={{
+                padding: '10px 16px', borderTop: '1px solid var(--border)',
+                display: 'flex', justifyContent: 'flex-end', gap: 8,
+              }}>
+                <Button variant="ghost" size="sm" onClick={() => setMoveDialogFileId(null)}>
+                  {t('cancel')}
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleConfirmMove}>
+                  {t('files.moveConfirm')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

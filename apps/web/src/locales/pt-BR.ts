@@ -267,6 +267,13 @@ const ptBR = {
       noPermission: 'Você não tem permissão para excluir isto.',
       noPermissionHint: 'Contate o dono do arquivo ou um administrador para solicitar acesso.',
     },
+    renamePrompt: 'Digite um novo nome:',
+    moveToTitle: 'Mover para...',
+    moveToRoot: 'Meus Arquivos (raiz)',
+    moveConfirm: 'Mover para aqui',
+    emptyTrash: 'Esvaziar Lixeira',
+    emptyTrashConfirm: 'Excluir permanentemente todos os itens na Lixeira? Essa ação não pode ser desfeita.',
+    restore: 'Restaurar',
   },
 
   // Database
