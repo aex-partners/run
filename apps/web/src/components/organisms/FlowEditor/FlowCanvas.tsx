@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ReactFlow,
@@ -14,7 +14,7 @@ import {
   getBezierPath,
   BaseEdge,
 } from "@xyflow/react";
-import { Zap, Code, Repeat, GitBranch, Puzzle, Plus, SkipForward } from "lucide-react";
+import { Zap, Code, Repeat, GitBranch, Puzzle, Plus, SkipForward, Trash2 } from "lucide-react";
 import {
   useFlowBuilderStore,
   collectSteps,
@@ -172,8 +172,96 @@ const ACTION_COLORS: Record<ActionType, { bg: string; border: string; text: stri
   ROUTER: { bg: "#f5f3ff", border: "#ddd6fe", text: "#8b5cf6" },
 };
 
+// ---- Step Type Picker (shared by + buttons) ----
+
+const STEP_TYPE_OPTIONS: { value: ActionType; label: string; icon: typeof Code; color: string }[] = [
+  { value: "PIECE", label: "Piece", icon: Puzzle, color: "#6366f1" },
+  { value: "CODE", label: "Code", icon: Code, color: "#d97706" },
+  { value: "LOOP_ON_ITEMS", label: "Loop", icon: Repeat, color: "#16a34a" },
+  { value: "ROUTER", label: "Router", icon: GitBranch, color: "#8b5cf6" },
+];
+
+function StepTypePicker({
+  onSelect,
+  onClose,
+  position,
+}: {
+  onSelect: (type: ActionType) => void;
+  onClose: () => void;
+  position: { top: number; left: number };
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as HTMLElement)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "fixed",
+        top: position.top,
+        left: position.left,
+        zIndex: 9999,
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: 6,
+        boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        minWidth: 140,
+      }}
+    >
+      {STEP_TYPE_OPTIONS.map(({ value, label, icon: Icon, color }) => (
+        <button
+          key={value}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(value);
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "7px 10px",
+            fontSize: 13,
+            fontFamily: "inherit",
+            fontWeight: 500,
+            color: "var(--text)",
+            background: "transparent",
+            border: "none",
+            borderRadius: 6,
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-2, #f3f4f6)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+          }}
+        >
+          <Icon size={14} color={color} />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function FlowActionNode({ data }: NodeProps) {
   const selectStep = useFlowBuilderStore((s) => s.selectStep);
+  const deleteStep = useFlowBuilderStore((s) => s.deleteStep);
+  const [hovered, setHovered] = useState(false);
   const d = data as {
     displayName: string;
     actionType: ActionType;
@@ -189,6 +277,8 @@ function FlowActionNode({ data }: NodeProps) {
   return (
     <div
       onClick={() => selectStep(d.stepName)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         background: "var(--surface)",
         border: d.selected ? "2px solid var(--accent)" : "1.5px solid var(--border)",
@@ -198,9 +288,39 @@ function FlowActionNode({ data }: NodeProps) {
         boxShadow: d.selected ? "0 0 0 3px var(--accent-light)" : "0 1px 4px rgba(0,0,0,0.06)",
         cursor: "pointer",
         opacity: d.skip ? 0.5 : 1,
+        position: "relative",
       }}
     >
       <Handle type="target" position={Position.Top} style={{ background: colors.text, border: "2px solid var(--surface)", width: 10, height: 10 }} />
+      {/* Delete button on hover */}
+      {hovered && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            deleteStep(d.stepName);
+          }}
+          style={{
+            position: "absolute",
+            top: -8,
+            right: -8,
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            background: "var(--danger, #ef4444)",
+            border: "2px solid var(--surface)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            padding: 0,
+            zIndex: 10,
+          }}
+          aria-label="Delete step"
+        >
+          <Trash2 size={11} />
+        </button>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div
           style={{
@@ -244,24 +364,39 @@ function FlowEndNode({ data }: NodeProps) {
   const { t } = useTranslation();
   const addStep = useFlowBuilderStore((s) => s.addStep);
   const d = data as { afterStep: string };
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
 
-  const handleAdd = useCallback(() => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setPickerPos({ top: rect.bottom + 4, left: rect.left });
+    setPickerOpen(true);
+  }, []);
+
+  const handleSelect = useCallback((type: ActionType) => {
     const name = generateStepName();
+    const labels: Record<ActionType, string> = {
+      PIECE: "New Piece",
+      CODE: "New Code",
+      LOOP_ON_ITEMS: "New Loop",
+      ROUTER: "New Router",
+    };
     addStep(d.afterStep, {
       name,
-      displayName: "New Step",
-      type: "PIECE",
+      displayName: labels[type],
+      type,
       valid: false,
       skip: false,
       settings: {},
     });
+    setPickerOpen(false);
   }, [d.afterStep, addStep]);
 
   return (
     <div>
       <Handle type="target" position={Position.Top} style={{ background: "var(--border)", border: "2px solid var(--surface)", width: 10, height: 10 }} />
       <button
-        onClick={handleAdd}
+        onClick={handleClick}
         style={{
           width: 32,
           height: 32,
@@ -278,6 +413,13 @@ function FlowEndNode({ data }: NodeProps) {
       >
         <Plus size={16} />
       </button>
+      {pickerOpen && (
+        <StepTypePicker
+          position={pickerPos}
+          onSelect={handleSelect}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -289,6 +431,8 @@ function AddButtonEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
   const addStep = useFlowBuilderStore((s) => s.addStep);
   const d = data as { afterStep: string } | undefined;
   const [hovered, setHovered] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -299,17 +443,31 @@ function AddButtonEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
     targetPosition,
   });
 
-  const handleAdd = useCallback(() => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (!d?.afterStep) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setPickerPos({ top: rect.bottom + 4, left: rect.left });
+    setPickerOpen(true);
+  }, [d]);
+
+  const handleSelect = useCallback((type: ActionType) => {
     if (!d?.afterStep) return;
     const name = generateStepName();
+    const labels: Record<ActionType, string> = {
+      PIECE: "New Piece",
+      CODE: "New Code",
+      LOOP_ON_ITEMS: "New Loop",
+      ROUTER: "New Router",
+    };
     addStep(d.afterStep, {
       name,
-      displayName: "New Step",
-      type: "PIECE",
+      displayName: labels[type],
+      type,
       valid: false,
       skip: false,
       settings: {},
     });
+    setPickerOpen(false);
   }, [d, addStep]);
 
   return (
@@ -325,7 +483,7 @@ function AddButtonEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
         style={{ overflow: "visible" }}
       >
         <button
-          onClick={handleAdd}
+          onClick={handleClick}
           style={{
             width: 24,
             height: 24,
@@ -345,6 +503,15 @@ function AddButtonEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
           <Plus size={12} />
         </button>
       </foreignObject>
+      {pickerOpen && (
+        <foreignObject width={0} height={0} x={0} y={0} style={{ overflow: "visible" }}>
+          <StepTypePicker
+            position={pickerPos}
+            onSelect={handleSelect}
+            onClose={() => setPickerOpen(false)}
+          />
+        </foreignObject>
+      )}
     </>
   );
 }
