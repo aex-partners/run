@@ -97,6 +97,18 @@ const ptBR = {
     manageUsersDesc: 'Listar ou convidar membros',
     queryData: 'Consultar dados',
     queryDataDesc: 'Pergunte sobre seus dados do ERP',
+    searchMessagesPlaceholder: 'Buscar mensagens...',
+    searchResultCount: 'encontradas',
+    closeSearch: 'Fechar busca',
+    conversationMenu: {
+      pin: 'Fixar',
+      unpin: 'Desafixar',
+      favorite: 'Favoritar',
+      unfavorite: 'Desfavoritar',
+      mute: 'Silenciar',
+      unmute: 'Reativar',
+      delete: 'Excluir',
+    },
     contextMenu: {
       reply: 'Responder',
       copy: 'Copiar',

@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
-import { Bot, Users, Pin } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Bot, Users, Pin, Star, BellOff, Trash2 } from 'lucide-react'
 import { Avatar } from '../../atoms/Avatar/Avatar'
 
 export interface ConversationItemProps {
@@ -12,7 +13,13 @@ export interface ConversationItemProps {
   online?: boolean
   agentName?: string
   pinned?: boolean
+  favorite?: boolean
+  muted?: boolean
   onClick?: () => void
+  onPin?: () => void
+  onFavorite?: () => void
+  onMute?: () => void
+  onDelete?: () => void
 }
 
 export function ConversationItem({
@@ -25,15 +32,57 @@ export function ConversationItem({
   online = false,
   agentName,
   pinned = false,
+  favorite = false,
+  muted = false,
   onClick,
+  onPin,
+  onFavorite,
+  onMute,
+  onDelete,
 }: ConversationItemProps) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
+  const ctxRef = useRef<HTMLDivElement>(null)
   const hasUnread = unreadCount != null && unreadCount > 0
   const isGroup = type === 'group' || type === 'channel'
 
+  useEffect(() => {
+    if (!ctxMenu) return
+    const handler = (e: MouseEvent) => {
+      if (ctxRef.current && !ctxRef.current.contains(e.target as Node)) {
+        setCtxMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [ctxMenu])
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setCtxMenu({ x: e.clientX, y: e.clientY })
+  }
+
+  const ctxItemStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '7px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 13,
+    color: 'var(--text)',
+    fontFamily: 'inherit',
+    textAlign: 'left',
+  }
+
   return (
+    <>
     <button
       onClick={onClick}
+      onContextMenu={handleContextMenu}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       aria-current={active ? 'true' : undefined}
@@ -164,6 +213,67 @@ export function ConversationItem({
         </div>
       </div>
     </button>
+
+    {ctxMenu && (
+      <div
+        ref={ctxRef}
+        style={{
+          position: 'fixed',
+          top: ctxMenu.y,
+          left: ctxMenu.x,
+          width: 170,
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          zIndex: 9999,
+          overflow: 'hidden',
+          padding: '4px 0',
+        }}
+      >
+        {onPin && (
+          <button
+            onClick={() => { onPin(); setCtxMenu(null) }}
+            style={ctxItemStyle}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+          >
+            <Pin size={14} /> {pinned ? t('chat.conversationMenu.unpin') : t('chat.conversationMenu.pin')}
+          </button>
+        )}
+        {onFavorite && (
+          <button
+            onClick={() => { onFavorite(); setCtxMenu(null) }}
+            style={ctxItemStyle}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+          >
+            <Star size={14} /> {favorite ? t('chat.conversationMenu.unfavorite') : t('chat.conversationMenu.favorite')}
+          </button>
+        )}
+        {onMute && (
+          <button
+            onClick={() => { onMute(); setCtxMenu(null) }}
+            style={ctxItemStyle}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+          >
+            <BellOff size={14} /> {muted ? t('chat.conversationMenu.unmute') : t('chat.conversationMenu.mute')}
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={() => { onDelete(); setCtxMenu(null) }}
+            style={{ ...ctxItemStyle, color: 'var(--danger, #dc2626)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-2)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none' }}
+          >
+            <Trash2 size={14} /> {t('chat.conversationMenu.delete')}
+          </button>
+        )}
+      </div>
+    )}
+    </>
   )
 }
 

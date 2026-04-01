@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bot, Users, Search, Sparkles, MessageSquarePlus, Database, ListTodo, Mic } from 'lucide-react'
+import { Bot, Users, Search, X, Sparkles, MessageSquarePlus, Database, ListTodo, Mic } from 'lucide-react'
 import { Avatar } from '../../atoms/Avatar/Avatar'
 import { ConversationList, type Conversation } from '../../organisms/ConversationList/ConversationList'
 import { MessageThread, type ThreadMessage } from '../../organisms/MessageThread/MessageThread'
@@ -84,6 +84,9 @@ export function ChatScreen({
   const [taskBarOpen, setTaskBarOpen] = useState(false)
   const [voiceModeOpen, setVoiceModeOpen] = useState(false)
   const [agentSelectorOpen, setAgentSelectorOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const agentSelectorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -109,13 +112,34 @@ export function ChatScreen({
 
   const handleConversationSelect = (id: string) => {
     setActiveConversationId(id)
+    setSearchOpen(false)
+    setSearchQuery('')
     onConversationSelect?.(id)
   }
 
-  const activeMessages =
+  const toggleSearch = () => {
+    setSearchOpen((prev) => {
+      if (prev) setSearchQuery('')
+      return !prev
+    })
+  }
+
+  useEffect(() => {
+    if (searchOpen && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [searchOpen])
+
+  const rawMessages =
     messagesByConversation && activeConversationId
       ? (messagesByConversation[activeConversationId] ?? messages)
       : messages
+
+  const activeMessages = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return rawMessages
+    return rawMessages.filter((m) => m.content.toLowerCase().includes(q))
+  }, [rawMessages, searchQuery])
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId)
   const isGroup = activeConversation?.type === 'group' || activeConversation?.type === 'channel'
@@ -222,7 +246,16 @@ export function ChatScreen({
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
-                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, borderRadius: 4, display: 'flex' }}
+                  onClick={toggleSearch}
+                  style={{
+                    background: searchOpen ? 'var(--accent-light)' : 'none',
+                    border: 'none',
+                    color: searchOpen ? 'var(--accent)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 4,
+                    borderRadius: 4,
+                    display: 'flex',
+                  }}
                   aria-label={t('chat.searchConversation')}
                 >
                   <Search size={18} />
@@ -354,6 +387,58 @@ export function ChatScreen({
             <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{t('chat.selectConversation')}</span>
           )}
         </div>
+
+        {/* Search bar */}
+        {searchOpen && activeConversation && (
+          <div
+            style={{
+              padding: '6px 16px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'var(--surface)',
+              flexShrink: 0,
+            }}
+          >
+            <Search size={14} color="var(--text-muted)" />
+            <input
+              ref={searchInputRef}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('chat.searchMessagesPlaceholder')}
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                color: 'var(--text)',
+                fontSize: 13,
+                fontFamily: 'inherit',
+              }}
+            />
+            {searchQuery && (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                {activeMessages.length} {t('chat.searchResultCount')}
+              </span>
+            )}
+            <button
+              onClick={toggleSearch}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: 2,
+                display: 'flex',
+                borderRadius: 4,
+              }}
+              aria-label={t('chat.closeSearch')}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {activeConversation ? (
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>

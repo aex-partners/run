@@ -99,6 +99,18 @@ const en = {
     manageUsersDesc: 'List or invite team members',
     queryData: 'Query data',
     queryDataDesc: 'Ask about your ERP data',
+    searchMessagesPlaceholder: 'Search messages...',
+    searchResultCount: 'found',
+    closeSearch: 'Close search',
+    conversationMenu: {
+      pin: 'Pin',
+      unpin: 'Unpin',
+      favorite: 'Favorite',
+      unfavorite: 'Unfavorite',
+      mute: 'Mute',
+      unmute: 'Unmute',
+      delete: 'Delete',
+    },
     contextMenu: {
       reply: 'Reply',
       copy: 'Copy',
