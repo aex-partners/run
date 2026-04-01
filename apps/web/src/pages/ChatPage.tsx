@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, ArrowLeft, Search, Bot, Check, ImagePlus } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { formatRelativeTime, formatTime } from "../lib/formatTime";
@@ -10,7 +10,17 @@ import { Avatar } from "../components/atoms/Avatar/Avatar";
 import type { Section } from "../components/layout/AppShell/AppShell";
 import type { Conversation } from "../components/organisms/ConversationList/ConversationList";
 import type { ThreadMessage } from "../components/organisms/MessageThread/MessageThread";
+import type { PromptInputAttachment } from "../components/organisms/PromptInput/PromptInput";
 import type { Task } from "../components/organisms/TaskList/TaskList";
+
+interface UploadedFile {
+  id: string;
+  name: string;
+  type: string;
+  size: string;
+  mimeType: string;
+  path: string;
+}
 
 interface AgentOption {
   id: string;
@@ -40,6 +50,7 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
   const [selectedMembers, setSelectedMembers] = useState<GroupMember[]>([]);
   const [groupName, setGroupName] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
+  const [attachments, setAttachments] = useState<(PromptInputAttachment & { fileRef: UploadedFile })[]>([]);
 
   const utils = trpc.useUtils();
   const { streams, typingConversations } = useWS();
@@ -375,12 +386,56 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
       ? typingConversations.current.has(activeConversationId)
       : false;
 
+  const handleAttachmentAdd = useCallback(async (files: FileList) => {
+    for (const file of Array.from(files)) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("/api/upload/file", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!res.ok) continue;
+
+        const uploaded: UploadedFile = await res.json();
+        const attachment: PromptInputAttachment & { fileRef: UploadedFile } = {
+          id: uploaded.id,
+          fileName: uploaded.name,
+          fileSize: uploaded.size,
+          fileType: uploaded.type,
+          fileRef: uploaded,
+        };
+        setAttachments((prev) => [...prev, attachment]);
+      } catch {
+        // upload failed silently
+      }
+    }
+  }, []);
+
+  const handleAttachmentRemove = useCallback((id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
   const handleSendMessage = (content: string) => {
     if (!activeConversationId) return;
+
+    // Append file references as markdown links if there are attachments
+    let finalContent = content;
+    if (attachments.length > 0) {
+      const links = attachments.map(
+        (a) => `[${a.fileRef.name}](/api/files/${a.fileRef.id}/download)`,
+      );
+      finalContent = finalContent + "\n\n" + links.join("\n");
+      setAttachments([]);
+    }
+
     if (isAIConversation) {
-      agentChat.sendMessage(content);
+      agentChat.sendMessage(finalContent);
     } else {
-      sendMessage.mutate({ conversationId: activeConversationId, content });
+      sendMessage.mutate({ conversationId: activeConversationId, content: finalContent });
     }
   };
 
@@ -424,8 +479,8 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
       tasks={tasks}
       onCancelTask={(id) => cancelTask.mutate({ id })}
       onRetryTask={(id) => retryTask.mutate({ id })}
-      onViewTaskLogs={() => {}}
-      onTaskClick={() => {}}
+      onViewTaskLogs={() => onNavigate?.("tasks")}
+      onTaskClick={() => onNavigate?.("tasks")}
       onPinMessage={(id) => pinMessage.mutate({ messageId: id })}
       onStarMessage={(id) => starMessage.mutate({ messageId: id })}
       onDeleteForEveryone={(ids) => deleteForEveryone.mutate({ messageIds: ids })}
@@ -442,6 +497,9 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
         setMemberSearch("");
         setGroupStep("members");
       }}
+      promptAttachments={attachments}
+      onAttachmentAdd={handleAttachmentAdd}
+      onAttachmentRemove={handleAttachmentRemove}
       onInviteMember={() => onNavigate?.("settings")}
     />
 
