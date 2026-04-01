@@ -269,6 +269,13 @@ const en = {
       noPermission: 'You do not have permission to delete this.',
       noPermissionHint: 'Contact the file owner or an administrator to request access.',
     },
+    renamePrompt: 'Enter a new name:',
+    moveToTitle: 'Move to...',
+    moveToRoot: 'My Files (root)',
+    moveConfirm: 'Move here',
+    emptyTrash: 'Empty Trash',
+    emptyTrashConfirm: 'Permanently delete all items in Trash? This cannot be undone.',
+    restore: 'Restore',
   },
 
   // Database

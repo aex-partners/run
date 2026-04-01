@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   File, FileText, FileSpreadsheet, Image, Film, Music, Archive,
   FileCode, Presentation, Star, MoreVertical, Download, FolderOpen,
-  Share2, Trash2,
+  Share2, Trash2, Pencil, FolderInput,
 } from 'lucide-react'
 
 export type FileSource = 'email' | 'chat' | 'generated' | 'upload' | 'workflow'
@@ -36,6 +36,8 @@ export interface FileItemProps extends FileItemData {
   onDownload?: (id: string) => void
   onShare?: (id: string) => void
   onDelete?: (id: string) => void
+  onRename?: (id: string) => void
+  onMove?: (id: string) => void
 }
 
 const SOURCE_COLORS: Record<FileSource, string> = {
@@ -74,7 +76,7 @@ export function FileItem(props: FileItemProps) {
     id, name, type, size, modifiedAt, source, starred = false,
     selected = false, isFolder = false, view = 'list',
     onClick, onDoubleClick, onStar, onSelect, onContextMenu,
-    onDownload, onShare, onDelete,
+    onDownload, onShare, onDelete, onRename, onMove,
   } = props
   const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
@@ -269,10 +271,12 @@ export function FileItem(props: FileItemProps) {
               boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
             }}>
               {[
-                { label: 'Download', icon: <Download size={14} />, action: () => onDownload?.(id) },
-                { label: 'Share', icon: <Share2 size={14} />, action: () => onShare?.(id) },
+                { label: t('files.download'), icon: <Download size={14} />, action: () => onDownload?.(id) },
+                { label: t('files.share'), icon: <Share2 size={14} />, action: () => onShare?.(id) },
+                { label: t('files.rename'), icon: <Pencil size={14} />, action: () => onRename?.(id) },
+                { label: t('files.moveTo'), icon: <FolderInput size={14} />, action: () => onMove?.(id) },
                 { label: 'Star', icon: <Star size={14} fill={starred ? '#f59e0b' : 'none'} color={starred ? '#f59e0b' : 'currentColor'} />, action: () => onStar?.(id) },
-                { label: 'Delete', icon: <Trash2 size={14} />, action: () => onDelete?.(id), danger: true },
+                { label: t('delete'), icon: <Trash2 size={14} />, action: () => onDelete?.(id), danger: true },
               ].map((item) => (
                 <button
                   key={item.label}

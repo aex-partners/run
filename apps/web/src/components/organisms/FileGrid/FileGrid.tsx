@@ -31,6 +31,8 @@ export interface FileGridProps {
   onFileDownload?: (id: string) => void
   onFileShare?: (id: string) => void
   onFileDelete?: (id: string) => void
+  onFileRename?: (id: string) => void
+  onFileMove?: (id: string) => void
   loading?: boolean
 }
 
@@ -55,6 +57,8 @@ export function FileGrid({
   onFileDownload,
   onFileShare,
   onFileDelete,
+  onFileRename,
+  onFileMove,
   loading = false,
 }: FileGridProps) {
   const { t } = useTranslation()
@@ -284,6 +288,8 @@ export function FileGrid({
                       onDownload={onFileDownload}
                       onShare={onFileShare}
                       onDelete={(id) => onFileDelete?.(id)}
+                      onRename={onFileRename}
+                      onMove={onFileMove}
                     />
                   ))}
                 </div>
@@ -317,6 +323,8 @@ export function FileGrid({
                       onDownload={onFileDownload}
                       onShare={onFileShare}
                       onDelete={(id) => onFileDelete?.(id)}
+                      onRename={onFileRename}
+                      onMove={onFileMove}
                     />
                   ))}
                 </div>

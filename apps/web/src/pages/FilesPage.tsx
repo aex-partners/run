@@ -21,7 +21,7 @@ export function FilesPage() {
   const deleteMut = trpc.files.delete.useMutation({
     onSuccess: () => { filesQuery.refetch(); countsQuery.refetch(); },
   });
-  const _restoreMut = trpc.files.restore.useMutation({
+  const restoreMut = trpc.files.restore.useMutation({
     onSuccess: () => { filesQuery.refetch(); countsQuery.refetch(); },
   });
   const createFolderMut = trpc.files.createFolder.useMutation({
@@ -29,6 +29,15 @@ export function FilesPage() {
   });
   const toggleAiIndexMut = trpc.files.toggleAiIndex.useMutation({
     onSuccess: () => filesQuery.refetch(),
+  });
+  const renameMut = trpc.files.rename.useMutation({
+    onSuccess: () => { filesQuery.refetch(); countsQuery.refetch(); },
+  });
+  const moveMut = trpc.files.move.useMutation({
+    onSuccess: () => { filesQuery.refetch(); countsQuery.refetch(); },
+  });
+  const emptyTrashMut = trpc.files.emptyTrash.useMutation({
+    onSuccess: () => { filesQuery.refetch(); countsQuery.refetch(); },
   });
   const togglePublicMut = trpc.files.share.togglePublic.useMutation({
     onSuccess: () => filesQuery.refetch(),
@@ -105,10 +114,11 @@ export function FilesPage() {
           const name = window.prompt("Folder name:");
           if (name) createFolderMut.mutate({ name, parentId });
         }}
+        onRename={(id, name) => renameMut.mutate({ id, name })}
+        onMove={(id, parentId) => moveMut.mutate({ id, parentId })}
+        onEmptyTrash={() => emptyTrashMut.mutate()}
+        onRestore={(id) => restoreMut.mutate({ id })}
         onDelete={(ids) => {
-          if (activeCategory === "trash") {
-            // Already in trash, could permanent delete
-          }
           for (const id of ids) deleteMut.mutate({ id });
         }}
         onDownload={handleDownload}
