@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Search, X } from 'lucide-react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { TaskList, type Task } from '../../organisms/TaskList/TaskList'
 
@@ -34,6 +35,7 @@ export function TasksScreen({
 }: TasksScreenProps) {
   const { t } = useTranslation()
   const [activeFilter, setActiveFilter] = useState(initialFilter)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const handleFilterChange = (id: string) => {
     setActiveFilter(id)
@@ -47,17 +49,25 @@ export function TasksScreen({
   const activeFilterItem = filters.find((f) => f.id === activeFilter)
   const isAgentFilter = activeFilterItem?.indent === true
 
-  // Pre-filter tasks in the screen so TaskList receives only the relevant subset.
-  // This keeps TaskList's own filter pills in uncontrolled mode and fully functional.
-  const visibleTasks = (() => {
-    if (isAgentFilter && activeFilterItem) return tasks.filter((t) => t.agent === activeFilterItem.label)
-    if (activeFilter === 'running') return tasks.filter((t) => t.status === 'running')
-    if (activeFilter === 'completed') return tasks.filter((t) => t.status === 'completed')
-    if (activeFilter === 'failed') return tasks.filter((t) => t.status === 'failed')
-    if (activeFilter === 'pending') return tasks.filter((t) => t.status === 'pending')
-    if (activeFilter === 'cancelled') return tasks.filter((t) => t.status === 'cancelled')
-    return tasks
-  })()
+  // Pre-filter tasks by sidebar filter, then by search query
+  const visibleTasks = useMemo(() => {
+    let filtered: Task[]
+    if (isAgentFilter && activeFilterItem) filtered = tasks.filter((t) => t.agent === activeFilterItem.label)
+    else if (activeFilter === 'running') filtered = tasks.filter((t) => t.status === 'running')
+    else if (activeFilter === 'completed') filtered = tasks.filter((t) => t.status === 'completed')
+    else if (activeFilter === 'failed') filtered = tasks.filter((t) => t.status === 'failed')
+    else if (activeFilter === 'pending') filtered = tasks.filter((t) => t.status === 'pending')
+    else if (activeFilter === 'cancelled') filtered = tasks.filter((t) => t.status === 'cancelled')
+    else filtered = tasks
+
+    if (!searchQuery.trim()) return filtered
+
+    const q = searchQuery.toLowerCase()
+    return filtered.filter((task) =>
+      task.title.toLowerCase().includes(q) ||
+      (task.description && task.description.toLowerCase().includes(q))
+    )
+  }, [tasks, activeFilter, isAgentFilter, activeFilterItem, searchQuery])
 
   const headerTitle = activeFilterItem && !activeFilterItem.isHeader
     ? activeFilterItem.label
@@ -185,6 +195,43 @@ export function TasksScreen({
           }}
         >
           <span style={{ fontWeight: 600, fontSize: 15 }}>{headerTitle}</span>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--surface-2)',
+            flex: 1,
+            maxWidth: 320,
+            marginLeft: 16,
+          }}>
+            <Search size={14} color="var(--text-muted)" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('tasks.searchPlaceholder')}
+              style={{
+                flex: 1,
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text)',
+                fontSize: 13,
+                fontFamily: 'inherit',
+                outline: 'none',
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-muted)' }}
+                aria-label={t('clear')}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 8 }}>
             {[

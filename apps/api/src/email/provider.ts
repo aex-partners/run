@@ -30,6 +30,7 @@ export interface SendMailOptions {
   fromName?: string;
   replyTo?: string;
   inReplyTo?: string;
+  attachments?: { filename: string; path: string; contentType?: string }[];
 }
 
 export interface SendMailResult {
@@ -205,6 +206,7 @@ export async function sendMailWithConfig(config: SmtpConfig, options: SendMailOp
     text: options.bodyText,
     replyTo: options.replyTo,
     inReplyTo: options.inReplyTo,
+    attachments: options.attachments,
   });
 
   return {

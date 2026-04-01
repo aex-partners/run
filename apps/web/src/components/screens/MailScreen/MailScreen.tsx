@@ -7,7 +7,7 @@ import {
 import { MailFolderItem } from '../../molecules/MailFolderItem/MailFolderItem'
 import { MailList } from '../../organisms/MailList/MailList'
 import { MailDetail, type MailMessage, type MailAttachment } from '../../organisms/MailDetail/MailDetail'
-import { MailCompose } from '../../organisms/MailCompose/MailCompose'
+import { MailCompose, type MailAttachmentMeta } from '../../organisms/MailCompose/MailCompose'
 import { EmailSetup, type EmailAccountConfig } from '../../organisms/EmailSetup/EmailSetup'
 import { Button } from '../../atoms/Button/Button'
 import type { MailItemProps } from '../../molecules/MailItem/MailItem'
@@ -60,7 +60,7 @@ export interface MailScreenProps {
   onEmailClick?: (id: string) => void
   onEmailStar?: (id: string) => void
   onCompose?: () => void
-  onSend?: (data: { to: string; cc: string; subject: string; body: string }) => void
+  onSend?: (data: { to: string; cc: string; subject: string; body: string; attachments?: MailAttachmentMeta[] }) => void
   onReply?: (emailId: string) => void
   onReplyAll?: (emailId: string) => void
   onForward?: (emailId: string) => void

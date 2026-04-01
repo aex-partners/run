@@ -300,6 +300,12 @@ export const emailsRouter = router({
       cc: z.string().optional(),
       subject: z.string(),
       body: z.string(),
+      attachments: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        path: z.string(),
+        mimeType: z.string().optional(),
+      })).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { userCanSendFrom, sendMailFromAccount, getAccountSmtpConfig } = await import("../../email/provider.js");
@@ -314,11 +320,23 @@ export const emailsRouter = router({
       const toAddresses = input.to.split(",").map((e) => e.trim()).filter(Boolean);
       const ccAddresses = input.cc ? input.cc.split(",").map((e) => e.trim()).filter(Boolean) : [];
 
+      // Build nodemailer-compatible attachment list from uploaded file paths
+      let mailAttachments: { filename: string; path: string; contentType?: string }[] | undefined;
+      if (input.attachments && input.attachments.length > 0) {
+        const { localStorage: fileStorage } = await import("../../files/storage.js");
+        mailAttachments = input.attachments.map((att) => ({
+          filename: att.name,
+          path: fileStorage.getFilePath(att.path),
+          contentType: att.mimeType || undefined,
+        }));
+      }
+
       const result = await sendMailFromAccount(ctx.db, input.accountId, {
         to: toAddresses,
         cc: ccAddresses,
         subject: input.subject,
         bodyHtml: input.body,
+        attachments: mailAttachments,
       });
 
       const emailId = await storeSentEmail(ctx.db, {
