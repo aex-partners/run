@@ -4,6 +4,7 @@ import { Bot, Users, Search, X, Sparkles, MessageSquarePlus, Database, ListTodo,
 import { Avatar } from '../../atoms/Avatar/Avatar'
 import { ConversationList, type Conversation } from '../../organisms/ConversationList/ConversationList'
 import { MessageThread, type ThreadMessage } from '../../organisms/MessageThread/MessageThread'
+import type { PromptInputAttachment } from '../../organisms/PromptInput/PromptInput'
 import { VoiceMode } from '../../organisms/VoiceMode/VoiceMode'
 import { TaskBar } from '../../organisms/TaskBar/TaskBar'
 import type { Task } from '../../organisms/TaskList/TaskList'
@@ -34,6 +35,9 @@ export interface ChatScreenProps {
   onDeleteForEveryone?: (messageIds: string[]) => void
   onDeleteForMe?: (messageIds: string[]) => void
   onTranscriptionEdit?: (messageId: string, newText: string) => void
+  promptAttachments?: PromptInputAttachment[]
+  onAttachmentAdd?: (files: FileList) => void
+  onAttachmentRemove?: (id: string) => void
   agents?: Array<{ id: string; name: string }>
   activeAgent?: { id: string; name: string } | null
   onSetAgent?: (agentId: string | null) => void
@@ -72,6 +76,9 @@ export function ChatScreen({
   onDeleteForEveryone,
   onDeleteForMe,
   onTranscriptionEdit,
+  promptAttachments,
+  onAttachmentAdd,
+  onAttachmentRemove,
   agents,
   activeAgent,
   onSetAgent,
@@ -449,6 +456,9 @@ export function ChatScreen({
                 placeholder={`Message ${activeConversation.name}...`}
                 isTyping={isTypingProp}
                 showAuthor={isGroup}
+                promptAttachments={promptAttachments}
+                onAttachmentAdd={onAttachmentAdd}
+                onAttachmentRemove={onAttachmentRemove}
                 onReact={onReact}
                 onForward={onForwardMessages}
                 onPin={onPinMessage}
