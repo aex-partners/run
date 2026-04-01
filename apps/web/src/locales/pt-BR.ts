@@ -589,6 +589,7 @@ const ptBR = {
     retryTask: 'Tentar novamente',
     cancelTask: 'Cancelar tarefa',
     runningTasksCount: 'Tarefas em execução',
+    searchPlaceholder: 'Buscar tarefas...',
   },
 
   // Workflows

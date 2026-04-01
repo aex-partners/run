@@ -591,6 +591,7 @@ const en = {
     retryTask: 'Retry task',
     cancelTask: 'Cancel task',
     runningTasksCount: 'Running tasks count',
+    searchPlaceholder: 'Search tasks...',
   },
 
   // Workflows

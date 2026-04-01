@@ -11,6 +11,7 @@ import {
 import { GitBranch, Clock, Pause, Play, MoreHorizontal, Loader2 } from 'lucide-react'
 import { WorkflowSidebar, type Workflow } from '../../organisms/WorkflowSidebar/WorkflowSidebar'
 import { WorkflowCanvas } from '../../organisms/WorkflowCanvas/WorkflowCanvas'
+import { NodeConfigPanel, type NodeConfigData } from '../../organisms/NodeConfigPanel/NodeConfigPanel'
 import { HistoryEntry, type HistoryEntryProps } from '../../molecules/HistoryEntry/HistoryEntry'
 import { AIChatBar } from '../../molecules/AIChatBar/AIChatBar'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
@@ -34,6 +35,8 @@ export interface WorkflowsScreenProps {
   onGraphChange?: (workflowId: string, graph: WorkflowGraph) => void
   onExecute?: (id: string) => void
   isExecuting?: boolean
+  toolOptions?: { value: string; label: string }[]
+  agentOptions?: { value: string; label: string }[]
 }
 
 export function WorkflowsScreen({
@@ -50,6 +53,8 @@ export function WorkflowsScreen({
   onGraphChange,
   onExecute,
   isExecuting = false,
+  toolOptions = [],
+  agentOptions = [],
 }: WorkflowsScreenProps) {
   const { t } = useTranslation()
   const [workflows, setWorkflows] = useState<Workflow[]>(workflowsProp)
@@ -57,6 +62,7 @@ export function WorkflowsScreen({
     controlledId ?? workflowsProp[0]?.id
   )
   const [showHistory, setShowHistory] = useState(false)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [aiInput, setAiInput] = useState('')
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
@@ -114,8 +120,24 @@ export function WorkflowsScreen({
     (nodeId: string) => {
       setNodes((prev) => prev.filter((n) => n.id !== nodeId))
       setEdges((prev) => prev.filter((e) => e.source !== nodeId && e.target !== nodeId))
+      if (selectedNodeId === nodeId) setSelectedNodeId(null)
     },
-    [setNodes, setEdges]
+    [setNodes, setEdges, selectedNodeId]
+  )
+
+  const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    setSelectedNodeId(node.id)
+  }, [])
+
+  const handleNodeConfigSave = useCallback(
+    (nodeId: string, data: NodeConfigData) => {
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
+        )
+      )
+    },
+    [setNodes]
   )
 
   // Debounced graph save
@@ -383,8 +405,30 @@ export function WorkflowsScreen({
               onConnect={onConnect}
               onNodeAdd={handleNodeAdd}
               onNodeDelete={handleNodeDelete}
+              onNodeClick={handleNodeClick}
             />
           </div>
+
+          {selectedNodeId && (() => {
+            const selectedNode = nodes.find((n) => n.id === selectedNodeId)
+            if (!selectedNode) return null
+            return (
+              <NodeConfigPanel
+                nodeId={selectedNode.id}
+                nodeLabel={String(selectedNode.data?.label ?? '')}
+                initialData={{
+                  taskType: (selectedNode.data?.taskType as 'inference' | 'structured') ?? 'inference',
+                  toolName: selectedNode.data?.toolName as string | undefined,
+                  agentId: selectedNode.data?.agentId as string | undefined,
+                  toolInput: selectedNode.data?.toolInput as string | undefined,
+                }}
+                toolOptions={toolOptions}
+                agentOptions={agentOptions}
+                onSave={handleNodeConfigSave}
+                onClose={() => setSelectedNodeId(null)}
+              />
+            )
+          })()}
 
           {showHistory && (
             <div

@@ -1,9 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   X, Paperclip, Sparkles, Minimize2, Maximize2,
 } from 'lucide-react'
 import { Button } from '../../atoms/Button/Button'
 import { useTranslation } from 'react-i18next'
+
+export interface MailAttachmentMeta {
+  id: string
+  name: string
+  size: string
+  path: string
+  mimeType?: string
+}
 
 export interface MailComposeProps {
   open: boolean
@@ -12,7 +20,7 @@ export interface MailComposeProps {
   body?: string
   replyMode?: 'reply' | 'replyAll' | 'forward'
   onClose?: () => void
-  onSend?: (data: { to: string; cc: string; subject: string; body: string }) => void
+  onSend?: (data: { to: string; cc: string; subject: string; body: string; attachments?: MailAttachmentMeta[] }) => void
   onAiDraft?: (prompt: string) => void
   aiDrafting?: boolean
   minimized?: boolean
@@ -40,17 +48,45 @@ export function MailCompose({
   const [showCc, setShowCc] = useState(false)
   const [aiPrompt, setAiPrompt] = useState('')
   const [showAiBar, setShowAiBar] = useState(false)
+  const [attachments, setAttachments] = useState<MailAttachmentMeta[]>([])
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
     setTo(initialTo)
     setSubject(initialSubject)
     setBody(initialBody)
+    setAttachments([])
   }, [initialTo, initialSubject, initialBody])
 
   if (!open) return null
 
   const handleSend = () => {
-    onSend?.({ to, cc, subject, body })
+    onSend?.({ to, cc, subject, body, attachments: attachments.length > 0 ? attachments : undefined })
+  }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch('/api/upload/file', { method: 'POST', body: formData, credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          setAttachments((prev) => [...prev, { id: data.id, name: data.name, size: data.size, path: data.path, mimeType: data.mimeType }])
+        }
+      }
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id))
   }
 
   const handleAiDraft = () => {
@@ -173,6 +209,39 @@ export function MailCompose({
             </div>
           </div>
 
+          {/* Attachments */}
+          {attachments.length > 0 && (
+            <div style={{ padding: '6px 14px 0', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {attachments.map((att) => (
+                <div
+                  key={att.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border)',
+                    fontSize: 11,
+                    color: 'var(--text)',
+                  }}
+                >
+                  <Paperclip size={11} color="var(--text-muted)" />
+                  <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>({att.size})</span>
+                  <button
+                    onClick={() => handleRemoveAttachment(att.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 1, display: 'flex', color: 'var(--text-muted)' }}
+                    aria-label={t('remove')}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Body */}
           <textarea
             value={body}
@@ -250,9 +319,26 @@ export function MailCompose({
             >
               <Sparkles size={14} />
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
             <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
               title={t('mail.attachFile')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', color: 'var(--text-muted)' }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: uploading ? 'wait' : 'pointer',
+                padding: 6,
+                display: 'flex',
+                color: 'var(--text-muted)',
+                opacity: uploading ? 0.5 : 1,
+              }}
             >
               <Paperclip size={14} />
             </button>

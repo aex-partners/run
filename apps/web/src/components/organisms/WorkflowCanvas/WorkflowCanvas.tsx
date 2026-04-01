@@ -487,6 +487,7 @@ export interface WorkflowCanvasProps {
   onNodeDelete?: (nodeId: string) => void
   onNodeEdit?: (nodeId: string, data: Record<string, unknown>) => void
   onNodeAdd?: (node: Node) => void
+  onNodeClick?: (event: React.MouseEvent, node: Node) => void
 }
 
 export function WorkflowCanvas({
@@ -499,6 +500,7 @@ export function WorkflowCanvas({
   onNodeDelete,
   onNodeEdit,
   onNodeAdd,
+  onNodeClick,
 }: WorkflowCanvasProps) {
   const { t } = useTranslation()
   const [localNodes, setLocalNodes] = useState<Node[]>(nodesProp)
@@ -604,6 +606,7 @@ export function WorkflowCanvas({
         nodesDraggable={!readOnly}
         nodesConnectable={!readOnly}
         elementsSelectable={!readOnly}
+        onNodeClick={onNodeClick}
         onPaneContextMenu={readOnly ? undefined : handlePaneContextMenu}
         fitView
         fitViewOptions={{ padding: 0.3 }}

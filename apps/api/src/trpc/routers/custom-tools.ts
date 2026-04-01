@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
+import Anthropic from "@anthropic-ai/sdk";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../index.js";
 import { customTools } from "../../db/schema/index.js";
@@ -130,6 +131,50 @@ export const customToolsRouter = router({
 
       if (!toolRow) throw new TRPCError({ code: "NOT_FOUND" });
 
-      return { success: false, error: "AI layer not available" };
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "ANTHROPIC_API_KEY is not configured." });
+      }
+
+      let inputSchema: Record<string, unknown>;
+      try {
+        inputSchema = JSON.parse(toolRow.inputSchema);
+      } catch {
+        return { success: false, error: "Tool has invalid inputSchema JSON" };
+      }
+
+      const toolDef: Anthropic.Tool = {
+        name: toolRow.name,
+        description: toolRow.description,
+        input_schema: inputSchema as Anthropic.Tool["input_schema"],
+      };
+
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+      try {
+        const response = await anthropic.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1024,
+          tools: [toolDef],
+          messages: [
+            {
+              role: "user",
+              content: `Use the "${toolRow.name}" tool with this input: ${JSON.stringify(input.testInput)}`,
+            },
+          ],
+        });
+
+        const toolUseBlock = response.content.find((b) => b.type === "tool_use");
+        if (toolUseBlock && toolUseBlock.type === "tool_use") {
+          return { success: true, result: toolUseBlock.input as Record<string, unknown> };
+        }
+
+        const textBlock = response.content.find((b) => b.type === "text");
+        return {
+          success: true,
+          result: { response: textBlock && textBlock.type === "text" ? textBlock.text : "No tool invocation" },
+        };
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : "AI call failed" };
+      }
     }),
 });
