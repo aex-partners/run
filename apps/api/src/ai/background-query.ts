@@ -59,10 +59,27 @@ export async function runBackgroundQuery(opts: {
 
     if (sessionId) queryOptions.resume = sessionId;
 
+    // Retry helper: if session is stale, clear it and retry without resume
+    const runQuery = async function* () {
+      try {
+        yield* query({ prompt, options: queryOptions as any });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (sessionId && msg.includes("No conversation found with session ID")) {
+          console.log("[background] Stale session, retrying without resume");
+          await saveSessionId(conversationId, "");
+          delete queryOptions.resume;
+          yield* query({ prompt, options: queryOptions as any });
+        } else {
+          throw err;
+        }
+      }
+    };
+
     let finalText = "";
     let currentSessionId = sessionId;
 
-    for await (const message of query({ prompt, options: queryOptions as any })) {
+    for await (const message of runQuery()) {
       if (message.type === "system" && (message as any).subtype === "init") {
         const newSessionId = (message as any).session_id as string;
         if (!currentSessionId) {

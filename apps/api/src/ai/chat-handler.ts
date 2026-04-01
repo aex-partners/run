@@ -107,6 +107,23 @@ export async function handleChat(opts: {
       queryOptions.resume = sessionId;
     }
 
+    // Retry helper: if session is stale, clear it and retry without resume
+    const runQuery = async function* () {
+      try {
+        yield* query({ prompt, options: queryOptions as any });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (sessionId && msg.includes("No conversation found with session ID")) {
+          console.log("[chat] Stale session, retrying without resume");
+          await saveSessionId(conversationId, "");
+          delete queryOptions.resume;
+          yield* query({ prompt, options: queryOptions as any });
+        } else {
+          throw err;
+        }
+      }
+    };
+
     // Run the agent
     let finalText = "";
     let textFromStreaming = false;
@@ -116,7 +133,7 @@ export async function handleChat(opts: {
     // Track tools already sent via streaming to avoid duplicates from assistant message
     const sentToolIds = new Set<string>();
 
-    for await (const message of query({ prompt, options: queryOptions as any })) {
+    for await (const message of runQuery()) {
       const msgType = message.type;
       const msgSubtype = (message as any).subtype;
       if (msgType !== "stream_event") {
