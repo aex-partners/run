@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { trpc } from "../lib/trpc";
+import { apiUrl, API_BASE } from "../lib/api";
 import { FilesScreen, type FilesCategory } from "../components/screens/FilesScreen/FilesScreen";
 import type { FileSource } from "../components/molecules/FileItem/FileItem";
 
@@ -58,7 +59,7 @@ export function FilesPage() {
     formData.append("file", file);
     if (parentId) formData.append("parentId", parentId);
 
-    await fetch("/api/upload/file", {
+    await fetch(apiUrl("/api/upload/file"), {
       method: "POST",
       body: formData,
       credentials: "include",
@@ -79,7 +80,7 @@ export function FilesPage() {
 
   const handleDownload = (ids: string[]) => {
     for (const id of ids) {
-      window.open(`/api/files/${id}/download`, "_blank");
+      window.open(apiUrl(`/api/files/${id}/download`), "_blank");
     }
   };
 
@@ -128,7 +129,7 @@ export function FilesPage() {
         onCopyShareLink={(id) => {
           const file = filesQuery.data?.find((f) => f.id === id);
           if (file) {
-            navigator.clipboard.writeText(`${window.location.origin}/api/files/public/${id}`);
+            navigator.clipboard.writeText(`${API_BASE || window.location.origin}/api/files/public/${id}`);
           }
         }}
         onAddShareUser={(id, email, access) => addShareUserMut.mutate({ fileId: id, email, access })}

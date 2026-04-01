@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { X, ArrowLeft, Search, Bot, Check, ImagePlus } from "lucide-react";
 import { trpc } from "../lib/trpc";
+import { apiUrl } from "../lib/api";
 import { formatRelativeTime, formatTime } from "../lib/formatTime";
 import { ChatScreen } from "../components/screens/ChatScreen/ChatScreen";
 import { useWS } from "../providers/WebSocketProvider";
@@ -392,7 +393,7 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
       formData.append("file", file);
 
       try {
-        const res = await fetch("/api/upload/file", {
+        const res = await fetch(apiUrl("/api/upload/file"), {
           method: "POST",
           body: formData,
           credentials: "include",
@@ -426,7 +427,7 @@ export function ChatPage({ onNavigate }: { onNavigate?: (section: Section) => vo
     let finalContent = content;
     if (attachments.length > 0) {
       const links = attachments.map(
-        (a) => `[${a.fileRef.name}](/api/files/${a.fileRef.id}/download)`,
+        (a) => `[${a.fileRef.name}](${apiUrl(`/api/files/${a.fileRef.id}/download`)})`,
       );
       finalContent = finalContent + "\n\n" + links.join("\n");
       setAttachments([]);

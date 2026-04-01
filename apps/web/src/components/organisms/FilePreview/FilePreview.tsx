@@ -7,6 +7,7 @@ import {
 import { Button } from '../../atoms/Button/Button'
 import type { FileSource } from '../../molecules/FileItem/FileItem'
 import { useTranslation } from 'react-i18next'
+import { apiUrl } from '../../../lib/api'
 
 export interface FilePreviewProps {
   id: string
@@ -121,7 +122,7 @@ export function FilePreview({
         </button>
         <div style={{ flex: 1 }} />
         {!isFolder && (
-          <button onClick={() => window.open(`/api/files/${id}/download`, '_blank')} title={t('files.openInNewTab')} style={iconBtnStyle}>
+          <button onClick={() => window.open(apiUrl(`/api/files/${id}/download`), '_blank')} title={t('files.openInNewTab')} style={iconBtnStyle}>
             <ExternalLink size={16} />
           </button>
         )}

@@ -1,13 +1,14 @@
 import { useState, useCallback } from "react";
 import { NewWorkspaceWizard, type NewWorkspaceWizardData } from "../components/screens/NewWorkspaceWizard/NewWorkspaceWizard";
 import { trpc } from "../lib/trpc";
+import { apiUrl } from "../lib/api";
 
 export function SetupPage() {
   const [error, setError] = useState("");
   const completeSetup = trpc.settings.completeSetup.useMutation();
 
   const handleCreateAccount = useCallback(async (name: string, email: string, password: string) => {
-    const signupRes = await fetch("/api/auth/sign-up/email", {
+    const signupRes = await fetch(apiUrl("/api/auth/sign-up/email"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -19,7 +20,7 @@ export function SetupPage() {
       throw new Error(body.message || "Failed to create account");
     }
 
-    const signinRes = await fetch("/api/auth/sign-in/email", {
+    const signinRes = await fetch(apiUrl("/api/auth/sign-in/email"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

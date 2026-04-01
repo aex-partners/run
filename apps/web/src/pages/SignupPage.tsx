@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { trpc } from "../lib/trpc";
+import { apiUrl } from "../lib/api";
 import { AexLogo } from "../components/atoms/AexLogo/AexLogo";
 
 export function SignupPage() {
@@ -24,7 +25,7 @@ export function SignupPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/sign-up/email", {
+      const res = await fetch(apiUrl("/api/auth/sign-up/email"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

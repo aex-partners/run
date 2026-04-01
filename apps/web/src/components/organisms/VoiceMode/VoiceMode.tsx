@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react'
 import { Keyboard, GripHorizontal } from 'lucide-react'
 import { Persona, type PersonaState } from '../../atoms/Persona/Persona'
+import { apiUrl } from '../../../lib/api'
 
 export interface VoiceModeProps {
   onSend: (message: string) => void
@@ -13,7 +14,7 @@ export interface VoiceModeProps {
 async function transcribeAudio(audioBlob: Blob): Promise<string> {
   const formData = new FormData()
   formData.append('audio', audioBlob, 'recording.webm')
-  const res = await fetch('/api/voice/transcribe', {
+  const res = await fetch(apiUrl('/api/voice/transcribe'), {
     method: 'POST',
     credentials: 'include',
     body: formData,
@@ -24,7 +25,7 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
 }
 
 async function playTTS(text: string, signal: AbortSignal): Promise<void> {
-  const res = await fetch('/api/voice/tts', {
+  const res = await fetch(apiUrl('/api/voice/tts'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

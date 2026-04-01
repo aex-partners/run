@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "../lib/trpc";
+import { apiUrl } from "../lib/api";
 import { MailScreen, type MailFolder, type MailEmail, type MailAccount } from "../components/screens/MailScreen/MailScreen";
 import type { EmailAccountConfig } from "../components/organisms/EmailSetup/EmailSetup";
 import type { MailAttachment } from "../components/organisms/MailDetail/MailDetail";
@@ -179,7 +180,7 @@ export function MailPage() {
 
   const handleDownloadAttachment = (attachment: MailAttachment) => {
     if (attachment.fileId) {
-      window.open(`/api/files/${attachment.fileId}/download`, "_blank");
+      window.open(apiUrl(`/api/files/${attachment.fileId}/download`), "_blank");
     }
   };
 

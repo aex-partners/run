@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useStreamingStore } from "../stores/streaming-store";
+import { apiUrl } from "../lib/api";
 
 interface SSEEvent {
   type: string;
@@ -455,7 +456,7 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
       };
 
       try {
-        const response = await fetch("/api/chat", {
+        const response = await fetch(apiUrl("/api/chat"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -532,7 +533,7 @@ export function useAgentChat({ conversationId, agentName = "Eric" }: UseAgentCha
   const approveToolCall = useCallback(
     async (toolUseId: string, allow: boolean) => {
       try {
-        await fetch("/api/chat/confirm", {
+        await fetch(apiUrl("/api/chat/confirm"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

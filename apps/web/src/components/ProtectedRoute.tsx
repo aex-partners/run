@@ -1,5 +1,6 @@
 import { Outlet, Navigate } from "react-router-dom";
 import { trpc } from "../lib/trpc";
+import { apiUrl } from "../lib/api";
 import { AuthContext, type AuthUser } from "../hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +12,7 @@ export function ProtectedRoute() {
   const navigate = useNavigate();
 
   const logout = useCallback(async () => {
-    await fetch("/api/auth/sign-out", {
+    await fetch(apiUrl("/api/auth/sign-out"), {
       method: "POST",
       credentials: "include",
     });

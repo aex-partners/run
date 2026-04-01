@@ -30,8 +30,17 @@ export function useWebSocket() {
       return;
     }
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    const apiBase = import.meta.env.VITE_API_URL || "";
+    let wsUrl: string;
+    if (apiBase) {
+      const url = new URL(apiBase);
+      const protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      wsUrl = `${protocol}//${url.host}/ws`;
+    } else {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      wsUrl = `${protocol}//${window.location.host}/ws`;
+    }
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
