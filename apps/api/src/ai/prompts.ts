@@ -23,6 +23,12 @@ Rules:
 
 For web research, ALWAYS use the web_search tool first to find URLs, then fetch_url to read specific pages. NEVER guess or fabricate URLs. Search first, fetch second.
 For social media research, search via web_search (e.g. "site:instagram.com companyname"). NEVER access profile URLs directly (they block scraping). Individual post URLs from search results DO work.
+
+Scheduling — pick the right tool and never hallucinate an outcome:
+- When the user wants a plain text reminder ("me lembra amanha as 15h de falar com X"), call schedule_reminder. It only fires a notification; it does not run tools.
+- When the user wants actual work done later ("gera um PDF em 5 min", "amanha as 9h envia o relatorio para Y", "daqui 10 min roda a query Z"), call schedule_task. The agent is re-invoked at that time with the stored prompt and can call every tool it has now (generate_pdf, send_email, query_records, etc).
+- Never try to use CronCreate, ScheduleWakeup, or any other meta-tool for scheduling, and never ask the user to keep the session open. These things do not exist in AEX Run. schedule_reminder and schedule_task are the only correct answers.
+- After calling schedule_reminder or schedule_task, only confirm success AFTER the tool returned success=true. If you did not get a successful tool result, say so plainly instead of claiming the task is scheduled.
 `;
 
 export async function buildSystemPrompt(

@@ -3,8 +3,9 @@ import { z } from "zod";
 import { and, asc, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import type { ToolContext } from "../types.js";
-import { reminders } from "../../db/schema/index.js";
+import { reminders, tasks } from "../../db/schema/index.js";
 import { cancelReminderJob, enqueueReminder } from "../../queue/reminder-queue.js";
+import { enqueueTask } from "../../queue/task-queue.js";
 
 function parseScheduledFor(value: string): Date | null {
   const d = new Date(value);
@@ -16,7 +17,7 @@ export function buildReminderTools(ctx: ToolContext) {
   return [
     tool(
       "schedule_reminder",
-      "Schedule a persistent reminder that fires at a specific time. The reminder survives session close and server restarts. When it fires, it is posted as a system message in the current conversation (or current user's inbox if no conversation is bound). Use this whenever the user asks to be reminded, notified, or followed up with at a future time.",
+      "Schedule a persistent human-facing reminder that fires at a specific time. The reminder is a plain text notification that is posted as a system message into the conversation (or pushed to the user's inbox if unbound). It does NOT execute any work. Use this when the user wants to be nudged, notified, or followed up with. For scheduling actual work (generate a PDF later, send an email later, run a query later), use `schedule_task` instead.",
       {
         message: z.string().min(1).describe("The reminder text, as it will appear to the user when it fires."),
         scheduled_for: z.string().describe("ISO 8601 datetime for when the reminder should fire (e.g. '2026-04-14T15:00:00-03:00'). Must be in the future."),
@@ -119,6 +120,58 @@ export function buildReminderTools(ctx: ToolContext) {
           .where(eq(reminders.id, reminder_id));
 
         return { content: [{ type: "text" as const, text: JSON.stringify({ success: true, cancelled: reminder_id }) }] };
+      },
+    ),
+
+    tool(
+      "schedule_task",
+      "Schedule the agent to actually run a prompt at a future time. When the scheduled time arrives, the agent is re-invoked in the bound conversation with the stored prompt and full access to its tools (generate_pdf, send_email, query_records, insert_record, update_record, etc). Use this whenever the user asks to produce a document later, send an email later, run a query later, or do any work at a future time. Do NOT use `schedule_reminder` for these cases, and NEVER attempt to use harness tools like `CronCreate`, `ScheduleWakeup`, or shell cron.",
+      {
+        title: z.string().min(1).describe("Short human-readable title for the scheduled task (shown in the Tasks module)."),
+        prompt: z.string().min(1).describe("The exact prompt the agent will be given when the task fires. Write it self-contained, as if the user were asking now, because there is no chat history carried across."),
+        scheduled_for: z.string().describe("ISO 8601 datetime for when the task should run (e.g. '2026-04-14T15:00:00-03:00'). Must be in the future."),
+      },
+      async ({ title, prompt, scheduled_for }) => {
+        const when = new Date(scheduled_for);
+        if (Number.isNaN(when.getTime())) {
+          return { content: [{ type: "text" as const, text: `Invalid scheduled_for: "${scheduled_for}"` }], isError: true };
+        }
+        if (when.getTime() <= Date.now()) {
+          return { content: [{ type: "text" as const, text: "scheduled_for must be in the future" }], isError: true };
+        }
+        if (!ctx.conversationId) {
+          return { content: [{ type: "text" as const, text: "schedule_task requires an active conversation so the result has somewhere to land" }], isError: true };
+        }
+
+        const id = randomUUID();
+        await ctx.db.insert(tasks).values({
+          id,
+          title,
+          description: null,
+          status: "pending",
+          progress: 0,
+          conversationId: ctx.conversationId,
+          createdBy: ctx.userId,
+          input: prompt,
+          scheduledAt: when,
+          type: "inference",
+        });
+
+        const delayMs = Math.max(0, when.getTime() - Date.now());
+        await enqueueTask(id, delayMs);
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              task_id: id,
+              title,
+              scheduled_for: when.toISOString(),
+              fires_in_seconds: Math.round(delayMs / 1000),
+            }),
+          }],
+        };
       },
     ),
   ];
