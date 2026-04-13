@@ -1,10 +1,36 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import type { ToolContext } from "../types.js";
 import { entities, entityRecords } from "../../db/schema/index.js";
 import { parseFields, serializeFields, slugify, type EntityField } from "../../db/entity-fields.js";
 import { broadcast } from "../../ws/index.js";
+
+type Entity = typeof entities.$inferSelect;
+
+async function resolveEntity(db: ToolContext["db"], nameOrId: string): Promise<Entity | null> {
+  const [match] = await db
+    .select()
+    .from(entities)
+    .where(or(eq(entities.name, nameOrId), eq(entities.id, nameOrId)))
+    .limit(1);
+  return match ?? null;
+}
+
+function mapDataKeysToFieldSlugs(
+  data: Record<string, unknown>,
+  fields: EntityField[],
+): Record<string, unknown> {
+  const mapped: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const keySlug = slugify(key);
+    const matched = fields.find(
+      (f) => f.name === key || f.slug === key || f.slug === keySlug || f.name.toLowerCase() === key.toLowerCase(),
+    );
+    mapped[matched ? matched.slug : keySlug] = value;
+  }
+  return mapped;
+}
 
 export function buildEntityTools(ctx: ToolContext) {
   return [
@@ -149,6 +175,85 @@ export function buildEntityTools(ctx: ToolContext) {
         const usedFields = Object.keys(mappedData).join(", ");
         return {
           content: [{ type: "text" as const, text: JSON.stringify({ success: true, id, fields_used: usedFields }) }],
+        };
+      },
+    ),
+
+    tool(
+      "update_record",
+      "Update fields of an existing record. Only provided fields change; others are preserved. Keys must match the entity's field names (use list_entities to check).",
+      {
+        entity_name: z.string().describe("Name or ID of the entity the record belongs to"),
+        record_id: z.string().describe("ID of the record to update"),
+        data: z.record(z.unknown()).describe("Partial record data as key-value pairs. Only keys you provide are updated."),
+      },
+      async ({ entity_name, record_id, data }) => {
+        const entity = await resolveEntity(ctx.db, entity_name);
+        if (!entity) {
+          return { content: [{ type: "text" as const, text: `Entity "${entity_name}" not found` }], isError: true };
+        }
+
+        const [record] = await ctx.db
+          .select()
+          .from(entityRecords)
+          .where(eq(entityRecords.id, record_id))
+          .limit(1);
+        if (!record) {
+          return { content: [{ type: "text" as const, text: `Record "${record_id}" not found` }], isError: true };
+        }
+        if (record.entityId !== entity.id) {
+          return { content: [{ type: "text" as const, text: `Record "${record_id}" does not belong to entity "${entity.name}"` }], isError: true };
+        }
+
+        const fields = parseFields(entity.fields);
+        const mappedData = mapDataKeysToFieldSlugs(data, fields);
+        const existingData = JSON.parse(record.data as string) as Record<string, unknown>;
+        const mergedData = { ...existingData, ...mappedData };
+
+        await ctx.db
+          .update(entityRecords)
+          .set({ data: JSON.stringify(mergedData), updatedAt: new Date() })
+          .where(eq(entityRecords.id, record_id));
+
+        broadcast({ type: "record_updated", entityId: entity.id });
+
+        const updatedFields = Object.keys(mappedData).join(", ");
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify({ success: true, id: record_id, fields_updated: updatedFields }) }],
+        };
+      },
+    ),
+
+    tool(
+      "delete_record",
+      "Delete a record permanently. Requires entity_name and record_id for safety.",
+      {
+        entity_name: z.string().describe("Name or ID of the entity the record belongs to"),
+        record_id: z.string().describe("ID of the record to delete"),
+      },
+      async ({ entity_name, record_id }) => {
+        const entity = await resolveEntity(ctx.db, entity_name);
+        if (!entity) {
+          return { content: [{ type: "text" as const, text: `Entity "${entity_name}" not found` }], isError: true };
+        }
+
+        const [record] = await ctx.db
+          .select({ id: entityRecords.id, entityId: entityRecords.entityId })
+          .from(entityRecords)
+          .where(eq(entityRecords.id, record_id))
+          .limit(1);
+        if (!record) {
+          return { content: [{ type: "text" as const, text: `Record "${record_id}" not found` }], isError: true };
+        }
+        if (record.entityId !== entity.id) {
+          return { content: [{ type: "text" as const, text: `Record "${record_id}" does not belong to entity "${entity.name}"` }], isError: true };
+        }
+
+        await ctx.db.delete(entityRecords).where(eq(entityRecords.id, record_id));
+        broadcast({ type: "record_updated", entityId: entity.id });
+
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify({ success: true, id: record_id }) }],
         };
       },
     ),
