@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Activity, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Activity, CheckCircle2, XCircle, Clock, Bell } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import { TasksScreen, type FilterItem } from "../components/screens/TasksScreen/TasksScreen";
 import { StatsCard } from "../components/molecules/StatsCard/StatsCard";
 import type { Task } from "../components/organisms/TaskList/TaskList";
 import { TaskDetailPanel } from "./TaskDetailPanel";
+import { RemindersPanel } from "../components/screens/RemindersPanel/RemindersPanel";
 import { useTranslation } from "react-i18next";
 
 function formatRelativeTime(date: string | Date): string {
@@ -35,11 +36,14 @@ export function TasksPage() {
   const { t } = useTranslation();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [view, setView] = useState<"tasks" | "reminders">("tasks");
 
   const tasksQuery = trpc.tasks.list.useQuery(
-    activeFilter !== "all"
-      ? { status: activeFilter as "pending" | "running" | "completed" | "failed" | "cancelled" }
-      : undefined,
+    activeFilter === "scheduled"
+      ? { scheduledOnly: true }
+      : activeFilter !== "all"
+        ? { status: activeFilter as "pending" | "running" | "completed" | "failed" | "cancelled" }
+        : undefined,
   );
   const statsQuery = trpc.tasks.stats.useQuery();
   const cancelMut = trpc.tasks.cancel.useMutation({
@@ -62,6 +66,7 @@ export function TasksPage() {
     { id: "all", label: t('tasks.allTasks'), count: total },
     { id: "running", label: t('status.running'), count: stats.running },
     { id: "pending", label: t('status.pending'), count: stats.pending },
+    { id: "scheduled", label: "Scheduled", count: undefined },
     { id: "completed", label: t('tasks.completedToday'), count: stats.completedToday },
     { id: "failed", label: t('status.failed'), count: stats.failed },
   ];
@@ -130,22 +135,53 @@ export function TasksPage() {
         />
       </div>
 
+      {/* View toggle */}
+      <div style={{ display: "flex", gap: 4, padding: "8px 20px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        {(["tasks", "reminders"] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              padding: "6px 14px",
+              fontSize: 13,
+              fontWeight: view === v ? 600 : 500,
+              border: "1px solid var(--border)",
+              background: view === v ? "var(--accent-light, #fff5f0)" : "transparent",
+              color: view === v ? "var(--accent)" : "var(--text-muted)",
+              borderRadius: 8,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontFamily: "inherit",
+            }}
+          >
+            {v === "reminders" ? <Bell size={14} /> : <Activity size={14} />}
+            {v === "tasks" ? "Tasks" : "Reminders"}
+          </button>
+        ))}
+      </div>
+
       {/* Main content */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <div style={{ flex: 1, overflow: "hidden" }}>
-          <TasksScreen
-            tasks={tasks}
-            filters={filters}
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            runningCount={stats.running}
-            onCancel={(id) => cancelMut.mutate({ id })}
-            onRetry={(id) => retryMut.mutate({ id })}
-            onViewLogs={(id) => setSelectedTaskId(id)}
-          />
+          {view === "tasks" ? (
+            <TasksScreen
+              tasks={tasks}
+              filters={filters}
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              runningCount={stats.running}
+              onCancel={(id) => cancelMut.mutate({ id })}
+              onRetry={(id) => retryMut.mutate({ id })}
+              onViewLogs={(id) => setSelectedTaskId(id)}
+            />
+          ) : (
+            <RemindersPanel />
+          )}
         </div>
 
-        {selectedTaskId && (
+        {selectedTaskId && view === "tasks" && (
           <TaskDetailPanel
             taskId={selectedTaskId}
             onClose={() => setSelectedTaskId(null)}
