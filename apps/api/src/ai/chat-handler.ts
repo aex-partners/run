@@ -3,7 +3,7 @@ import type { FastifyReply } from "fastify";
 import { db } from "../db/index.js";
 import { messages } from "../db/schema/index.js";
 import { sendToConversation } from "../ws/index.js";
-import { getSessionId, saveSessionId } from "./session-store.js";
+import { getSessionId, saveSessionId, clearSessionId } from "./session-store.js";
 import { resolveAgentForConversation } from "./agent-resolver.js";
 import { buildMcpServer } from "./mcp-server-factory.js";
 import { isReadOnlyTool } from "./tool-registry.js";
@@ -108,23 +108,6 @@ export async function handleChat(opts: {
       queryOptions.resume = sessionId;
     }
 
-    // Retry helper: if session is stale, clear it and retry without resume
-    const runQuery = async function* () {
-      try {
-        yield* query({ prompt, options: queryOptions as any });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "";
-        if (sessionId && msg.includes("No conversation found with session ID")) {
-          console.log("[chat] Stale session, retrying without resume");
-          await saveSessionId(conversationId, "");
-          delete queryOptions.resume;
-          yield* query({ prompt, options: queryOptions as any });
-        } else {
-          throw err;
-        }
-      }
-    };
-
     // Run the agent
     let finalText = "";
     let textFromStreaming = false;
@@ -134,7 +117,39 @@ export async function handleChat(opts: {
     // Track tools already sent via streaming to avoid duplicates from assistant message
     const sentToolIds = new Set<string>();
 
-    for await (const message of runQuery()) {
+    // If the Claude Code session stored in the DB is stale (container
+    // redeployed and wiped /root/.claude) we need to retry without resume.
+    // Doing that INSIDE the generator used to double-stream: any partial
+    // output from the failed first attempt stayed in finalText and the
+    // retry appended on top. We now reset the client-visible state + local
+    // accumulators before the second attempt.
+    async function* runWithStaleSessionRetry(): AsyncGenerator<unknown> {
+      try {
+        yield* query({ prompt, options: queryOptions as any });
+        return;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (!(sessionId && msg.includes("No conversation found with session ID"))) {
+          throw err;
+        }
+        console.log("[chat] Stale session, retrying without resume");
+        await clearSessionId(conversationId);
+        delete queryOptions.resume;
+
+        finalText = "";
+        textFromStreaming = false;
+        streamingToolInputs.clear();
+        sentToolIds.clear();
+        sendSSE(reply, {
+          type: "text_reset",
+          reason: "stale-session-retry",
+        });
+
+        yield* query({ prompt, options: queryOptions as any });
+      }
+    }
+
+    for await (const message of runWithStaleSessionRetry()) {
       const msgType = message.type;
       const msgSubtype = (message as any).subtype;
       if (msgType !== "stream_event") {
@@ -157,8 +172,11 @@ export async function handleChat(opts: {
       if (message.type === "system" && (message as any).subtype === "init") {
         const newSessionId = (message as any).session_id as string;
         if (!currentSessionId) {
-          currentSessionId = newSessionId;
-          await saveSessionId(conversationId, newSessionId);
+          // expectedPrevious=null means "only set when still empty" — so a
+          // concurrent turn that already claimed this conversation wins and
+          // we skip our overwrite.
+          const ok = await saveSessionId(conversationId, newSessionId, null);
+          if (ok) currentSessionId = newSessionId;
         }
         sendSSE(reply, {
           type: "session_init",
@@ -285,9 +303,11 @@ export async function handleChat(opts: {
       }
     }
 
-    // Persist session ID if it changed
+    // Persist session ID if it changed. The CAS check (expectedPrevious=sessionId)
+    // prevents two concurrent turns from overwriting each other — whoever
+    // wrote first wins, and the loser keeps the winner's session in the DB.
     if (currentSessionId && currentSessionId !== sessionId) {
-      await saveSessionId(conversationId, currentSessionId);
+      await saveSessionId(conversationId, currentSessionId, sessionId);
     }
 
     // Save AI response to DB

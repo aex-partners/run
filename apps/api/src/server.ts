@@ -214,6 +214,28 @@ export async function buildServer() {
       return reply.status(400).send({ error: "Missing code or state" });
     }
 
+    // Bind the callback to the currently-logged-in session. Without this, an
+    // attacker can get a `state` signed for user A (the HMAC signer is
+    // BETTER_AUTH_SECRET, shared server-wide), then have user B open the link
+    // in their authenticated browser — the resulting credential would be
+    // created under A. Verifying session.user.id matches state.userId closes
+    // the confused-deputy path.
+    const reqHeaders = new Headers();
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value) reqHeaders.set(key, Array.isArray(value) ? value.join(", ") : value);
+    }
+    const callbackSession = await auth.api.getSession({ headers: reqHeaders });
+    const { verifyOAuthState } = await import("./utils/oauth-state.js");
+    const stateData = verifyOAuthState(state) as { userId?: string } | null;
+    if (!stateData || !stateData.userId) {
+      return reply.status(400).send({ error: "Invalid state" });
+    }
+    if (!callbackSession?.user || callbackSession.user.id !== stateData.userId) {
+      return reply.status(403).send({
+        error: "Session does not match the OAuth flow initiator. Restart the connection from your own account.",
+      });
+    }
+
     try {
       const { handlePluginOAuth2Callback } = await import("./credentials/oauth2-handler.js");
       const { db } = await import("./db/index.js");
@@ -261,6 +283,18 @@ export async function buildServer() {
       };
       if (!stateData) {
         return reply.status(400).send({ error: "Invalid or tampered state parameter" });
+      }
+
+      // Same confused-deputy guard as the plugin OAuth callback above.
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+      }
+      const blingSession = await auth.api.getSession({ headers });
+      if (!blingSession?.user || blingSession.user.id !== stateData.userId) {
+        return reply.status(403).send({
+          error: "Session does not match the OAuth flow initiator. Restart the Bling connection from your own account.",
+        });
       }
 
       const { exchangeBlingCode } = await import("./bling/oauth.js");
