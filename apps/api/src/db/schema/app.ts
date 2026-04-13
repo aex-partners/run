@@ -485,6 +485,31 @@ export const messageEmbeddings = pgTable(
   ],
 );
 
+// Reminders: persistent scheduled reminders surfaced via chat + optional email.
+// A BullMQ delayed job keyed by reminder id fires at `scheduledFor` and posts
+// the reminder as an AI message into the originating conversation.
+export const reminders = pgTable(
+  "reminders",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id").references(() => conversations.id, { onDelete: "set null" }),
+    message: text("message").notNull(),
+    scheduledFor: timestamp("scheduled_for").notNull(),
+    status: text("status", { enum: ["scheduled", "fired", "cancelled"] }).notNull().default("scheduled"),
+    firedAt: timestamp("fired_at"),
+    jobId: text("job_id"),
+    deliverEmail: integer("deliver_email").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("reminders_user_id_idx").on(table.userId),
+    index("reminders_status_idx").on(table.status),
+    index("reminders_scheduled_for_idx").on(table.scheduledFor),
+  ],
+);
+
 // Knowledge: persistent memory for the AI agent
 // scope: "company" (shared, all users see) | "personal" (only the user who created it)
 export const knowledge = pgTable(

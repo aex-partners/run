@@ -43,6 +43,13 @@
       "when": 1774895972885,
       "tag": "0005_cloudy_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776065801884,
+      "tag": "0006_simple_johnny_blaze",
+      "breakpoints": true
     }
   ]
 }

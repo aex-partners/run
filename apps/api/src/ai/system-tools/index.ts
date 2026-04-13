@@ -2,11 +2,15 @@ import type { ToolContext } from "../types.js";
 import { buildEntityTools } from "./entity-tools.js";
 import { buildKnowledgeTools } from "./knowledge-tools.js";
 import { buildSearchTools } from "./search-tools.js";
+import { buildReminderTools } from "./reminder-tools.js";
+import { buildFileTools } from "./file-tools.js";
 
 export function buildAllSystemTools(ctx: ToolContext) {
   return [
     ...buildEntityTools(ctx),
     ...buildKnowledgeTools(ctx),
-    ...buildSearchTools(),
+    ...buildSearchTools(ctx),
+    ...buildReminderTools(ctx),
+    ...buildFileTools(ctx),
   ];
 }

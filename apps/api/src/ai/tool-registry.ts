@@ -22,6 +22,7 @@ export const READ_ONLY_TOOLS = new Set([
   "mcp__aex__query_knowledge",
   "mcp__aex__web_search",
   "mcp__aex__fetch_url",
+  "mcp__aex__list_reminders",
 ]);
 
 // Mutating tools require user confirmation
@@ -36,8 +37,11 @@ export const MUTATING_TOOLS = new Set([
   "mcp__aex__execute_workflow",
   "mcp__aex__send_email",
   "mcp__aex__create_file",
+  "mcp__aex__generate_pdf",
   "mcp__aex__save_knowledge",
   "mcp__aex__delete_knowledge",
+  "mcp__aex__schedule_reminder",
+  "mcp__aex__cancel_reminder",
 ]);
 
 export function isReadOnlyTool(toolName: string): boolean {

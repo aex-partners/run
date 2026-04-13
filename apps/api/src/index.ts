@@ -14,6 +14,8 @@ const { startFlowWorker } = await import("./queue/flow-worker.js");
 const { startEmailWorker } = await import("./queue/email-worker.js");
 const { startBlingSyncWorker } = await import("./queue/bling-worker.js");
 const { startFileIndexingWorker } = await import("./queue/file-indexing-worker.js");
+const { startReminderWorker } = await import("./queue/reminder-worker.js");
+const { probeSearxngHealth } = await import("./ai/system-tools/search-tools.js");
 const { loadActiveTriggers } = await import("./workflows/triggers.js");
 const { db, runMigrations } = await import("./db/index.js");
 
@@ -29,6 +31,8 @@ try {
   startEmailWorker();
   startBlingSyncWorker();
   startFileIndexingWorker();
+  startReminderWorker();
+  probeSearxngHealth().catch(() => { /* already logs internally */ });
   await loadActiveTriggers(db);
 } catch (err) {
   app.log.error(err);
