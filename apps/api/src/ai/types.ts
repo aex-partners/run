@@ -8,6 +8,7 @@ export type SSEEvent =
   | { type: "tool_start"; toolUseId: string; toolName: string; input: Record<string, unknown> }
   | { type: "tool_result"; toolUseId: string; result: unknown; isError: boolean }
   | { type: "tool_confirmation_required"; toolUseId: string; toolName: string; input: Record<string, unknown>; description: string }
+  | { type: "text_reset"; reason: string }
   | { type: "result"; sessionId: string; totalCostUsd?: number; numTurns?: number }
   | { type: "error"; message: string };
 
