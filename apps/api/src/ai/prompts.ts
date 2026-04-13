@@ -2,6 +2,7 @@ import { eq, or, and, ne } from "drizzle-orm";
 import { entities, settings, workflows, knowledge } from "../db/schema/index.js";
 import { parseFields } from "../db/entity-fields.js";
 import type { Database } from "../db/index.js";
+import { isSearxngAvailable } from "./system-tools/search-tools.js";
 
 const BASE_PROMPT = `You are Eric, the AI assistant of AEX Run, an AI-First, self-hosted, single-tenant ERP system.
 
@@ -21,7 +22,7 @@ Rules:
 - When asked to delete or remove a record, call delete_record. The system will ask the user for confirmation before running.
 - Use list_entities to check what exists before creating new ones.
 
-For web research, ALWAYS use the web_search tool first to find URLs, then fetch_url to read specific pages. NEVER guess or fabricate URLs. Search first, fetch second.
+For web research, use the web_search tool first to find URLs, then fetch_url to read specific pages. NEVER guess or fabricate URLs. Search first, fetch second.
 For social media research, search via web_search (e.g. "site:instagram.com companyname"). NEVER access profile URLs directly (they block scraping). Individual post URLs from search results DO work.
 
 Scheduling — pick the right tool and never hallucinate an outcome:
@@ -46,6 +47,18 @@ export async function buildSystemPrompt(
     ? BASE_PROMPT.replace("You are Eric,", `You are ${options.agentName},`)
     : BASE_PROMPT;
   sections.push(basePrompt);
+
+  // Runtime advisory based on live infra state. When SearXNG is down the agent
+  // should be told explicitly so it does not keep trying web_search for
+  // external research questions that can only come from the local CRM.
+  if (!isSearxngAvailable()) {
+    sections.push(
+      "\nInfra advisory: the external web search backend is currently unavailable. " +
+      "web_search will transparently fall back to the local CRM only. Do not promise " +
+      "web-sourced answers (news, prices, public company info) until that is resolved. " +
+      "Offer CRM-based answers when the data is already in our records.",
+    );
+  }
 
   // Agent/skill prompt fragments
   if (options?.agentPromptFragments?.length) {

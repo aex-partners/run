@@ -2,8 +2,18 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { db as defaultDb } from "../db/index.js";
 import { resolveAgentForConversation } from "../ai/agent-resolver.js";
 import { buildMcpServer } from "../ai/mcp-server-factory.js";
+import { isReadOnlyTool } from "../ai/tool-registry.js";
 import type { ToolContext } from "../ai/types.js";
 import type { Database } from "../db/index.js";
+
+// Per-execution safety budgets for unattended scheduled tasks. Read-only tools
+// are unlimited; mutating tools are counted, with tighter sub-caps on the
+// operations that are either irreversible (delete_record) or observable to
+// third parties (send_email). If an agent tries to exceed a cap it gets a
+// "denied" tool result and can decide how to proceed in the remaining turns.
+const DEFAULT_MUTATION_BUDGET = Number(process.env.TASK_MUTATION_BUDGET ?? 5);
+const DEFAULT_DELETE_BUDGET = Number(process.env.TASK_DELETE_BUDGET ?? 0);
+const DEFAULT_EMAIL_BUDGET = Number(process.env.TASK_EMAIL_BUDGET ?? 1);
 
 class TaskCancelledException extends Error {
   constructor() {
@@ -38,6 +48,42 @@ async function runInferenceTask(task: TaskInput, db: Database): Promise<string> 
   const toolContext: ToolContext = { db, userId: task.createdBy, conversationId: task.conversationId };
   const mcpServer = buildMcpServer({ agentConfig, toolContext });
 
+  // Scheduled tasks run without a human-in-the-loop, so we replace the
+  // interactive confirmation flow with hard budgets on mutating operations.
+  let mutationsUsed = 0;
+  let deletesUsed = 0;
+  let emailsUsed = 0;
+  const canUseTool = async (toolName: string) => {
+    if (isReadOnlyTool(toolName)) return { behavior: "allow" as const };
+
+    if (toolName === "mcp__aex__delete_record") {
+      if (deletesUsed >= DEFAULT_DELETE_BUDGET) {
+        return {
+          behavior: "deny" as const,
+          message: `delete_record is disabled in scheduled tasks (budget=${DEFAULT_DELETE_BUDGET}). Ask the user to run this from chat so they can confirm.`,
+        };
+      }
+      deletesUsed += 1;
+    }
+    if (toolName === "mcp__aex__send_email") {
+      if (emailsUsed >= DEFAULT_EMAIL_BUDGET) {
+        return {
+          behavior: "deny" as const,
+          message: `send_email budget exhausted for this task (max ${DEFAULT_EMAIL_BUDGET}).`,
+        };
+      }
+      emailsUsed += 1;
+    }
+    if (mutationsUsed >= DEFAULT_MUTATION_BUDGET) {
+      return {
+        behavior: "deny" as const,
+        message: `Mutation budget exhausted for this scheduled task (${DEFAULT_MUTATION_BUDGET}). Summarise what still needs to happen and stop.`,
+      };
+    }
+    mutationsUsed += 1;
+    return { behavior: "allow" as const };
+  };
+
   const options: Record<string, unknown> = {
     systemPrompt: agentConfig.systemPrompt,
     mcpServers: { aex: mcpServer },
@@ -47,9 +93,7 @@ async function runInferenceTask(task: TaskInput, db: Database): Promise<string> 
       "Bash", "Read", "Write", "Edit", "Glob", "Grep",
       "Agent", "AskUserQuestion", "TodoWrite",
     ],
-    // Scheduled tasks run without an interactive user to confirm mutations.
-    // The user already authorised the work when they scheduled it.
-    canUseTool: async () => ({ behavior: "allow" as const }),
+    canUseTool,
     maxTurns: 15,
     includePartialMessages: false,
     cwd: process.cwd(),

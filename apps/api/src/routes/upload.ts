@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { writeFile, mkdir } from "node:fs/promises";
 import { resolve, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { auth } from "../auth/index.js";
 import { localStorage, getFileType, getMimeType, formatFileSize, UPLOADS_DIR } from "../files/storage.js";
 
@@ -124,7 +124,7 @@ export function registerUploadRoutes(app: FastifyInstance) {
     });
   });
 
-  // File download (authenticated)
+  // File download (authenticated + owner/share ACL)
   app.get("/api/files/:id/download", async (req, reply) => {
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
@@ -138,15 +138,24 @@ export function registerUploadRoutes(app: FastifyInstance) {
 
     const { id } = req.params as { id: string };
     const { db } = await import("../db/index.js");
-    const { files } = await import("../db/schema/index.js");
+    const { files, fileShares } = await import("../db/schema/index.js");
+    const userId = session.user.id;
 
+    // Authorize: requester must own the file or have a share granting access.
     const [file] = await db
       .select()
       .from(files)
-      .where(eq(files.id, id))
+      .where(and(
+        eq(files.id, id),
+        or(
+          eq(files.ownerId, userId),
+          sql`EXISTS (SELECT 1 FROM ${fileShares} WHERE ${fileShares.fileId} = ${id} AND ${fileShares.userId} = ${userId})`,
+        ),
+      ))
       .limit(1);
 
     if (!file || !file.path) {
+      // 404 rather than 403 so we don't leak existence of files the user can't access.
       return reply.status(404).send({ error: "File not found" });
     }
 

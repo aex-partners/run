@@ -1,11 +1,22 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { ToolContext } from "../types.js";
 import { entities, entityRecords } from "../../db/schema/index.js";
 import { parseFields } from "../../db/entity-fields.js";
 
 const SEARXNG_URL = process.env.SEARXNG_URL || "http://searxng:8080";
+
+// Populated by the startup probe so the system prompt and tool descriptions
+// can reflect reality. Defaults to true so that when the probe hasn't run
+// yet we don't prematurely switch to fallback-only messaging.
+let searxngAvailable = true;
+export function setSearxngAvailable(ok: boolean): void {
+  searxngAvailable = ok;
+}
+export function isSearxngAvailable(): boolean {
+  return searxngAvailable;
+}
 
 interface WebResult {
   title: string;
@@ -64,7 +75,12 @@ async function runCrmFallback(ctx: ToolContext, query: string, maxResults: numbe
 
   if (tokens.length === 0) return [];
 
-  const allEntities = await ctx.db.select().from(entities);
+  // Scope to entities the requesting user owns; otherwise this becomes a
+  // cross-user data enumeration surface for anyone with chat access.
+  const allEntities = await ctx.db
+    .select()
+    .from(entities)
+    .where(eq(entities.createdBy, ctx.userId));
   if (allEntities.length === 0) return [];
 
   const hits: CrmHit[] = [];
@@ -74,7 +90,11 @@ async function runCrmFallback(ctx: ToolContext, query: string, maxResults: numbe
     const rows = await ctx.db
       .select()
       .from(entityRecords)
-      .where(sql`${entityRecords.entityId} = ${entity.id} AND (${sql.join(likeClauses, sql` OR `)})`)
+      .where(and(
+        eq(entityRecords.entityId, entity.id),
+        eq(entityRecords.createdBy, ctx.userId),
+        sql`(${sql.join(likeClauses, sql` OR `)})`,
+      ))
       .limit(maxResults);
 
     const fields = parseFields(entity.fields);
@@ -210,22 +230,24 @@ export function buildSearchTools(ctx: ToolContext) {
 }
 
 /**
- * Startup health probe. Non-fatal; just logs so operators know why the agent
- * will use the CRM fallback path.
+ * Startup health probe. Returns whether SearXNG is reachable so callers can
+ * stash the result and expose it to prompt-building.
  */
-export async function probeSearxngHealth(): Promise<void> {
+export async function probeSearxngHealth(): Promise<boolean> {
   try {
     const res = await fetch(`${SEARXNG_URL}/healthz`, {
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
       console.log(`[search] SearXNG reachable at ${SEARXNG_URL}`);
-    } else {
-      console.warn(`[search] SearXNG at ${SEARXNG_URL} returned ${res.status}; web_search will fall back to CRM`);
+      return true;
     }
+    console.warn(`[search] SearXNG at ${SEARXNG_URL} returned ${res.status}; web_search will fall back to CRM`);
+    return false;
   } catch (err) {
     console.warn(
       `[search] SearXNG at ${SEARXNG_URL} not reachable (${err instanceof Error ? err.message : err}); web_search will fall back to CRM`,
     );
+    return false;
   }
 }

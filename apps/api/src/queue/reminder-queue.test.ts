@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const addMock = vi.fn(async (_name: string, _data: unknown, opts: { jobId?: string }) => ({ id: opts?.jobId ?? "job" }));
+const addMock = vi.fn(async (_name: string, _data: unknown, opts: { jobId?: string; delay?: number }) => ({ id: opts?.jobId ?? "job" }));
 const getJobMock = vi.fn();
 
 vi.mock("./connection.js", () => ({ redisConnection: {} }));

@@ -9,7 +9,11 @@ import * as schema from "./schema/index.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const client = postgres(env.DATABASE_URL);
+const client = postgres(env.DATABASE_URL, {
+  max: Number(process.env.PG_POOL_MAX ?? 30),
+  idle_timeout: 30,
+  connect_timeout: 10,
+});
 export const db = drizzle(client, { schema });
 export type Database = typeof db;
 

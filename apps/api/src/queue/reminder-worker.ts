@@ -23,12 +23,11 @@ export function startReminderWorker() {
         return;
       }
 
+      // Persist the user-visible side-effects FIRST so a crash between steps
+      // doesn't leave the reminder in `fired` state without the user ever
+      // seeing a message. BullMQ will retry the job and the early-skip above
+      // only triggers after status is flipped at the very end.
       const firedAt = new Date();
-      await db
-        .update(reminders)
-        .set({ status: "fired", firedAt, updatedAt: firedAt })
-        .where(eq(reminders.id, reminderId));
-
       const content = `Reminder: ${reminder.message}`;
 
       if (reminder.conversationId) {
@@ -67,6 +66,11 @@ export function startReminderWorker() {
           firedAt: firedAt.toISOString(),
         });
       }
+
+      await db
+        .update(reminders)
+        .set({ status: "fired", firedAt, updatedAt: firedAt })
+        .where(eq(reminders.id, reminderId));
 
       console.log(`[reminders] fired ${reminderId} for user ${reminder.userId}`);
     },
