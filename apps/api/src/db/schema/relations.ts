@@ -23,6 +23,7 @@ import {
   emails,
   emailAttachments,
   emailLabels,
+  reminders,
 } from "./app";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -178,4 +179,9 @@ export const emailAttachmentsRelations = relations(emailAttachments, ({ one }) =
 
 export const emailLabelsRelations = relations(emailLabels, ({ one }) => ({
   account: one(emailAccounts, { fields: [emailLabels.accountId], references: [emailAccounts.id] }),
+}));
+
+export const remindersRelations = relations(reminders, ({ one }) => ({
+  user: one(users, { fields: [reminders.userId], references: [users.id] }),
+  conversation: one(conversations, { fields: [reminders.conversationId], references: [conversations.id] }),
 }));

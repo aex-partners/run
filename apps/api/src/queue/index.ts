@@ -7,3 +7,5 @@ export { blingSyncQueue, enqueueBlingSync } from "./bling-queue.js";
 export { startBlingSyncWorker } from "./bling-worker.js";
 export { fileIndexingQueue, enqueueFileIndexing } from "./file-indexing-queue.js";
 export { startFileIndexingWorker } from "./file-indexing-worker.js";
+export { reminderQueue, enqueueReminder, cancelReminderJob } from "./reminder-queue.js";
+export { startReminderWorker } from "./reminder-worker.js";
