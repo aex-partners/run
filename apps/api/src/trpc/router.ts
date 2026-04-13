@@ -20,6 +20,7 @@ import { credentialsRouter } from "./routers/credentials.js";
 import { flowsRouter } from "./routers/flows.js";
 import { blingRouter } from "./routers/bling.js";
 import { knowledgeRouter } from "./routers/knowledge.js";
+import { remindersRouter } from "./routers/reminders.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -43,6 +44,7 @@ export const appRouter = router({
   flows: flowsRouter,
   bling: blingRouter,
   knowledge: knowledgeRouter,
+  reminders: remindersRouter,
 });
 
 export type AppRouter = typeof appRouter;

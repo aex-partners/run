@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { eq, desc, asc, sql } from "drizzle-orm";
+import { and, eq, isNotNull, desc, asc, gt, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../index.js";
 import { tasks, taskLogs } from "../../db/schema/index.js";
-import { enqueueTask } from "../../queue/task-queue.js";
+import { enqueueTask, cancelTaskJob } from "../../queue/task-queue.js";
 import { broadcast } from "../../ws/index.js";
 
 export const tasksRouter = router({
@@ -10,27 +10,27 @@ export const tasksRouter = router({
     .input(
       z.object({
         status: z.enum(["pending", "running", "completed", "failed", "cancelled"]).optional(),
+        scheduledOnly: z.boolean().optional(),
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
       }).optional().default({}),
     )
     .query(async ({ ctx, input }) => {
-      const base = ctx.db
-        .select()
-        .from(tasks);
-
-      if (input.status) {
-        return base
-          .where(eq(tasks.status, input.status))
-          .orderBy(desc(tasks.createdAt))
-          .limit(input.limit)
-          .offset(input.offset);
+      const conditions = [];
+      if (input.status) conditions.push(eq(tasks.status, input.status));
+      if (input.scheduledOnly) {
+        conditions.push(eq(tasks.status, "pending"));
+        conditions.push(isNotNull(tasks.scheduledAt));
+        conditions.push(gt(tasks.scheduledAt, new Date()));
       }
 
-      return base
-        .orderBy(desc(tasks.createdAt))
-        .limit(input.limit)
-        .offset(input.offset);
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+      const order = input.scheduledOnly ? asc(tasks.scheduledAt) : desc(tasks.createdAt);
+
+      const q = ctx.db.select().from(tasks);
+      return where
+        ? q.where(where).orderBy(order).limit(input.limit).offset(input.offset)
+        : q.orderBy(order).limit(input.limit).offset(input.offset);
     }),
 
   getById: protectedProcedure
@@ -74,6 +74,9 @@ export const tasksRouter = router({
         return { error: `Cannot cancel task with status: ${task.status}` };
       }
 
+      // Best-effort: also drop the BullMQ job so a scheduled-but-not-yet-fired
+      // task does not still trigger after we set status=cancelled.
+      try { await cancelTaskJob(input.id); } catch { /* job may already be gone */ }
       await ctx.db
         .update(tasks)
         .set({ status: "cancelled", completedAt: new Date() })
