@@ -199,6 +199,8 @@ export function buildFileTools(ctx: ToolContext) {
           ownerId: ctx.userId,
         });
 
+        const downloadPath = `/api/files/${id}/download`;
+
         return {
           content: [{
             type: "text" as const,
@@ -208,6 +210,8 @@ export function buildFileTools(ctx: ToolContext) {
               name: displayName,
               size_bytes: buffer.length,
               mime_type: "application/pdf",
+              download_path: downloadPath,
+              note: "Same-origin download. Surface this path as a markdown link in your reply, e.g. [download](" + downloadPath + "), so the user can save the file from chat. Also mention the file appears in the Files panel.",
             }),
           }],
         };
