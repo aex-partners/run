@@ -156,8 +156,9 @@ export function startFileIndexingWorker() {
     },
   );
 
-  worker.on("failed", (job, err) => {
-    console.error(`[file-indexing] Job ${job?.id} failed:`, err.message);
+  worker.on("failed", async (job, err) => {
+    const { captureError } = await import("../observability.js");
+    captureError(err, { kind: "file-indexing-worker-failed", jobId: job?.id });
   });
 
   console.log("[file-indexing] Worker started");

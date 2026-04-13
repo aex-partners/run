@@ -70,8 +70,9 @@ export function startWorkflowWorker() {
     },
   );
 
-  worker.on("failed", (job, err) => {
-    console.error(`Workflow job ${job?.id} failed:`, err.message);
+  worker.on("failed", async (job, err) => {
+    const { captureError } = await import("../observability.js");
+    captureError(err, { kind: "workflow-worker-failed", jobId: job?.id });
   });
 
   console.log("Workflow worker started");

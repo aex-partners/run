@@ -135,8 +135,9 @@ export function startTaskWorker() {
     },
   );
 
-  worker.on("failed", (job, err) => {
-    console.error(`Job ${job?.id} failed:`, err.message);
+  worker.on("failed", async (job, err) => {
+    const { captureError } = await import("../observability.js");
+    captureError(err, { kind: "task-worker-failed", jobId: job?.id });
   });
 
   console.log("Task worker started");

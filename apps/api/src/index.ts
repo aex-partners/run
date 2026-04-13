@@ -6,6 +6,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 config({ path: resolve(__dirname, "../../../.env") });
 
+// Initialise Sentry before anything else so the earliest possible exceptions
+// (during env parsing, migrations, worker startup) get reported. No-op when
+// SENTRY_DSN is absent.
+const { initObservability, captureError } = await import("./observability.js");
+initObservability();
+
 const { env } = await import("./env.js");
 const { buildServer } = await import("./server.js");
 const { startTaskWorker } = await import("./queue/task-worker.js");
@@ -40,8 +46,16 @@ try {
   await loadActiveTriggers(db);
 } catch (err) {
   app.log.error(err);
+  captureError(err, { kind: "boot" });
   process.exit(1);
 }
+
+process.on("unhandledRejection", (reason) => {
+  captureError(reason, { kind: "unhandled-rejection" });
+});
+process.on("uncaughtException", (err) => {
+  captureError(err, { kind: "uncaught-exception" });
+});
 
 // Graceful shutdown: Railway sends SIGTERM on redeploy. Give in-flight jobs
 // a few seconds to finish, then exit. boot-reconcile handles anything that

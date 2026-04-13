@@ -132,8 +132,9 @@ export function startFlowWorker() {
     },
   );
 
-  worker.on("failed", (job, err) => {
-    console.error(`Flow job ${job?.id} failed:`, err.message);
+  worker.on("failed", async (job, err) => {
+    const { captureError } = await import("../observability.js");
+    captureError(err, { kind: "flow-worker-failed", jobId: job?.id });
   });
 
   console.log("Flow worker started");

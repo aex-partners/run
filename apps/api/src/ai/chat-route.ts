@@ -6,10 +6,18 @@ import { messages, conversationMembers } from "../db/schema/index.js";
 import { sendToConversation } from "../ws/index.js";
 import { handleChat } from "./chat-handler.js";
 import { resolveConfirmation } from "./confirmation-broker.js";
+import { assertUnderBudget, BudgetExceededError } from "./spend-tracker.js";
+
+const CHAT_RATE_MAX = Number(process.env.CHAT_RATE_LIMIT_MAX ?? 20);
+const CHAT_RATE_WINDOW = process.env.CHAT_RATE_LIMIT_WINDOW ?? "1 minute";
 
 export function registerChatRoutes(app: FastifyInstance) {
   // Main chat endpoint: streams AI response via SSE
-  app.post("/api/chat", async (req, reply) => {
+  app.post("/api/chat", {
+    config: {
+      rateLimit: { max: CHAT_RATE_MAX, timeWindow: CHAT_RATE_WINDOW },
+    },
+  }, async (req, reply) => {
     // Auth
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
@@ -41,6 +49,20 @@ export function registerChatRoutes(app: FastifyInstance) {
 
     if (!member) {
       return reply.status(403).send({ error: "Not a member of this conversation" });
+    }
+
+    // Daily per-user Anthropic spend cap. Throws BudgetExceededError when hit.
+    try {
+      await assertUnderBudget(userId);
+    } catch (err) {
+      if (err instanceof BudgetExceededError) {
+        return reply.status(429).send({
+          error: err.message,
+          spentUsd: err.spentUsd,
+          budgetUsd: err.budgetUsd,
+        });
+      }
+      throw err;
     }
 
     // Save user message to DB

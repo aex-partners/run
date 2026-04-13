@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import websocket from "@fastify/websocket";
 import multipart from "@fastify/multipart";
+import rateLimit from "@fastify/rate-limit";
 import {
   fastifyTRPCPlugin,
   type FastifyTRPCPluginOptions,
@@ -25,6 +26,27 @@ export async function buildServer() {
   await app.register(cookie);
   await app.register(websocket);
   await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
+
+  // Rate limit is registered globally but only the chat route opts in via its
+  // route config. The keyGenerator prefers the session user id so rate limits
+  // survive IP churn behind Caddy/Railway and naturally per-user rather than
+  // per-host.
+  await app.register(rateLimit, {
+    global: false,
+    keyGenerator: async (req) => {
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+      }
+      try {
+        const session = await auth.api.getSession({ headers });
+        if (session?.user?.id) return `user:${session.user.id}`;
+      } catch {
+        // fall through to ip
+      }
+      return `ip:${req.ip}`;
+    },
+  });
 
   // Health check
   app.get("/health", async () => ({ status: "ok" }));
