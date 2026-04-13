@@ -16,6 +16,21 @@ if (!dbUrl) {
   process.exit(1);
 }
 
+// Refuse to run against a DB that looks like production unless the operator
+// confirms via env flag. Destructive operations with an accidentally-exported
+// prod DATABASE_URL have been known to end careers.
+const looksProdLike =
+  process.env.NODE_ENV === "production" ||
+  /railway\.internal|\.proxy\.rlwy\.net/.test(dbUrl);
+if (looksProdLike && process.env.I_REALLY_WANT_TO_RESET !== "yes") {
+  const masked = dbUrl.replace(/:[^@/]+@/, ":***@");
+  console.error(
+    `Refusing to reset a production-like DB: ${masked}\n` +
+    `If you really mean it, re-run with I_REALLY_WANT_TO_RESET=yes in the env.`,
+  );
+  process.exit(2);
+}
+
 console.log("Dropping all tables...");
 
 const postgres = (await import("postgres")).default;
