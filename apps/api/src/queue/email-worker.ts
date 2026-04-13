@@ -41,8 +41,9 @@ export function startEmailWorker() {
     },
   );
 
-  worker.on("failed", (job, err) => {
-    console.error(`[email] Job ${job?.id} failed:`, err.message);
+  worker.on("failed", async (job, err) => {
+    const { captureError } = await import("../observability.js");
+    captureError(err, { kind: "email-worker-failed", jobId: job?.id });
   });
 
   console.log("[email] SMTP worker started");

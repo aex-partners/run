@@ -80,8 +80,9 @@ export function startReminderWorker() {
     },
   );
 
-  worker.on("failed", (job, err) => {
-    console.error(`[reminders] Job ${job?.id} failed:`, err.message);
+  worker.on("failed", async (job, err) => {
+    const { captureError } = await import("../observability.js");
+    captureError(err, { kind: "reminder-worker-failed", jobId: job?.id });
   });
 
   console.log("[reminders] worker started");

@@ -41,8 +41,9 @@ export function startBlingSyncWorker() {
     },
   );
 
-  worker.on("failed", (job, err) => {
-    console.error(`[bling-sync] Job ${job?.id} failed:`, err.message);
+  worker.on("failed", async (job, err) => {
+    const { captureError } = await import("../observability.js");
+    captureError(err, { kind: "bling-worker-failed", jobId: job?.id });
   });
 
   console.log("[bling-sync] Worker started");

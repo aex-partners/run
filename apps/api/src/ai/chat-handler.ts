@@ -9,6 +9,7 @@ import { buildMcpServer } from "./mcp-server-factory.js";
 import { isReadOnlyTool } from "./tool-registry.js";
 import { requestConfirmation, cancelPendingForConversation } from "./confirmation-broker.js";
 import { buildSubagents } from "./subagents.js";
+import { recordSpend } from "./spend-tracker.js";
 import type { SSEEvent, ToolContext } from "./types.js";
 
 function sendSSE(reply: FastifyReply, event: SSEEvent) {
@@ -267,6 +268,13 @@ export async function handleChat(opts: {
       if (message.type === "result") {
         const resultMsg = message as any;
         currentSessionId = resultMsg.session_id ?? currentSessionId;
+
+        const costUsd = Number(resultMsg.total_cost_usd ?? 0);
+        if (costUsd > 0) {
+          recordSpend(userId, costUsd).catch((err) =>
+            console.error("[chat] recordSpend failed:", err instanceof Error ? err.message : err),
+          );
+        }
 
         sendSSE(reply, {
           type: "result",
