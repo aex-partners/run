@@ -42,6 +42,7 @@ export const MUTATING_TOOLS = new Set([
   "mcp__aex__delete_knowledge",
   "mcp__aex__schedule_reminder",
   "mcp__aex__cancel_reminder",
+  "mcp__aex__schedule_task",
 ]);
 
 export function isReadOnlyTool(toolName: string): boolean {
