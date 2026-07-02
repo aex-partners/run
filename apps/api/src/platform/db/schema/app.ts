@@ -618,3 +618,18 @@ export const auditLog = pgTable(
     index("audit_log_resource_idx").on(table.resourceType, table.resourceId),
   ],
 );
+
+// Bling mirror sync map. Owned solely by the `bling` context: maps a Bling
+// external id to the AEX entity_records row it mirrors, plus the last written
+// version + content hash for idempotent, change-detecting re-sync. Dropping this
+// table + the bling context removes Bling with zero residue in the core.
+export const blingSyncMap = pgTable("bling_sync_map", {
+  entitySlug: text("entity_slug").notNull(),
+  externalId: text("external_id").notNull(),
+  recordId: text("record_id").notNull().references(() => entityRecords.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  contentHash: text("content_hash").notNull(),
+  lastSyncedAt: timestamp("last_synced_at").notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.entitySlug, table.externalId] }),
+]);
