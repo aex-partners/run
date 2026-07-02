@@ -1,0 +1,25 @@
+// PURE mirror of the ActivePieces `PropertyType` enum, owned by the domain so the
+// metadata model never imports the npm framework. The registry adapter maps the
+// framework enum onto these string literals. Kept 1:1 with the framework values.
+export type PiecePropertyType =
+  | 'SHORT_TEXT'
+  | 'LONG_TEXT'
+  | 'MARKDOWN'
+  | 'DROPDOWN'
+  | 'STATIC_DROPDOWN'
+  | 'NUMBER'
+  | 'CHECKBOX'
+  | 'OAUTH2'
+  | 'SECRET_TEXT'
+  | 'ARRAY'
+  | 'OBJECT'
+  | 'BASIC_AUTH'
+  | 'JSON'
+  | 'MULTI_SELECT_DROPDOWN'
+  | 'STATIC_MULTI_SELECT_DROPDOWN'
+  | 'DYNAMIC'
+  | 'CUSTOM_AUTH'
+  | 'DATE_TIME'
+  | 'FILE'
+  | 'CUSTOM'
+  | 'COLOR'

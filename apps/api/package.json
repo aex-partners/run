@@ -1,0 +1,66 @@
+{
+  "name": "@aex/api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./trpc": {
+      "types": "./dist/main/routes.d.ts",
+      "default": "./src/main/routes.ts"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/main/server.ts",
+    "build:types": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "start": "node dist/main/server.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "depcruise": "depcruise src --config .dependency-cruiser.cjs",
+    "depcruise:graph": "depcruise src --config .dependency-cruiser.cjs --output-type dot | dot -T svg > ../../docs/architecture/dependency-graph.svg",
+    "verify": "tsc --noEmit && depcruise src --config .dependency-cruiser.cjs",
+    "demo": "tsx src/main/demo/demo.ts",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aex/shared": "*",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.84",
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/websocket": "^11.2.0",
+    "@trpc/server": "^11.12.0",
+    "better-auth": "^1.5.5",
+    "bullmq": "^5.71.0",
+    "cron-parser": "^4.9.0",
+    "csv-parse": "^6.2.1",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.1",
+    "fastify": "^5.8.2",
+    "imapflow": "^1.2.18",
+    "ioredis": "^5.10.0",
+    "marked": "^16.4.2",
+    "node-sped-nfe": "^1.2.52",
+    "nodemailer": "^8.0.4",
+    "pdf-parse": "^1.1.1",
+    "pdfkit": "^0.18.0",
+    "postgres": "^3.4.8",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/nodemailer": "^7.0.11",
+    "dependency-cruiser": "^16.8.0",
+    "drizzle-kit": "^0.31.9",
+    "tsc-alias": "^1.8.17",
+    "tsx": "^4.19.4",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

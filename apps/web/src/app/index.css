@@ -1,0 +1,126 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+/* The source lab's exact font load: Inter (sans), JetBrains Mono (data/mono),
+   Plus Jakarta Sans (display/headings). Fallback stacks still render offline. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@700&display=swap');
+
+/* good-views engine: register the semantic color utilities its components use
+   (bg-muted, text-foreground, text-muted-foreground, border-border, ...) mapped
+   onto run-hex's AEX palette. `inline` keeps these referencing the live :root
+   vars without emitting duplicate tokens, so the existing AEX :root tokens are
+   left untouched. Only ADDS utilities; nothing here clobbers AEX values. */
+@theme inline {
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--accent);
+
+  /* good-views (shadcn) needs a mono font + a radius scale keyed off --radius.
+     Because these are `inline`, `rounded-*` / `font-mono` read the LIVE --radius /
+     --font-mono at the point of use — so the .gv-scope subtree (which sets
+     --radius: 0.625rem below) matches its source lab, while the rest of the app
+     keeps rendering against the global --radius (0.5rem). --font-mono is unused
+     elsewhere in the app, so adding it here only affects good-views' 3 usages. */
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: 24px;
+}
+
+/* Default border color for the good-views subtree (shadcn convention), scoped so
+   it never changes run-hex's global border behaviour. Explicit border-* utility
+   classes still win (utilities layer beats base). */
+@layer base {
+  .gv-scope,
+  .gv-scope * {
+    border-color: var(--border);
+  }
+}
+
+/* good-views inherits the global palette below (the source lab's shadcn theme:
+   blue primary + slate neutrals). No scoped color override — the whole app adopts
+   the lab palette. */
+
+:root {
+  /* AEX design tokens = the good-views source lab palette (shadcn: blue primary +
+     slate neutral scale), adopted app-wide so the whole UI matches the lab. */
+  --background: #f8fafc;   /* slate-50 */
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;    /* slate-100 (shadcn muted/secondary) */
+  --border: #e2e8f0;       /* slate-200 (shadcn border) */
+  --border-strong: #cbd5e1;/* slate-300 */
+  --text: #0f172a;         /* slate-900 (shadcn foreground) */
+  --text-muted: #64748b;   /* slate-500 (shadcn muted-foreground) */
+  /* Blue primary (lab --primary hsl(217 91% 60%)) = actions / selected states. */
+  --accent: #3b82f6;       /* blue-500 */
+  --accent-hover: #2563eb; /* blue-600 */
+  --accent-light: #eff6ff; /* blue-50 */
+  --accent-border: #bfdbfe;/* blue-200 */
+  /* `--primary` was referenced (KnowledgePage chips, "New" button) but never
+     defined, so `background: var(--primary)` resolved to nothing and the white
+     text rendered invisible. Alias it to the brand accent. */
+  --primary: var(--accent);
+  --primary-hover: var(--accent-hover);
+  --primary-light: var(--accent-light);
+  --success: #16a34a;
+  --success-light: #f0fdf4;
+  --warning: #d97706;
+  --warning-light: #fffbeb;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  /* Subtle secondary hues so status/data-viz isn't all gray + one orange accent.
+     Use for informational states, charts, and category color coding. */
+  --info: #2563eb;
+  --info-light: #eff6ff;
+  --chart-1: #2563eb;
+  --chart-2: #16a34a;
+  --chart-3: #d97706;
+  --chart-4: #9333ea;
+  --chart-5: #0891b2;
+
+  /* shadcn/ui compatibility (used by AI Elements) */
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--text-muted);
+  --color-border: var(--border);
+  --color-primary: var(--accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--text);
+  --color-ring: var(--accent);
+  --radius: 0.625rem;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--background); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+
+.react-flow__background { background: var(--background); }
+.react-flow__controls button { background: var(--surface); border-color: var(--border); color: var(--text-muted); }
+.react-flow__controls button:hover { background: var(--surface-2); }
+.react-flow__minimap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }

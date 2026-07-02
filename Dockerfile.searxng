@@ -1,0 +1,6 @@
+FROM searxng/searxng:latest
+
+# Bake the AEX SearXNG config (JSON format enabled, limiter off) into the image.
+# Railway has no host bind mounts, so the settings must live in the image rather
+# than a mounted ./searxng volume like in docker-compose.
+COPY searxng/settings.yml /etc/searxng/settings.yml

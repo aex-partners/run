@@ -1,0 +1,724 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  Inbox, Send, FileText, AlertTriangle, Trash2, Star, Tag,
+  Search, PenSquare, Plus, Menu, Sparkles, Mail, X,
+} from 'lucide-react'
+import { MailFolderItem } from '../MailFolderItem/MailFolderItem'
+import { MailList } from '../MailList/MailList'
+import { MailDetail, type MailMessage, type MailAttachment } from '../MailDetail/MailDetail'
+import { MailCompose, type MailAttachmentMeta } from '../MailCompose/MailCompose'
+import { EmailSetup, type EmailAccountConfig } from '../EmailSetup/EmailSetup'
+import { Button } from '../../../shared/ui/Button/Button'
+import type { MailItemProps } from '../MailItem/MailItem'
+
+export type MailFolder = 'inbox' | 'sent' | 'drafts' | 'spam' | 'trash' | 'starred' | 'archive'
+
+export interface MailLabel {
+  id: string
+  name: string
+  color: string
+  count?: number
+}
+
+export interface MailEmail extends Omit<MailItemProps, 'onClick' | 'onStar' | 'onSelect' | 'active' | 'selected'> {
+  folder: MailFolder
+  thread?: MailMessage[]
+  aiSummary?: string
+  aiDraft?: string
+  // Populated from email detail (getById) for the active email; used to build replies
+  to?: string[]
+  cc?: string[]
+  externalId?: string
+  threadId?: string
+  bodyText?: string
+  rawDate?: string
+}
+
+export interface MailAccount {
+  id: string
+  displayName: string
+  emailAddress: string
+  isShared: boolean
+  isOwner: boolean
+}
+
+export interface MailScreenProps {
+  emails: MailEmail[]
+  accounts?: MailAccount[]
+  activeAccountId?: string
+  labels?: MailLabel[]
+  activeFolder?: MailFolder
+  activeEmailId?: string
+  folderCounts?: Partial<Record<MailFolder, number>>
+  hasAccount?: boolean
+  onAccountChange?: (accountId: string) => void
+  onAddAccount?: (config: { host: string; port: string; user: string; pass: string; from: string; secure: boolean }) => void
+  onAddAccountV2?: {
+    onAccountSubmit: (config: EmailAccountConfig) => void
+    onDiscover: (email: string) => Promise<{
+      smtpHost: string; smtpPort: number; smtpSecure: boolean
+      imapHost: string; imapPort: number; imapSecure: boolean
+    } | null>
+    onVerifySmtp: (config: { host: string; port: number; user: string; pass: string; from: string; secure: boolean }) => Promise<{ ok: boolean; error?: string }>
+    onVerifyImap: (config: { host: string; port: number; user: string; pass: string; secure: boolean }) => Promise<{ ok: boolean; error?: string }>
+  }
+  onFolderChange?: (folder: MailFolder) => void
+  onEmailClick?: (id: string) => void
+  onEmailStar?: (id: string) => void
+  onCompose?: () => void
+  onSend?: (data: { to: string; cc: string; subject: string; body: string; attachments?: MailAttachmentMeta[]; inReplyTo?: string; threadId?: string }) => void
+  onReply?: (emailId: string) => void
+  onReplyAll?: (emailId: string) => void
+  onForward?: (emailId: string) => void
+  onArchive?: (ids: string[]) => void
+  onDelete?: (ids: string[]) => void
+  onMarkRead?: (ids: string[]) => void
+  onMarkUnread?: (ids: string[]) => void
+  onSnooze?: (emailId: string, until: string) => void
+  onLabelToggle?: (emailId: string, labelName: string) => void
+  onMoveToSpam?: (ids: string[]) => void
+  onCreateLabel?: () => void
+  onDeleteLabel?: (labelId: string) => void
+  onLabelClick?: (labelId: string) => void
+  onDownloadAttachment?: (attachment: MailAttachment) => void
+  onRefresh?: () => void
+  onAiAction?: (prompt: string) => void
+  onAiDraft?: (prompt: string) => void
+  aiDrafting?: boolean
+  aiEnabled?: boolean
+  loading?: boolean
+  emailDetailLoading?: boolean
+}
+
+const FOLDERS: { id: MailFolder; labelKey: string; icon: React.ReactNode }[] = [
+  { id: 'inbox', labelKey: 'mail.inbox', icon: <Inbox size={16} /> },
+  { id: 'starred', labelKey: 'mail.starred', icon: <Star size={16} /> },
+  { id: 'sent', labelKey: 'mail.sent', icon: <Send size={16} /> },
+  { id: 'drafts', labelKey: 'mail.drafts', icon: <FileText size={16} /> },
+  { id: 'spam', labelKey: 'mail.spam', icon: <AlertTriangle size={16} /> },
+  { id: 'trash', labelKey: 'mail.trash', icon: <Trash2 size={16} /> },
+]
+
+const SIDEBAR_EXPANDED = 220
+const SIDEBAR_COLLAPSED = 56
+
+export function MailScreen({
+  emails,
+  accounts = [],
+  activeAccountId,
+  labels = [],
+  activeFolder: controlledFolder,
+  activeEmailId: controlledEmailId,
+  folderCounts = {},
+  hasAccount = true,
+  onAccountChange,
+  onAddAccount,
+  onAddAccountV2,
+  onFolderChange,
+  onEmailClick,
+  onEmailStar,
+  onCompose,
+  onSend,
+  onReply,
+  onReplyAll,
+  onForward,
+  onArchive,
+  onDelete,
+  onMarkRead,
+  onMarkUnread,
+  onSnooze,
+  onLabelToggle,
+  onMoveToSpam,
+  onCreateLabel,
+  onDeleteLabel,
+  onLabelClick,
+  onDownloadAttachment,
+  onRefresh,
+  onAiAction,
+  onAiDraft,
+  aiDrafting = false,
+  aiEnabled = true,
+  loading = false,
+  emailDetailLoading = false,
+}: MailScreenProps) {
+  const { t } = useTranslation()
+  const [internalFolder, setInternalFolder] = useState<MailFolder>('inbox')
+  const [internalEmailId, setInternalEmailId] = useState<string | undefined>()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [composeMinimized, setComposeMinimized] = useState(false)
+  const [composeData, setComposeData] = useState<{ to: string; cc?: string; subject: string; body: string; mode?: 'reply' | 'replyAll' | 'forward'; inReplyTo?: string; threadId?: string }>({ to: '', subject: '', body: '' })
+
+  const activeFolder = controlledFolder ?? internalFolder
+  const activeEmailId = controlledEmailId ?? internalEmailId
+  const showingDetail = !!activeEmailId
+
+  const handleFolderChange = (folder: MailFolder) => {
+    setInternalFolder(folder)
+    setInternalEmailId(undefined)
+    setSelectedIds(new Set())
+    onFolderChange?.(folder)
+  }
+
+  const handleEmailClick = (id: string) => {
+    setInternalEmailId(id)
+    onEmailClick?.(id)
+  }
+
+  const handleBack = () => {
+    setInternalEmailId(undefined)
+  }
+
+  const handleSelect = (id: string, selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (selected) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedIds(new Set(filteredEmails.map((e) => e.id)))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleCompose = () => {
+    setComposeData({ to: '', subject: '', body: '' })
+    setComposeOpen(true)
+    setComposeMinimized(false)
+    onCompose?.()
+  }
+
+  // Strip HTML to readable plaintext and decode the common entities.
+  const htmlToText = (html: string) =>
+    html
+      .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+      .replace(/<\/(p|div|br|tr|li|h[1-6])>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+
+  // Plaintext body of the newest message (used for AI drafts / single fallback)
+  const activeEmailBody = () => {
+    if (!activeEmail) return ''
+    const newest = activeEmail.thread?.[activeEmail.thread.length - 1]?.content
+    const raw = activeEmail.bodyText || (newest ? newest : '') || activeEmail.preview || ''
+    return htmlToText(raw)
+  }
+
+  // Real send date for quote attribution; falls back to humanized timestamp
+  const quoteDate = () =>
+    activeEmail?.rawDate ? new Date(activeEmail.rawDate).toLocaleString() : activeEmail?.timestamp ?? ''
+
+  const escapeHtml = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  // One quoted block: attribution line + the message body inside a <blockquote>.
+  const quoteBlock = (from: string, date: string, text: string) => {
+    const body = escapeHtml(text).replace(/\n/g, '<br>')
+    return `<p>${t('mail.replyAttribution', { date: escapeHtml(date), from: escapeHtml(from) })}</p><blockquote>${body}</blockquote>`
+  }
+
+  // Gmail-style quote of the WHOLE thread: empty reply paragraph, then every prior
+  // message newest-first, each as its own attribution + blockquote. Falls back to
+  // the single active message when no thread is loaded.
+  const replyQuoteHtml = () => {
+    if (!activeEmail) return ''
+    const thread = activeEmail.thread
+    if (thread && thread.length > 0) {
+      const blocks = [...thread]
+        .reverse()
+        .map((m) => quoteBlock(m.from, m.date, htmlToText(m.content || '')))
+        .join('')
+      return `<p></p>${blocks}`
+    }
+    return `<p></p>${quoteBlock(activeEmail.from, quoteDate(), activeEmailBody())}`
+  }
+
+  // Own address on the receiving account, used to drop self from reply-all recipients
+  const ownEmail = accounts?.find((a) => a.id === activeAccountId)?.emailAddress?.toLowerCase()
+
+  const handleReply = () => {
+    if (!activeEmail) return
+    setComposeData({
+      to: activeEmail.fromEmail,
+      subject: activeEmail.subject,
+      body: replyQuoteHtml(),
+      mode: 'reply',
+      inReplyTo: activeEmail.externalId,
+      threadId: activeEmail.threadId ?? activeEmail.externalId,
+    })
+    setComposeOpen(true)
+    setComposeMinimized(false)
+    onReply?.(activeEmail.id)
+  }
+
+  const handleReplyAll = () => {
+    if (!activeEmail) return
+    // Cc = original To + Cc, minus the sender (already in To) and our own address
+    const ccList = [...(activeEmail.to ?? []), ...(activeEmail.cc ?? [])]
+      .filter((addr) => {
+        const a = addr.toLowerCase()
+        return a !== ownEmail && a !== activeEmail.fromEmail.toLowerCase()
+      })
+    const dedupedCc = Array.from(new Set(ccList))
+    setComposeData({
+      to: activeEmail.fromEmail,
+      cc: dedupedCc.join(', '),
+      subject: activeEmail.subject,
+      body: replyQuoteHtml(),
+      mode: 'replyAll',
+      inReplyTo: activeEmail.externalId,
+      threadId: activeEmail.threadId ?? activeEmail.externalId,
+    })
+    setComposeOpen(true)
+    setComposeMinimized(false)
+    onReplyAll?.(activeEmail.id)
+  }
+
+  const handleForward = () => {
+    if (!activeEmail) return
+    const thread = activeEmail.thread
+    const body =
+      thread && thread.length > 0
+        ? [...thread].reverse().map((m) => quoteBlock(m.from, m.date, htmlToText(m.content || ''))).join('')
+        : quoteBlock(activeEmail.from, quoteDate(), activeEmailBody())
+    const quoted = `<p></p><p>${t('mail.forwardHeader', { from: escapeHtml(activeEmail.from), date: escapeHtml(quoteDate()), subject: escapeHtml(activeEmail.subject) })}</p>${body}`
+    setComposeData({
+      to: '',
+      subject: t('mail.forwardSubject', { subject: activeEmail.subject }),
+      body: quoted,
+      mode: 'forward',
+    })
+    setComposeOpen(true)
+    setComposeMinimized(false)
+    onForward?.(activeEmail.id)
+  }
+
+  const handleApplyAiDraft = () => {
+    if (!activeEmail?.aiDraft) return
+    setComposeData(prev => ({ ...prev, body: activeEmail.aiDraft! }))
+  }
+
+  // Filter emails by folder and search
+  const filteredEmails = emails.filter((e) => {
+    if (activeFolder === 'starred') return e.starred
+    if (e.folder !== activeFolder) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      return (
+        e.from.toLowerCase().includes(q) ||
+        e.subject.toLowerCase().includes(q) ||
+        e.preview.toLowerCase().includes(q)
+      )
+    }
+    return true
+  })
+
+  const activeEmail = emails.find((e) => e.id === activeEmailId)
+  const activeEmailIndex = activeEmail ? filteredEmails.findIndex((e) => e.id === activeEmail.id) : -1
+
+  if (!hasAccount) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        padding: 40,
+      }}>
+        <div style={{
+          maxWidth: 640,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 28,
+        }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            borderRadius: 16,
+            background: 'var(--accent-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Mail size={32} color="var(--accent)" />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 8px' }}>
+              {t('mail.setup.title')}
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+              {t('mail.setup.subtitle')}
+            </p>
+          </div>
+          <EmailSetup
+            onSmtpSubmit={onAddAccount}
+            onAccountSubmit={onAddAccountV2?.onAccountSubmit}
+            onDiscover={onAddAccountV2?.onDiscover}
+            onVerifySmtp={onAddAccountV2?.onVerifySmtp}
+            onVerifyImap={onAddAccountV2?.onVerifyImap}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+      {/* Sidebar - collapsible */}
+      <aside style={{
+        width: sidebarExpanded ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED,
+        minWidth: sidebarExpanded ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED,
+        background: 'var(--surface)',
+        borderRight: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width 0.2s, min-width 0.2s',
+        overflow: 'hidden',
+      }}>
+        {/* Hamburger + Compose */}
+        <div style={{
+          padding: sidebarExpanded ? '10px 12px' : '10px 8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <button
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            aria-label={sidebarExpanded ? t('collapseSidebar') : t('expandSidebar')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 8,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-muted)',
+              flexShrink: 0,
+            }}
+          >
+            <Menu size={18} />
+          </button>
+          {sidebarExpanded && (
+            <Button
+              variant="primary"
+              onClick={handleCompose}
+              leftIcon={<PenSquare size={14} />}
+            >
+              {t('mail.compose')}
+            </Button>
+          )}
+        </div>
+
+        {/* Collapsed compose button */}
+        {!sidebarExpanded && (
+          <div style={{ padding: '4px 8px', display: 'flex', justifyContent: 'center' }}>
+            <button
+              onClick={handleCompose}
+              aria-label={t('mail.compose')}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 16,
+                background: 'var(--accent)',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+              }}
+            >
+              <PenSquare size={18} />
+            </button>
+          </div>
+        )}
+
+        {/* Account switcher */}
+        {sidebarExpanded && accounts.length > 1 && (
+          <div style={{ padding: '4px 12px 8px' }}>
+            <select
+              value={activeAccountId || ''}
+              onChange={(e) => onAccountChange?.(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: 'var(--surface-2)',
+                color: 'var(--text)',
+                fontSize: 12,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.displayName} ({a.emailAddress})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Folders */}
+        <div style={{ padding: '4px 0' }}>
+          {FOLDERS.map((folder) => (
+            sidebarExpanded ? (
+              <MailFolderItem
+                key={folder.id}
+                icon={folder.icon}
+                label={t(folder.labelKey)}
+                count={folderCounts[folder.id]}
+                active={activeFolder === folder.id}
+                onClick={() => handleFolderChange(folder.id)}
+              />
+            ) : (
+              <button
+                key={folder.id}
+                onClick={() => handleFolderChange(folder.id)}
+                title={t(folder.labelKey)}
+                style={{
+                  width: '100%',
+                  padding: '10px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: activeFolder === folder.id ? 'var(--accent-light)' : 'transparent',
+                  border: 'none',
+                  borderLeft: activeFolder === folder.id ? '2px solid var(--accent)' : '2px solid transparent',
+                  cursor: 'pointer',
+                  color: activeFolder === folder.id ? 'var(--accent)' : 'var(--text-muted)',
+                  position: 'relative',
+                }}
+              >
+                {folder.icon}
+                {folderCounts[folder.id] && folderCounts[folder.id]! > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 8,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: 'var(--accent)',
+                  }}>
+                    {folderCounts[folder.id]}
+                  </span>
+                )}
+              </button>
+            )
+          ))}
+        </div>
+
+        {/* Labels - only when expanded */}
+        {sidebarExpanded && (
+          <>
+            <div style={{
+              padding: '16px 14px 6px',
+              fontSize: 11,
+              fontWeight: 600,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              {t('mail.labels')}
+              <button
+                onClick={onCreateLabel}
+                title={t('mail.createLabel')}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+            {labels.map((label) => (
+              <div key={label.id} style={{ display: 'flex', alignItems: 'center', paddingRight: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <MailFolderItem
+                    icon={<Tag size={14} fill={label.color} color={label.color} />}
+                    label={label.name}
+                    count={label.count}
+                    onClick={() => onLabelClick?.(label.id)}
+                  />
+                </div>
+                <button
+                  onClick={() => onDeleteLabel?.(label.id)}
+                  title={t('mail.deleteLabel')}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex',
+                    color: 'var(--text-muted)', flexShrink: 0, borderRadius: 4,
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </>
+        )}
+
+        <div style={{ flex: 1 }} />
+
+        {/* AI bar at bottom - only when expanded and AI enabled */}
+        {sidebarExpanded && aiEnabled && (
+          <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Sparkles size={12} color="var(--accent)" />
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)' }}>{t('aiAssistant')}</span>
+            </div>
+            <input
+              placeholder={t('mail.aiPlaceholder')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                  onAiAction?.(e.currentTarget.value)
+                  e.currentTarget.value = ''
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--surface-2)',
+                color: 'var(--text)',
+                fontSize: 12,
+                fontFamily: 'inherit',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        )}
+      </aside>
+
+      {/* Main area - switches between list and detail */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Search bar - always visible */}
+        <div style={{
+          padding: '8px 16px',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--surface)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexShrink: 0,
+        }}>
+          <Search size={15} color="var(--text-muted)" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('mail.searchPlaceholder')}
+            style={{
+              flex: 1,
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text)',
+              fontSize: 14,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, fontSize: 12, color: 'var(--text-muted)' }}
+            >
+              {t('clear')}
+            </button>
+          )}
+        </div>
+
+        {/* Content: list or detail */}
+        {showingDetail && activeEmail ? (
+          <MailDetail
+            subject={activeEmail.subject}
+            starred={activeEmail.starred}
+            labels={activeEmail.labels}
+            messages={activeEmail.thread ?? []}
+            loading={emailDetailLoading && !activeEmail.thread}
+            aiSummary={activeEmail.aiSummary}
+            aiDraft={activeEmail.aiDraft}
+            onBack={handleBack}
+            emailPosition={activeEmailIndex >= 0 ? t('mail.emailPosition', { current: activeEmailIndex + 1, total: filteredEmails.length }) : undefined}
+            onReply={handleReply}
+            onReplyAll={handleReplyAll}
+            onForward={handleForward}
+            onArchive={() => onArchive?.([activeEmail.id])}
+            onDelete={() => onDelete?.([activeEmail.id])}
+            onStar={() => onEmailStar?.(activeEmail.id)}
+            onMarkUnread={() => { onMarkUnread?.([activeEmail.id]); handleBack() }}
+            onSnooze={(until) => { onSnooze?.(activeEmail.id, until); handleBack() }}
+            onLabelToggle={(labelName) => onLabelToggle?.(activeEmail.id, labelName)}
+            onMoveToSpam={() => { onMoveToSpam?.([activeEmail.id]); handleBack() }}
+            onPrint={() => window.print()}
+            onDownloadAttachment={onDownloadAttachment}
+            onApplyAiDraft={handleApplyAiDraft}
+            availableLabels={labels}
+          />
+        ) : (
+          <MailList
+            emails={filteredEmails}
+            activeEmailId={activeEmailId}
+            selectedIds={selectedIds}
+            onEmailClick={handleEmailClick}
+            onEmailStar={onEmailStar}
+            onEmailSelect={handleSelect}
+            onSelectAll={handleSelectAll}
+            onArchive={() => onArchive?.([...selectedIds])}
+            onDelete={() => onDelete?.([...selectedIds])}
+            onMarkRead={() => onMarkRead?.([...selectedIds])}
+            onMarkUnread={() => onMarkUnread?.([...selectedIds])}
+            onRefresh={onRefresh}
+            loading={loading}
+          />
+        )}
+      </div>
+
+      {/* Compose overlay - floats over everything */}
+      <MailCompose
+        open={composeOpen}
+        to={composeData.to}
+        cc={composeData.cc}
+        subject={composeData.subject}
+        body={composeData.body}
+        replyMode={composeData.mode}
+        onClose={() => setComposeOpen(false)}
+        onSend={(data) => {
+          onSend?.({ ...data, inReplyTo: composeData.inReplyTo, threadId: composeData.threadId })
+          setComposeOpen(false)
+        }}
+        onAiDraft={onAiDraft}
+        aiDrafting={aiDrafting}
+        aiEnabled={aiEnabled}
+        minimized={composeMinimized}
+        onToggleMinimize={() => setComposeMinimized(!composeMinimized)}
+      />
+    </div>
+  )
+}
+
+export default MailScreen
