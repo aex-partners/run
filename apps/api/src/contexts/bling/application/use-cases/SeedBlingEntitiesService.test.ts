@@ -14,6 +14,9 @@ function fakeCatalog() {
       return ok({ entityId: ids.get(def.slug)! })
     },
     ensureRelationFields: async (def, slugToId) => {
+      if (slugToId.size !== 17) {
+        throw new Error(`ensureRelationFields called before phase A finished: slugToId.size=${slugToId.size}`)
+      }
       relCalls.push(def.slug)
       return ok(undefined)
     },
