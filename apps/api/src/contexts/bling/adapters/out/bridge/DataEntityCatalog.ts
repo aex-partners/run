@@ -1,20 +1,39 @@
 import { Result, ok, fail } from '@/shared/kernel/Result'
-import { BlingEntityDef, BlingFieldDef } from '@/contexts/bling/domain/mirror/BlingEntitySchema'
+import { BlingEntityDef, BlingFieldDef, BlingFieldTypeConfig } from '@/contexts/bling/domain/mirror/BlingEntitySchema'
 import { EntityCatalog } from '@/contexts/bling/application/ports/out/EntityCatalog'
-import { CreateEntity } from '@/contexts/data/application/ports/in/CreateEntity'
-import { AddField } from '@/contexts/data/application/ports/in/AddField'
-import { DescribeEntity } from '@/contexts/data/application/ports/in/DescribeEntity'
-import { ListEntities } from '@/contexts/data/application/queries/ListEntities'
-import { FieldDefinitionInput } from '@/contexts/data/application/ports/in/FieldDefinitionInput'
 
-export interface DataEntityCatalogDeps {
-  createEntity: CreateEntity
-  addField: AddField
-  describeEntity: DescribeEntity
-  listEntities: ListEntities
+// Local field-definition shape handed to data's CreateEntity/AddField in-ports.
+// Structurally identical to the slice of data's FieldDefinitionInput/
+// AddFieldCommand this bridge uses -- kept local (not imported) so this adapter
+// never crosses the context boundary at the type level; the concrete data
+// in-ports injected by main/wiring/bling.ts satisfy these shapes structurally.
+interface FieldInputLike {
+  name: string
+  required: boolean
+  type: BlingFieldTypeConfig
 }
 
-const toFieldInput = (f: BlingFieldDef): FieldDefinitionInput => ({
+export interface DataEntityCatalogDeps {
+  createEntity: {
+    execute(cmd: { name: string; fields?: FieldInputLike[] }): Promise<Result<{ id: string; slug: string }>>
+  }
+  addField: {
+    execute(cmd: {
+      entityId: string
+      name: string
+      required: boolean
+      type: BlingFieldTypeConfig
+    }): Promise<Result<{ id: string }>>
+  }
+  describeEntity: {
+    execute(ref: string): Promise<{ fields: { name: string }[] } | null>
+  }
+  listEntities: {
+    execute(): Promise<{ id: string; slug: string }[]>
+  }
+}
+
+const toFieldInput = (f: BlingFieldDef): FieldInputLike => ({
   name: f.name,
   required: f.required ?? false,
   type: f.type,
@@ -28,10 +47,10 @@ const toFieldInput = (f: BlingFieldDef): FieldDefinitionInput => ({
 // the slug up via listEntities before creating, ensureRelationFields skips any
 // relation field already present on the entity.
 export class DataEntityCatalog implements EntityCatalog {
-  private readonly createEntity: CreateEntity
-  private readonly addField: AddField
-  private readonly describeEntity: DescribeEntity
-  private readonly listEntities: ListEntities
+  private readonly createEntity: DataEntityCatalogDeps['createEntity']
+  private readonly addField: DataEntityCatalogDeps['addField']
+  private readonly describeEntity: DataEntityCatalogDeps['describeEntity']
+  private readonly listEntities: DataEntityCatalogDeps['listEntities']
 
   constructor(deps: DataEntityCatalogDeps) {
     this.createEntity = deps.createEntity

@@ -1,10 +1,26 @@
-import { FieldTypeConfig } from '@/contexts/data/domain/FieldType'
-
 export const BLING_SOURCE = 'bling'
+
+// Local field-type descriptor for the mirror entities this context seeds into
+// the data catalog. Structurally identical to data's FieldTypeConfig for the
+// kinds this mirror actually uses -- kept local (not imported from the data
+// context) so bling's domain never crosses the context boundary at the type
+// level. The ACL bridge (DataEntityCatalog, in adapters/out/bridge) hands these
+// straight to data's CreateEntity/AddField in-ports, whose parameter types
+// accept this narrower shape structurally.
+export type BlingFieldTypeConfig =
+  | { kind: 'text' }
+  | { kind: 'long_text' }
+  | { kind: 'url' }
+  | { kind: 'email' }
+  | { kind: 'number' }
+  | { kind: 'currency'; currencyCode?: string }
+  | { kind: 'date' }
+  | { kind: 'boolean' }
+  | { kind: 'relation'; targetEntityId: string; targetEntityName?: string }
 
 export interface BlingFieldDef {
   name: string
-  type: FieldTypeConfig
+  type: BlingFieldTypeConfig
   required?: boolean
   relationTargetSlug?: string
 }

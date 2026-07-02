@@ -16,6 +16,8 @@ import { REMINDER_QUEUE_NAME } from '@/contexts/reminders/adapters/out/queue/Bul
 import { makeCredentialsRefreshJobHandler } from '@/contexts/credentials/adapters/in/worker/CredentialsRefreshWorker'
 import { CREDENTIALS_REFRESH_QUEUE_NAME } from '@/contexts/credentials/adapters/out/queue/BullCredentialsRefreshScheduler'
 import { makeDigestJobHandler } from '@/contexts/notifications/adapters/in/worker/DigestWorker'
+import { makeBlingSyncJobHandler } from '@/contexts/bling/adapters/in/worker/BlingSyncWorker'
+import { BLING_SYNC_QUEUE_NAME } from '@/contexts/bling/adapters/out/queue/BullBlingSyncScheduler'
 
 // Queue names that have no in-context constant.
 const DIGEST_QUEUE_NAME = 'digest'
@@ -41,6 +43,8 @@ export async function startWorkers(container: Container, redis: Redis): Promise<
     new Worker(CREDENTIALS_REFRESH_QUEUE_NAME, makeCredentialsRefreshJobHandler({ refresh: ports.refreshCredential }), { connection }),
     // notifications digest
     new Worker(DIGEST_QUEUE_NAME, makeDigestJobHandler({ runDigest: ports.runDigest }), { connection }),
+    // bling full-mirror sync
+    new Worker(BLING_SYNC_QUEUE_NAME, makeBlingSyncJobHandler({ sync: ports.syncBlingMirror }), { connection }),
     // file indexing -> knowledge.IndexFile (extract text + store as file-content KB)
     new Worker(
       FILE_INDEXING_QUEUE_NAME,
@@ -54,6 +58,7 @@ export async function startWorkers(container: Container, redis: Redis): Promise<
 
   // Register repeatable schedules.
   await container.schedulers.credScheduler.ensureRefreshSchedule()
+  await container.schedulers.blingSyncScheduler.ensureSchedule()
 
   return workers
 }

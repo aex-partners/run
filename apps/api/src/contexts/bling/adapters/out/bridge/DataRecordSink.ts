@@ -2,15 +2,27 @@ import { Result, ok, fail } from '@/shared/kernel/Result'
 import { JsonObject, Json } from '@/shared/domain/Json'
 import { RecordSink } from '@/contexts/bling/application/ports/out/RecordSink'
 import { BlingSyncMapPort } from '@/contexts/bling/application/ports/out/BlingSyncMapPort'
-import { InsertRecord } from '@/contexts/data/application/ports/in/InsertRecord'
-import { UpdateRecord } from '@/contexts/data/application/ports/in/UpdateRecord'
-import { GetRecord } from '@/contexts/data/application/ports/in/GetRecord'
 import { Clock } from '@/shared/kernel/Clock'
 
+// Local shapes for the data InsertRecord/UpdateRecord/GetRecord in-ports this
+// bridge calls. Structurally identical to the slice of those ports this sink
+// uses -- kept local (not imported) so this adapter never crosses the context
+// boundary at the type level; the concrete data in-ports injected by
+// main/wiring/bling.ts satisfy these shapes structurally.
+interface InsertRecordLike {
+  execute(cmd: { entityId: string; data: JsonObject }): Promise<Result<{ id: string; version: number }>>
+}
+interface UpdateRecordLike {
+  execute(cmd: { recordId: string; data: JsonObject; expectedVersion: number }): Promise<Result<{ version: number }>>
+}
+interface GetRecordLike {
+  execute(query: { recordId: string }): Promise<{ id: string; data: JsonObject; version: number } | null>
+}
+
 export interface DataRecordSinkDeps {
-  insert: InsertRecord
-  update: UpdateRecord
-  get: GetRecord
+  insert: InsertRecordLike
+  update: UpdateRecordLike
+  get: GetRecordLike
   syncMap: BlingSyncMapPort
   clock: Clock
 }
@@ -35,9 +47,9 @@ const stableStringify = (value: Json): string => {
 // version isn't clobbered). Never throws across the port -- any underlying
 // `!ok` from the data in-ports is surfaced as a `fail`.
 export class DataRecordSink implements RecordSink {
-  private readonly insert: InsertRecord
-  private readonly update: UpdateRecord
-  private readonly get: GetRecord
+  private readonly insert: InsertRecordLike
+  private readonly update: UpdateRecordLike
+  private readonly get: GetRecordLike
   private readonly syncMap: BlingSyncMapPort
   private readonly clock: Clock
 

@@ -86,6 +86,13 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
   // ResolveCredential in-port payments/fiscal use (plugin name "bling").
   const blingWiring = wireBling(infra, {
     resolveCredential: pluginsCredentials.ports.resolveCredential,
+    createEntity: dataWiring.ports.createEntity,
+    addField: dataWiring.ports.addField,
+    describeEntity: dataWiring.ports.describeEntity,
+    listEntities: dataWiring.ports.listEntities,
+    insertRecord: dataWiring.ports.insertRecord,
+    updateRecord: dataWiring.ports.updateRecord,
+    getRecord: dataWiring.ports.getRecord,
   })
 
   // ----- cross-context contexts, in dependency order. Each wireX takes the sibling
@@ -196,9 +203,13 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
       refreshCredential: pluginsCredentials.ports.refreshCredential,
       runDigest: notificationsWiring.ports.runDigest,
       indexFile: filesWiring.ports.runFileIndexing,
+      syncBlingMirror: blingWiring.ports.syncBlingMirror,
     },
     // schedulers/queues to bootstrap repeatable jobs at boot
-    schedulers: { credScheduler: pluginsCredentials.schedulers.credScheduler },
+    schedulers: {
+      credScheduler: pluginsCredentials.schedulers.credScheduler,
+      blingSyncScheduler: blingWiring.schedulers.blingSyncScheduler,
+    },
     // raw (non-tRPC) HTTP surfaces server.ts mounts directly
     http: {
       chat: assistantWiring.http.chat,
