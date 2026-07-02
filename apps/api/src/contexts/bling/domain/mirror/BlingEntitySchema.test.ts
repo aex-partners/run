@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BLING_ENTITIES } from '@/contexts/bling/domain/mirror/BlingEntitySchema'
+import { BLING_ENTITIES, BlingEntitySlug } from '@/contexts/bling/domain/mirror/BlingEntitySchema'
 import { Slug } from '@/contexts/data/domain/Slug'
 
 describe('BLING_ENTITIES', () => {
@@ -22,5 +22,12 @@ describe('BLING_ENTITIES', () => {
           expect(f.relationTargetSlug).toBeDefined()
           expect(slugs.has(f.relationTargetSlug!)).toBe(true)
         }
+  })
+  it('BlingEntitySlug is the literal union, not string', () => {
+    const good: BlingEntitySlug = 'bling_produtos'
+    // @ts-expect-error not a real slug — must be rejected by the union type
+    const bad: BlingEntitySlug = 'not_a_real_slug'
+    expect(good).toBe('bling_produtos')
+    void bad
   })
 })

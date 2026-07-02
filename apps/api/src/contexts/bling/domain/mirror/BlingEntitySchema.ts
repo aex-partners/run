@@ -27,7 +27,7 @@ const rel = (name: string, targetSlug: string, required = false): BlingFieldDef 
   name, required, relationTargetSlug: targetSlug, type: { kind: 'relation', targetEntityId: '' },
 })
 
-export const BLING_ENTITIES: BlingEntityDef[] = [
+export const BLING_ENTITIES = [
   // ---- Tier 1: catalogs ----
   { slug: 'bling_categorias_produtos', name: 'Bling Categorias Produtos', fields: [
     text('descricao', true), rel('categoria_pai', 'bling_categorias_produtos'),
@@ -131,6 +131,6 @@ export const BLING_ENTITIES: BlingEntityDef[] = [
   { slug: 'bling_pedido_venda_volumes', name: 'Bling Pedido Venda Volumes', fields: [
     rel('pedido', 'bling_pedidos_venda', true), text('servico'), text('codigo_rastreamento'),
   ] },
-]
+] satisfies BlingEntityDef[]
 
 export type BlingEntitySlug = (typeof BLING_ENTITIES)[number]['slug']
