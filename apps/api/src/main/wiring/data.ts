@@ -25,6 +25,7 @@ import { DeleteEntityService } from '@/contexts/data/application/use-cases/Delet
 import { InsertRecordService } from '@/contexts/data/application/use-cases/InsertRecordService'
 import { UpdateRecordService } from '@/contexts/data/application/use-cases/UpdateRecordService'
 import { DeleteRecordService } from '@/contexts/data/application/use-cases/DeleteRecordService'
+import { GetRecordService } from '@/contexts/data/application/use-cases/GetRecordService'
 import { GenerateFieldValueService } from '@/contexts/data/application/use-cases/GenerateFieldValueService'
 import { DescribeEntityService } from '@/contexts/data/application/use-cases/DescribeEntityService'
 import { ManageSavedViewService } from '@/contexts/data/application/use-cases/ManageSavedViewService'
@@ -58,6 +59,7 @@ export function wireData(infra: Infra) {
   const insertRecord = new InsertRecordService(entityRepo, recordRepo, events, clock)
   const updateRecord = new UpdateRecordService(entityRepo, recordRepo, events, clock)
   const deleteRecord = new DeleteRecordService(recordRepo)
+  const getRecord = new GetRecordService(recordRepo)
   const generateFieldValue = new GenerateFieldValueService(entityRepo, recordRepo, fieldValueGenerator, events, clock)
   const describeEntity = new DescribeEntityService(entityRepo)
   const manageSavedView = new ManageSavedViewService(savedViewRepo)
@@ -74,7 +76,7 @@ export function wireData(infra: Infra) {
   return {
     controllers: { entities: entitiesCtl, records: recordsCtl, views: viewsCtl },
     ports: {
-      createEntity, insertRecord, updateRecord, deleteRecord, describeEntity,
+      createEntity, insertRecord, updateRecord, deleteRecord, getRecord, describeEntity,
       listEntities, queryRecords,
     },
   }
