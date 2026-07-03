@@ -173,6 +173,23 @@ export interface ViewProps {
   audit?: AuditAdapter
   /** modo enxuto: esconde chrome pesado (agrupar/filtros/views/nuvem). Usado p/ embutir. */
   minimal?: boolean
+  /**
+   * Edição de schema (ligada pelo host). Quando o host fornece estes callbacks, o
+   * cabeçalho habilita a UI de editar/duplicar/excluir/adicionar campo (popovers +
+   * duplo-clique p/ renomear). `fieldId` é o id do campo no good-views (o host
+   * mapeia p/ o id real do backend). `type` é o FieldType do good-views.
+   */
+  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; options?: FieldOption[]; required?: boolean }) => void
+  onFieldDelete?: (fieldId: string) => void
+  onFieldDuplicate?: (fieldId: string) => void
+  onFieldAdd?: (spec: { name: string; type: FieldType; options?: FieldOption[] }) => void
+  /**
+   * Picker de edição de relação: carregador assíncrono das opções da entidade-ALVO
+   * de um campo relation (id + rótulo), com busca server-side. Quando fornecido, o
+   * editor de célula relation lista/busca os registros do alvo em vez do `records`
+   * local (que em modo servidor é vazio). Ao escolher, persiste o id do alvo.
+   */
+  loadRelationOptions?: (fieldId: string, search: string) => Promise<{ value: string; label: string }[]>
   /** acoes extras por linha (entram no menu de contexto da linha). */
   rowActions?: RowAction[]
   /**

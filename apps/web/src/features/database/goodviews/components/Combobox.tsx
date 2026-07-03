@@ -22,6 +22,12 @@ export interface ComboboxProps {
   /** permite criar itens novos ("Adicionar ..."). */
   creatable?: boolean
   placeholder?: string
+  /**
+   * Notifica o texto digitado (busca). Usado por comboboxes com opções carregadas
+   * de forma assíncrona (ex relação server-side): o pai refaz o fetch e repassa
+   * `options`. A combobox continua filtrando localmente por cima (idempotente).
+   */
+  onSearch?: (q: string) => void
   onCommit: (v: unknown) => void
   onClose: () => void
 }
@@ -71,6 +77,7 @@ export function Combobox({
   max,
   creatable = false,
   placeholder = 'Buscar...',
+  onSearch,
   onCommit,
   onClose,
 }: ComboboxProps) {
@@ -204,7 +211,7 @@ export function Combobox({
               ref={inputRef}
               autoFocus
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => { setQ(e.target.value); onSearch?.(e.target.value) }}
               placeholder={placeholder}
               className="w-full bg-transparent text-sm text-[#0F172A] outline-none border-0 p-0"
               onKeyDown={onKeyDown}

@@ -113,7 +113,7 @@ interface ViewPayload {
 const SCHEMA_PERMS = { canEdit: true, canCreate: false, canDelete: false }
 
 const PAGE_SIZES = [10, 25, 50, 100]
-import type { ViewProps, Field, Row, AuditEntry, AuditCell } from '../types'
+import type { ViewProps, Field, FieldType, FieldOption, Row, AuditEntry, AuditCell } from '../types'
 
 // schema do grid de LOGS (a tabela de auditoria renderiza usando a propria TableView)
 const LOG_FIELDS: Field[] = [
@@ -389,6 +389,8 @@ const SORT_COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC
 const GUTTER = 44
 // largura da coluna de acoes (sem titulo), congelada a direita, qdo ha rowActions
 const ACTIONS_W = 130
+// largura da coluna-affordance "+" (novo campo) no fim do cabecalho, qdo o host liga onFieldAdd
+const ADD_FIELD_W = 40
 
 // largura natural do grid de logs (gutter + soma das colunas) -> modal huga as colunas
 const LOG_GRID_WIDTH = GUTTER + LOG_FIELDS.reduce((s, f) => s + defaultSize(f), 0) + 2
@@ -399,6 +401,7 @@ function DraggableHeader({
   left,
   onToggleFreeze,
   onOpenMenu,
+  onRename,
   selected,
   selectedRef,
   onKeyDown,
@@ -408,11 +411,16 @@ function DraggableHeader({
   left: number
   onToggleFreeze: () => void
   onOpenMenu: (x: number, y: number) => void
+  onRename?: (name: string) => void
   selected: boolean
   selectedRef: React.RefObject<HTMLTableCellElement | null>
   onKeyDown: (e: ReactKeyboardEvent) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: header.column.id })
+  // renomear inline: duplo-clique no título abre um input (Enter confirma, Esc cancela)
+  const headerLabel = String(header.column.columnDef.header ?? '')
+  const [renaming, setRenaming] = useState(false)
+  const [draft, setDraft] = useState(headerLabel)
   const canSort = header.column.getCanSort()
   const sorted = header.column.getIsSorted()
   const sortIndex = header.column.getSortIndex() // -1 se nao ordenado
@@ -440,13 +448,34 @@ function DraggableHeader({
       )}
     >
       <div className="flex items-center gap-1">
-        <span
-          className={cn('flex items-center gap-1 flex-1 min-w-0', !frozen && 'cursor-grab active:cursor-grabbing')}
-          {...(frozen ? {} : attributes)}
-          {...(frozen ? {} : listeners)}
-        >
-          <span className="truncate">{flexRender(header.column.columnDef.header, header.getContext())}</span>
-        </span>
+        {renaming && onRename ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onBlur={() => {
+              const n = draft.trim()
+              if (n && n !== headerLabel) onRename(n)
+              setRenaming(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); const n = draft.trim(); if (n && n !== headerLabel) onRename(n); setRenaming(false) }
+              else if (e.key === 'Escape') { e.preventDefault(); setDraft(headerLabel); setRenaming(false) }
+            }}
+            className="flex-1 min-w-0 rounded border border-[#2563EB] bg-white px-1 py-0.5 text-xs font-semibold normal-case tracking-normal text-[#0F172A] outline-none"
+          />
+        ) : (
+          <span
+            className={cn('flex items-center gap-1 flex-1 min-w-0', !frozen && 'cursor-grab active:cursor-grabbing')}
+            {...(frozen ? {} : attributes)}
+            {...(frozen ? {} : listeners)}
+            onDoubleClick={onRename ? (e) => { e.stopPropagation(); setDraft(headerLabel); setRenaming(true) } : undefined}
+            title={onRename ? 'Duplo-clique p/ renomear' : undefined}
+          >
+            <span className="truncate">{flexRender(header.column.columnDef.header, header.getContext())}</span>
+          </span>
+        )}
         {/* congelar/descongelar ate esta coluna */}
         <button
           type="button"
@@ -499,6 +528,157 @@ function DraggableHeader({
   )
 }
 
+// ---------- edição de schema (campo): popover de editar/novo campo ----------
+
+// Tipos oferecidos no popover (subconjunto util do FieldType do good-views).
+const FIELD_TYPE_OPTIONS: { value: FieldType; label: string }[] = [
+  { value: 'text', label: 'Texto' },
+  { value: 'longtext', label: 'Texto longo' },
+  { value: 'number', label: 'Número' },
+  { value: 'currency', label: 'Moeda' },
+  { value: 'percent', label: 'Percentual' },
+  { value: 'date', label: 'Data' },
+  { value: 'select', label: 'Seleção' },
+  { value: 'status', label: 'Status' },
+  { value: 'multiselect', label: 'Multi-seleção' },
+  { value: 'person', label: 'Pessoa' },
+  { value: 'url', label: 'URL' },
+  { value: 'relation', label: 'Relação' },
+]
+const CHOICE_TYPES: FieldType[] = ['select', 'status', 'multiselect']
+
+// Popover ancorado (perto do cabeçalho) p/ editar um campo ou criar um novo:
+// nome + tipo + (p/ select/status/multiselect) editor simples de opções.
+function FieldSchemaPopover({
+  x,
+  y,
+  mode,
+  initialName = '',
+  initialType = 'text',
+  initialOptions = [],
+  onSave,
+  onClose,
+}: {
+  x: number
+  y: number
+  mode: 'edit' | 'add'
+  initialName?: string
+  initialType?: FieldType
+  initialOptions?: FieldOption[]
+  onSave: (out: { name: string; type: FieldType; options?: FieldOption[] }) => void
+  onClose: () => void
+}) {
+  const [name, setName] = useState(initialName)
+  const [type, setType] = useState<FieldType>(initialType)
+  const [options, setOptions] = useState<FieldOption[]>(initialOptions)
+  const isChoice = CHOICE_TYPES.includes(type)
+  const left = Math.max(8, Math.min(x, window.innerWidth - 300))
+  const top = Math.max(8, Math.min(y, window.innerHeight - (isChoice ? 380 : 220)))
+
+  function save() {
+    const n = name.trim()
+    if (!n) return
+    const opts = isChoice
+      ? options
+          .filter((o) => o.label.trim())
+          .map((o) => ({ value: (o.value || o.label).trim(), label: o.label.trim(), ...(o.color ? { color: o.color } : {}) }))
+      : undefined
+    onSave({ name: n, type, options: opts })
+    onClose()
+  }
+
+  const inputCls =
+    'w-full rounded-md border border-[#E2E8F0] px-2 py-1.5 text-sm text-[#0F172A] outline-none focus:border-[#2563EB]'
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[60]" onMouseDown={onClose} />
+      <div
+        className="fixed z-[61] w-[280px] rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-xl"
+        style={{ top, left }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#475569]">
+          {mode === 'add' ? 'Novo campo' : 'Editar campo'}
+        </div>
+        <label className="mb-1 block text-[11px] font-medium text-[#94A3B8]">Nome</label>
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); save() }
+            else if (e.key === 'Escape') { e.preventDefault(); onClose() }
+          }}
+          placeholder="Nome do campo"
+          className={inputCls}
+        />
+        <label className="mb-1 mt-3 block text-[11px] font-medium text-[#94A3B8]">Tipo</label>
+        <select value={type} onChange={(e) => setType(e.target.value as FieldType)} className={inputCls}>
+          {FIELD_TYPE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+
+        {isChoice && (
+          <div className="mt-3">
+            <div className="mb-1 text-[11px] font-medium text-[#94A3B8]">Opções</div>
+            <div className="flex max-h-[140px] flex-col gap-1 overflow-auto">
+              {options.map((o, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <input
+                    value={o.label}
+                    onChange={(e) =>
+                      setOptions((prev) => prev.map((p, j) => (j === i ? { ...p, label: e.target.value } : p)))
+                    }
+                    placeholder={`Opção ${i + 1}`}
+                    className={`${inputCls} py-1`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}
+                    className="shrink-0 text-[#94A3B8] hover:text-[#EF4444]"
+                    title="Remover opção"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setOptions((prev) => [...prev, { value: '', label: '' }])}
+              className="mt-1 flex items-center gap-1 text-xs text-[#2563EB] hover:underline"
+            >
+              <Plus size={13} /> Adicionar opção
+            </button>
+          </div>
+        )}
+
+        <div className="mt-3 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-[#E2E8F0] px-3 py-1 text-xs text-[#475569] hover:bg-[#F8FAFC]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={!name.trim()}
+            className="rounded-md bg-[#2563EB] px-3 py-1 text-xs font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-40"
+          >
+            Salvar
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ---------- componente principal ----------
 
 type Cell = { r: number; c: number }
@@ -518,6 +698,11 @@ export default function TableView({
   minimal = false,
   rowActions,
   rowActionsInline = false,
+  onFieldUpdate,
+  onFieldDelete,
+  onFieldDuplicate,
+  onFieldAdd,
+  loadRelationOptions,
 }: ViewProps) {
   // modo: servidor (host fornece fetchPage) ou cliente (usa `records` local)
   const serverMode = !!fetchPage
@@ -539,6 +724,14 @@ export default function TableView({
   const lastClickedRef = useRef<number | null>(null)
   const [frozenCount, setFrozenCount] = useState(0) // nº de colunas congeladas a partir da esquerda
   const [colMenu, setColMenu] = useState<{ colId: string; index: number; x: number; y: number } | null>(null)
+  // edição de schema (campos): popover de editar campo + popover de novo campo
+  const [fieldEdit, setFieldEdit] = useState<{ colId: string; x: number; y: number } | null>(null)
+  const [newFieldAt, setNewFieldAt] = useState<{ x: number; y: number } | null>(null)
+  // editor de relação: opções da entidade-alvo (carregadas via host) + busca
+  const [relEditOpts, setRelEditOpts] = useState<{ value: string; label: string }[]>([])
+  const [relEditSearch, setRelEditSearch] = useState('')
+  // rótulos de relação conhecidos (id -> label), p/ exibir o rótulo após editar
+  const relLabelRef = useRef<Map<string, string>>(new Map())
   const [cellMenu, setCellMenu] = useState<{ r: number; c: number; x: number; y: number } | null>(null)
   const [rowMenu, setRowMenu] = useState<{ r: number; x: number; y: number } | null>(null)
   const [savedViews, setSavedViews] = useState<Saved<ViewPayload>[]>(() => loadSaved<ViewPayload>(VIEWS_KEY))
@@ -757,6 +950,8 @@ export default function TableView({
   // contexto da linha (botao direito), pra nao poluir a tabela.
   const hasRowActions = !!rowActions?.length && rowActionsInline
   const bodyColSpan = numCols + 1 + (hasRowActions ? 1 : 0)
+  // affordance "+" (novo campo) no fim do cabecalho, so quando o host liga onFieldAdd
+  const showAddField = !!onFieldAdd
 
   // ---- agrupamento por campo (indisponivel no modo paginado server) ----
   const groupField = groupBy ? fields.find((f) => f.id === groupBy) : undefined
@@ -790,6 +985,31 @@ export default function TableView({
     orderedRows.forEach((row, i) => m.set(row.id, i))
     return m
   }, [orderedRows])
+
+  // ---- editor de relação (server-side): campo em edição -> opções do alvo ----
+  // Quando o host fornece `loadRelationOptions`, o editor de uma célula relation
+  // busca as opções na entidade-ALVO (id + rótulo), com busca server-side. Sem o
+  // host (sandbox/lab) o editor cai no `recordOptions` local.
+  const editingColId = editMode && active && active.r >= 0 ? orderedCols[active.c]?.id : undefined
+  const editingField = editingColId ? fields.find((f) => f.id === editingColId) : undefined
+  const relEditing = editingField?.type === 'relation' && !!loadRelationOptions
+  // reseta a busca ao trocar o campo/célula em edição
+  useEffect(() => { setRelEditSearch('') }, [editingColId])
+  // carrega (debounced) as opções da entidade-alvo do campo relation em edição
+  useEffect(() => {
+    if (!relEditing || !loadRelationOptions || !editingColId) { setRelEditOpts([]); return }
+    let alive = true
+    const t = setTimeout(() => {
+      loadRelationOptions(editingColId, relEditSearch)
+        .then((opts) => {
+          if (!alive) return
+          setRelEditOpts(opts)
+          for (const o of opts) relLabelRef.current.set(o.value, o.label)
+        })
+        .catch(() => { if (alive) setRelEditOpts([]) })
+    }, relEditSearch ? 180 : 0)
+    return () => { alive = false; clearTimeout(t) }
+  }, [relEditing, editingColId, relEditSearch, loadRelationOptions])
 
   // ---- selecao de linhas (checkbox + selecionar tudo + shift-range) ----
   const allSelected = numRows > 0 && orderedRows.every((r) => selected.has(r.id)) // todas da PAGINA
@@ -840,7 +1060,12 @@ export default function TableView({
   const toggleFreeze = (c: number) => setFrozenCount((prev) => (c < prev ? c : c + 1))
 
   // itens do menu de contexto da coluna. Built-ins reais + acoes opcionais (schema/permissao).
-  function buildColMenu(colId: string, index: number): MenuEntry[] {
+  // Quando o host liga os callbacks de schema (onFieldUpdate/Duplicate/Delete), as
+  // ações mutam o schema de verdade (via backend); senão respeitam SCHEMA_PERMS.
+  const canEditSchema = SCHEMA_PERMS.canEdit && !!onFieldUpdate
+  const canDupSchema = SCHEMA_PERMS.canCreate || !!onFieldDuplicate
+  const canDelSchema = SCHEMA_PERMS.canDelete || !!onFieldDelete
+  function buildColMenu(colId: string, index: number, x: number, y: number): MenuEntry[] {
     const field = fields.find((f) => f.id === colId)
     const label = field?.label ?? colId
     const isFrozen = index < frozenCount
@@ -856,27 +1081,57 @@ export default function TableView({
       null,
       ...(SCHEMA_PERMS.canEdit
         ? [
-            { icon: <Pencil size={15} />, label: 'Editar campo', onSelect: () => toast.info(`Editar "${label}" , ação do dev`) },
+            {
+              icon: <Pencil size={15} />,
+              label: 'Editar campo',
+              disabled: !canEditSchema,
+              hint: canEditSchema ? undefined : 'sem permissão',
+              onSelect: () =>
+                canEditSchema
+                  ? setFieldEdit({ colId, x, y })
+                  : toast.info(`Editar "${label}" requer permissão`),
+            },
             { icon: <Shield size={15} />, label: 'Privacidade e permissões', onSelect: () => toast.info('Permissões , ação do dev') },
           ]
         : []),
-      // mutacoes de schema: so com permissao (bloqueadas senao)
+      // mutacoes de schema: usam o host (backend) quando ligado; senao respeitam SCHEMA_PERMS
       {
         icon: <Copy size={15} />,
         label: 'Duplicar campo',
-        disabled: !SCHEMA_PERMS.canCreate,
-        hint: SCHEMA_PERMS.canCreate ? undefined : 'sem permissão',
-        onSelect: () => toast.info(`Duplicar "${label}" , ação do dev`),
+        disabled: !canDupSchema,
+        hint: canDupSchema ? undefined : 'sem permissão',
+        onSelect: () =>
+          onFieldDuplicate ? onFieldDuplicate(colId) : toast.info(`Duplicar "${label}" , ação do dev`),
       },
       {
         icon: <TrashIcon size={15} />,
         label: 'Excluir campo',
         danger: true,
-        disabled: !SCHEMA_PERMS.canDelete,
-        hint: SCHEMA_PERMS.canDelete ? undefined : 'sem permissão',
-        onSelect: () => toast.warning(`Excluir "${label}" requer permissão`),
+        disabled: !canDelSchema,
+        hint: canDelSchema ? undefined : 'sem permissão',
+        onSelect: () =>
+          onFieldDelete ? onFieldDelete(colId) : toast.warning(`Excluir "${label}" requer permissão`),
       },
     ]
+  }
+
+  // salva a edição de um campo: envia ao host só o que mudou (nome / tipo /
+  // opções). Enviar `type` força o backend a reconstruir o config — então opções
+  // só persistem junto do tipo; por isso, se as opções mudarem, reenvia o tipo.
+  const editingCol = fieldEdit ? fields.find((f) => f.id === fieldEdit.colId) : undefined
+  function saveFieldEdit(out: { name: string; type: FieldType; options?: FieldOption[] }) {
+    if (!fieldEdit || !onFieldUpdate || !editingCol) { setFieldEdit(null); return }
+    const updates: { name?: string; type?: FieldType; options?: FieldOption[]; required?: boolean } = {}
+    if (out.name !== editingCol.label) updates.name = out.name
+    const isChoice = CHOICE_TYPES.includes(out.type)
+    const typeChanged = out.type !== editingCol.type
+    const optsChanged = isChoice && JSON.stringify(out.options ?? []) !== JSON.stringify(editingCol.options ?? [])
+    if (typeChanged || optsChanged) {
+      updates.type = out.type
+      if (isChoice) updates.options = out.options ?? []
+    }
+    if (Object.keys(updates).length) onFieldUpdate(editingCol.id, updates)
+    setFieldEdit(null)
   }
 
   const activeCellRef = useRef<HTMLTableCellElement | null>(null)
@@ -1046,8 +1301,18 @@ export default function TableView({
     if (!row || !colId) return
     const before = row.original[colId]
     onEdit(row.original.id, colId, val)
-    // server mode: atualiza a linha da pagina na hora (otimista); client mode re-renderiza via `records` do host
-    if (serverMode) setServerRows((prev) => prev.map((r) => (r.id === row.original.id ? { ...r, [colId]: val } : r)))
+    // server mode: atualiza a linha da pagina na hora (otimista); client mode re-renderiza via `records` do host.
+    // relacao: persiste o id (via onEdit), mas exibe o RÓTULO conhecido (a injeção de rótulo do host confirma no refetch).
+    const field = fields.find((f) => f.id === colId)
+    const display =
+      field?.type === 'relation'
+        ? Array.isArray(val)
+          ? (val as unknown[]).map((v) => relLabelRef.current.get(String(v)) ?? v)
+          : val == null || val === ''
+            ? val
+            : (relLabelRef.current.get(String(val)) ?? val)
+        : val
+    if (serverMode) setServerRows((prev) => prev.map((r) => (r.id === row.original.id ? { ...r, [colId]: display } : r)))
     if (auditOn && before !== val)
       pushAudit({ kind: 'edit', label: `Editou ${fieldLabel(colId)}`, cells: [{ rowId: row.original.id, fieldId: colId, before, after: val }] })
     markSaved()
@@ -1258,6 +1523,8 @@ export default function TableView({
                   field={field}
                   value={cell.getValue()}
                   recordOptions={recordOptions}
+                  relationOptions={field.type === 'relation' && loadRelationOptions ? relEditOpts : undefined}
+                  onRelationSearch={field.type === 'relation' && loadRelationOptions ? setRelEditSearch : undefined}
                   onCommit={(val) => commit({ r, c }, val)}
                   onTab={moveRight}
                   onShiftTab={moveLeft}
@@ -1700,7 +1967,7 @@ export default function TableView({
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <table
             className="caption-bottom text-sm border-separate border-spacing-0"
-            style={{ width: table.getTotalSize() + GUTTER + (hasRowActions ? ACTIONS_W : 0), tableLayout: 'fixed', height: '100%' }}
+            style={{ width: table.getTotalSize() + GUTTER + (hasRowActions ? ACTIONS_W : 0) + (showAddField ? ADD_FIELD_W : 0), tableLayout: 'fixed', height: '100%' }}
           >
             <TableHeader>
               {table.getHeaderGroups().map((hg) => (
@@ -1730,12 +1997,29 @@ export default function TableView({
                         left={colLeft(c)}
                         onToggleFreeze={() => toggleFreeze(c)}
                         onOpenMenu={(x, y) => setColMenu({ colId: header.column.id, index: c, x, y })}
+                        onRename={onFieldUpdate ? (name) => onFieldUpdate(header.column.id, { name }) : undefined}
                         selected={active?.r === -1 && active.c === c && !editMode}
                         selectedRef={activeHeaderRef}
                         onKeyDown={onCellKeyDown}
                       />
                     ))}
                   </SortableContext>
+                  {/* affordance "+" no fim do cabecalho: abre o popover de novo campo */}
+                  {showAddField && (
+                    <th
+                      style={{ width: ADD_FIELD_W }}
+                      className="h-10 border-b border-[#E2E8F0] bg-[#F8FAFC] px-0 align-middle"
+                    >
+                      <button
+                        type="button"
+                        title="Novo campo"
+                        onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setNewFieldAt({ x: r.left - 120, y: r.bottom + 4 }) }}
+                        className="flex size-full items-center justify-center text-[#94A3B8] hover:text-[#2563EB]"
+                      >
+                        <Plus size={15} />
+                      </button>
+                    </th>
+                  )}
                   {hasRowActions && (
                     <th
                       style={{ width: ACTIONS_W, right: 0 }}
@@ -1814,8 +2098,33 @@ export default function TableView({
         <ContextMenu
           x={colMenu.x}
           y={colMenu.y}
-          items={buildColMenu(colMenu.colId, colMenu.index)}
+          items={buildColMenu(colMenu.colId, colMenu.index, colMenu.x, colMenu.y)}
           onClose={() => setColMenu(null)}
+        />
+      )}
+
+      {/* popover: editar campo (nome + tipo + opções) */}
+      {fieldEdit && editingCol && (
+        <FieldSchemaPopover
+          x={fieldEdit.x}
+          y={fieldEdit.y}
+          mode="edit"
+          initialName={editingCol.label}
+          initialType={editingCol.type}
+          initialOptions={editingCol.options ?? []}
+          onSave={saveFieldEdit}
+          onClose={() => setFieldEdit(null)}
+        />
+      )}
+
+      {/* popover: novo campo (nome + tipo + opções) */}
+      {newFieldAt && (
+        <FieldSchemaPopover
+          x={newFieldAt.x}
+          y={newFieldAt.y}
+          mode="add"
+          onSave={(out) => { onFieldAdd?.({ name: out.name, type: out.type, options: out.options }); setNewFieldAt(null) }}
+          onClose={() => setNewFieldAt(null)}
         />
       )}
 

@@ -23,6 +23,9 @@ export interface RunHexField {
   type: string
   required?: boolean
   options?: { value: string; label: string; color?: string }[]
+  // Campo relation (type 'relationship'): entidade-alvo apontada.
+  relationshipEntityId?: string
+  relationshipEntityName?: string
 }
 
 // ---- contratos server-side (estruturais; batem com RecordController) ----
@@ -110,6 +113,30 @@ function toGvType(t: string): FieldType {
   }
 }
 
+// good-views FieldType -> run-hex/AEX type string (inverso parcial de toGvType).
+// Usado pela edição de schema (addField/updateField) p/ mandar o tipo ao backend.
+export function toAexType(t: FieldType): string {
+  switch (t) {
+    case 'longtext': return 'long_text'
+    case 'number': return 'number'
+    case 'currency': return 'currency'
+    case 'percent': return 'percent'
+    case 'date': return 'date'
+    case 'select': return 'select'
+    case 'status': return 'status'
+    case 'multiselect': return 'multiselect'
+    case 'person': return 'person'
+    case 'url': return 'url'
+    case 'relation': return 'relation'
+    case 'file':
+    case 'image': return 'attachment'
+    case 'text':
+    case 'id':
+    case 'geo':
+    default: return 'text'
+  }
+}
+
 const OPTION_TYPES: FieldType[] = ['select', 'status', 'multiselect', 'person']
 
 export function toFields(fields: RunHexField[]): Field[] {
@@ -121,6 +148,8 @@ export function toFields(fields: RunHexField[]): Field[] {
       if (type === 'multiselect') field.creatable = false
     }
     if (type === 'currency') field.currency = 'BRL'
+    // relation -> nome da entidade-alvo (usado por views de arvore/grafo).
+    if (type === 'relation' && f.relationshipEntityName) field.relationTo = f.relationshipEntityName
     return field
   })
 }
@@ -192,19 +221,101 @@ async function fetchFiltered(entityId: string, queryFn: QueryFn, filter: ServerC
   return out
 }
 
+// ---------- rotulos de relacao: resolve id-alvo -> LABEL (titulo) do alvo ----------
+
+/** Busca em lote os rotulos (titulo) dos registros-alvo de uma entidade. */
+export type ResolveLabelsFn = (input: {
+  entityId: string
+  ids: string[]
+}) => Promise<{ labels: { id: string; label: string }[] }>
+
+/** cache id-alvo -> label, chaveado por entidade-alvo. Memoiza entre paginas/ordenacao. */
+export type LabelCache = Map<string, string>
+const labelKey = (targetEntityId: string, id: string): string => `${targetEntityId}:${id}`
+
+interface RelField {
+  slug: string
+  targetEntityId: string
+}
+
+/** campos relation da entidade (com entidade-alvo conhecida), p/ resolver rotulos. */
+function relationFieldsOf(fields: RunHexField[]): RelField[] {
+  return fields
+    .filter((f) => (f.type === 'relation' || f.type === 'relationship') && !!f.relationshipEntityId)
+    .map((f) => ({ slug: f.slug, targetEntityId: f.relationshipEntityId as string }))
+}
+
+/**
+ * Resolve + injeta: em cada campo relation, troca o id (cru) pelo LABEL do
+ * registro-alvo, na forma que a celula relation espera (string do rotulo — a
+ * celula faz `String(value)`). Ids ja conhecidos vem do cache; os novos sao
+ * buscados em lote por entidade-alvo. Ids sem rotulo mantem o id cru.
+ */
+async function injectRelationLabels(
+  rows: Row[],
+  relFields: RelField[],
+  resolveLabels: ResolveLabelsFn,
+  labelCache: LabelCache,
+): Promise<void> {
+  if (relFields.length === 0) return
+  // 1) ids faltantes (fora do cache) por entidade-alvo
+  const missing = new Map<string, Set<string>>()
+  for (const rf of relFields) {
+    for (const row of rows) {
+      const v = row[rf.slug]
+      if (v == null || v === '') continue
+      const id = String(v)
+      if (labelCache.has(labelKey(rf.targetEntityId, id))) continue
+      const set = missing.get(rf.targetEntityId) ?? new Set<string>()
+      set.add(id)
+      missing.set(rf.targetEntityId, set)
+    }
+  }
+  // 2) busca em lote (uma chamada por entidade-alvo) e povoa o cache
+  await Promise.all(
+    [...missing.entries()].map(async ([targetEntityId, ids]) => {
+      const res = await resolveLabels({ entityId: targetEntityId, ids: [...ids] })
+      for (const { id, label } of res.labels) labelCache.set(labelKey(targetEntityId, id), label)
+    }),
+  )
+  // 3) injeta o rotulo resolvido (mantem o id cru quando nao ha rotulo)
+  for (const rf of relFields) {
+    for (const row of rows) {
+      const v = row[rf.slug]
+      if (v == null || v === '') continue
+      const label = labelCache.get(labelKey(rf.targetEntityId, String(v)))
+      if (label !== undefined) row[rf.slug] = label
+    }
+  }
+}
+
 /**
  * Constroi a `fetchPage` (modo SERVER da TableView). Cada chamada busca a pagina
  * (limit/offset/sort/filter) e o conjunto filtrado completo (rodape). O conjunto
  * filtrado e memoizado por filtro, entao trocar de pagina/ordenacao nao rebusca.
+ *
+ * Se `fields` + `resolveLabels` + `labelCache` forem dados, resolve os campos
+ * relation da PAGINA (id-alvo -> label do alvo) e injeta o rotulo na celula.
  */
-export function makeFetchPage(entityId: string, queryFn: QueryFn, cache: RowCache): (q: PageQuery) => Promise<PageResult> {
+export function makeFetchPage(
+  entityId: string,
+  queryFn: QueryFn,
+  cache: RowCache,
+  fields: RunHexField[] = [],
+  resolveLabels?: ResolveLabelsFn,
+  labelCache?: LabelCache,
+): (q: PageQuery) => Promise<PageResult> {
   let aggKey: string | null = null
   let aggRows: Row[] = []
+  const relFields = relationFieldsOf(fields)
   return async (q: PageQuery): Promise<PageResult> => {
     const filter = toServerFilter(q.filter)
     const sort = toServerSort(q.sort)
     const page = await queryFn({ entityId, filter, sort, limit: q.limit, offset: q.offset })
     const rows = page.rows.map((r) => toRow(r, cache))
+    if (resolveLabels && labelCache && relFields.length) {
+      await injectRelationLabels(rows, relFields, resolveLabels, labelCache)
+    }
     const key = JSON.stringify(filter ?? null)
     if (key !== aggKey) {
       aggRows = await fetchFiltered(entityId, queryFn, filter, cache)

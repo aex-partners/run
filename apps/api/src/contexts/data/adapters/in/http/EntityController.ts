@@ -10,6 +10,8 @@ import { GenerateFieldValue } from '@/contexts/data/application/ports/in/Generat
 import { DescribeEntity } from '@/contexts/data/application/ports/in/DescribeEntity'
 import { ListEntities } from '@/contexts/data/application/queries/ListEntities'
 import { SearchRecords } from '@/contexts/data/application/queries/SearchRecords'
+import { ResolveLabels } from '@/contexts/data/application/queries/ResolveLabels'
+import { ListOptions } from '@/contexts/data/application/queries/ListOptions'
 import { PivotRecords } from '@/contexts/data/application/queries/PivotRecords'
 import {
   AexFieldInput,
@@ -61,6 +63,8 @@ export const entityController = (deps: {
   list: ListEntities
   search: SearchRecords
   pivot: PivotRecords
+  resolveLabels: ResolveLabels
+  listOptions: ListOptions
 }) =>
   router({
     // entities.list
@@ -175,6 +179,26 @@ export const entityController = (deps: {
         unwrap(await deps.removeField.execute(input))
         return { success: true }
       }),
+
+    // entities.resolveLabels — batch-resolve target record ids to their entity's
+    // TITLE-field value. Powers the Table View's relation columns (id -> label).
+    resolveLabels: protectedProcedure
+      .input(z.object({ entityId: z.string(), ids: z.array(z.string()) }))
+      .query(({ input }) => deps.resolveLabels.execute(input)),
+
+    // entities.listOptions — list an entity's records as picker options ({ value:
+    // id, label: title }), optionally filtered by a case-insensitive search over
+    // the title, capped at `limit`. Powers the Table View's relation edit combobox:
+    // the TARGET entity's records populate + search the picker.
+    listOptions: protectedProcedure
+      .input(
+        z.object({
+          entityId: z.string(),
+          search: z.string().optional(),
+          limit: z.number().int().min(1).max(200).default(50),
+        }),
+      )
+      .query(({ input }) => deps.listOptions.execute(input)),
 
     // entities.searchRecords
     searchRecords: protectedProcedure

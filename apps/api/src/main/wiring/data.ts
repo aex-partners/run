@@ -12,6 +12,8 @@ import { DrizzleListEntities } from '@/contexts/data/adapters/out/persistence/Dr
 import { DrizzleListRecords } from '@/contexts/data/adapters/out/persistence/DrizzleListRecords'
 import { DrizzleQueryRecords } from '@/contexts/data/adapters/out/persistence/DrizzleQueryRecords'
 import { DrizzleSearchRecords } from '@/contexts/data/adapters/out/persistence/DrizzleSearchRecords'
+import { DrizzleResolveLabels } from '@/contexts/data/adapters/out/persistence/DrizzleResolveLabels'
+import { DrizzleListOptions } from '@/contexts/data/adapters/out/persistence/DrizzleListOptions'
 import { DrizzlePivotRecords } from '@/contexts/data/adapters/out/persistence/DrizzlePivotRecords'
 import { DrizzleGetViewPreference } from '@/contexts/data/adapters/out/persistence/DrizzleGetViewPreference'
 import { DrizzleListSavedViews } from '@/contexts/data/adapters/out/persistence/DrizzleListSavedViews'
@@ -45,6 +47,8 @@ export function wireData(infra: Infra) {
   const listRecords = new DrizzleListRecords(db)
   const queryRecords = new DrizzleQueryRecords(db)
   const searchRecords = new DrizzleSearchRecords(db)
+  const resolveLabels = new DrizzleResolveLabels(db)
+  const listOptions = new DrizzleListOptions(db, queryRecords)
   const pivotRecords = new DrizzlePivotRecords(db)
   const getViewPreference = new DrizzleGetViewPreference(db)
   const listSavedViews = new DrizzleListSavedViews(db)
@@ -68,7 +72,7 @@ export function wireData(infra: Infra) {
   const entitiesCtl = entityController({
     create: createEntity, update: updateEntity, remove: deleteEntity, addField, updateField,
     removeField, generateFieldValue, describe: describeEntity, list: listEntities,
-    search: searchRecords, pivot: pivotRecords,
+    search: searchRecords, pivot: pivotRecords, resolveLabels, listOptions,
   })
   const recordsCtl = recordController({ insert: insertRecord, update: updateRecord, remove: deleteRecord, list: listRecords, query: queryRecords })
   const viewsCtl = viewController({ getPreference: getViewPreference, setPreference: setViewPreference, listViews: listSavedViews, manageView: manageSavedView })

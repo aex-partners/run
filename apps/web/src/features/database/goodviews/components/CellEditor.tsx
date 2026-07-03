@@ -20,13 +20,20 @@ export interface EditCellProps extends Nav {
   field: Field
   value: unknown
   recordOptions: { value: string; label: string }[]
+  /**
+   * Opções da entidade-ALVO de um campo relation (id + rótulo). Quando fornecidas,
+   * o editor de relação usa estas (fonte server-side) no lugar de `recordOptions`.
+   */
+  relationOptions?: { value: string; label: string }[]
+  /** notifica a busca digitada no editor de relação (refetch server-side no host). */
+  onRelationSearch?: (q: string) => void
   onCommit: (val: unknown) => void
 }
 
 // Editor SEM caixa: transparente, sem borda/fundo/padding (estilo Excel).
 const EDIT_BASE = 'w-full bg-transparent border-0 outline-none p-0 m-0'
 
-export function EditCell({ field, value, recordOptions, onCommit, onTab, onShiftTab, onEnter, onEsc }: EditCellProps) {
+export function EditCell({ field, value, recordOptions, relationOptions, onRelationSearch, onCommit, onTab, onShiftTab, onEnter, onEsc }: EditCellProps) {
   function handleKey(e: ReactKeyboardEvent, commit: () => void) {
     if (e.key === 'Enter') { e.preventDefault(); commit(); onEnter() }
     else if (e.key === 'Tab') { e.preventDefault(); commit(); if (e.shiftKey) onShiftTab(); else onTab() }
@@ -38,14 +45,18 @@ export function EditCell({ field, value, recordOptions, onCommit, onTab, onShift
     return <Combobox options={field.options} value={value} min={field.min} max={field.max} creatable={field.creatable} onCommit={onCommit} onClose={onEsc} />
   }
 
+  // Relação: usa as opções da entidade-ALVO (server-side) quando o host fornece;
+  // senão cai no `recordOptions` local (modo sandbox/lab).
+  const relOpts = relationOptions ?? recordOptions
+
   // Lookup multiplo (relacao em array, ex dependeDe)
   if (field.type === 'relation' && (field.id === 'dependeDe' || Array.isArray(value))) {
-    return <Combobox options={recordOptions} value={value} min={field.min} max={field.max} onCommit={onCommit} onClose={onEsc} />
+    return <Combobox options={relOpts} value={value} min={field.min} max={field.max} onSearch={onRelationSearch} onCommit={onCommit} onClose={onEsc} />
   }
 
   // Lookup single (relacao, ex parentId) , combobox searchable de um item
   if (field.type === 'relation') {
-    return <Combobox options={recordOptions} value={value} single onCommit={onCommit} onClose={onEsc} />
+    return <Combobox options={relOpts} value={value} single onSearch={onRelationSearch} onCommit={onCommit} onClose={onEsc} />
   }
 
   // Select / status / person , a MESMA combobox padrao (single, searchable, creatable opcional)

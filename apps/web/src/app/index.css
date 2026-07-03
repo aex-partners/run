@@ -115,7 +115,13 @@
   --radius: 0.625rem;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* Wrapped in @layer base: an UNLAYERED `*` reset beats Tailwind's layered
+   utilities (px-/py-/gap-/p-), which silently zeroed all padding/margin on the
+   good-views components. In @layer base, Tailwind's `utilities` layer wins, so
+   utility spacing works; the app's inline styles still beat every layer. */
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+}
 body { background: var(--background); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
 
 .react-flow__background { background: var(--background); }

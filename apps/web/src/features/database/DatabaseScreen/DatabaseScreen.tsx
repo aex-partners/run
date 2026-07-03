@@ -2,9 +2,19 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
 import { EntitySidebar } from './EntitySidebar'
 import { ViewKeyContext } from '../goodviews/viewKeyContext'
-import type { Field, ViewConfig } from '../goodviews/types'
+import type { Field, FieldType, FieldOption, ViewConfig } from '../goodviews/types'
 import type { PageQuery, PageResult } from '../goodviews/server'
 import type { TableCallbacks } from '../goodviews/adapter'
+import { CreateEntityScreen, type CreateEntityPayload } from '../CreateEntityScreen/CreateEntityScreen'
+
+/** callbacks de edição de schema + loader de opções de relação (Part A/B). */
+export interface SchemaCallbacks {
+  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; options?: FieldOption[]; required?: boolean }) => void
+  onFieldDelete?: (fieldId: string) => void
+  onFieldDuplicate?: (fieldId: string) => void
+  onFieldAdd?: (spec: { name: string; type: FieldType; options?: FieldOption[] }) => void
+  loadRelationOptions?: (fieldId: string, search: string) => Promise<{ value: string; label: string }[]>
+}
 
 // The Table View (good-views engine) is heavy (tanstack-table + dnd-kit); load it
 // lazily so the Database shell paints instantly.
@@ -32,6 +42,13 @@ export interface DatabaseScreenProps {
   fetchPage?: (q: PageQuery) => Promise<PageResult>
   /** persisted mutations for inline edit / delete / create. */
   callbacks?: TableCallbacks
+  /** schema-edit callbacks + relation option loader (host-wired). */
+  schema?: SchemaCallbacks
+  /** when true, the content area shows the entity-creation screen instead of a view. */
+  creating?: boolean
+  onCreateEntity?: (payload: CreateEntityPayload) => void
+  onCancelCreate?: () => void
+  createBusy?: boolean
 }
 
 /**
@@ -49,6 +66,11 @@ export function DatabaseScreen({
   tableFields,
   fetchPage,
   callbacks,
+  schema,
+  creating,
+  onCreateEntity,
+  onCancelCreate,
+  createBusy,
 }: DatabaseScreenProps) {
   const [searchText, setSearchText] = useState('')
   const [collapsed, setCollapsed] = useState(false)
@@ -84,17 +106,17 @@ export function DatabaseScreen({
           aria-label="Mostrar entidades"
           style={{
             position: 'absolute',
-            top: 12,
-            left: 12,
+            top: 7,
+            left: 6,
             zIndex: 30,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 32,
-            height: 32,
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
+            width: 30,
+            height: 30,
+            background: 'transparent',
+            border: 'none',
+            borderRadius: 6,
             color: 'var(--text-muted)',
             cursor: 'pointer',
           }}
@@ -102,8 +124,17 @@ export function DatabaseScreen({
           <PanelLeftOpen size={16} />
         </button>
       )}
-      <div style={{ flex: 1, minWidth: 0, background: '#ffffff' }}>
-        {showTable ? (
+      {/* When collapsed, a small left gutter holds the reopen button in-line with
+          the Table View's header toolbar (which starts after the gutter). */}
+      <div style={{ flex: 1, minWidth: 0, background: '#ffffff', paddingLeft: collapsed && !creating ? 40 : 0 }}>
+        {creating ? (
+          <CreateEntityScreen
+            entities={entities}
+            onCreate={(payload) => onCreateEntity?.(payload)}
+            onCancel={() => onCancelCreate?.()}
+            busy={createBusy}
+          />
+        ) : showTable ? (
           <div className="gv-scope" style={{ height: '100%', minHeight: 0 }}>
             <Suspense fallback={<div style={{ height: '100%', background: '#ffffff' }} />}>
               <ViewKeyContext.Provider value="database-table">
@@ -116,6 +147,11 @@ export function DatabaseScreen({
                   onRowDelete={callbacks?.onRowDelete}
                   onCreate={callbacks?.onCreate}
                   fetchPage={fetchPage}
+                  onFieldUpdate={schema?.onFieldUpdate}
+                  onFieldDelete={schema?.onFieldDelete}
+                  onFieldDuplicate={schema?.onFieldDuplicate}
+                  onFieldAdd={schema?.onFieldAdd}
+                  loadRelationOptions={schema?.loadRelationOptions}
                 />
               </ViewKeyContext.Provider>
             </Suspense>
