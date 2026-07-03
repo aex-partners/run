@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Coins, Bell } from "lucide-react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { trpc } from "../../platform/trpc";
 import { SettingsScreen, type PieceToolData } from "./SettingsScreen/SettingsScreen";
 import { PluginConnectDialog, type PluginConnectDialogProps } from "./PluginConnectDialog/PluginConnectDialog";
@@ -173,13 +173,14 @@ export function SettingsPage() {
           inserted: acc.inserted + e.inserted,
           updated: acc.updated + e.updated,
           errors: acc.errors + e.errors,
+          skipped: acc.skipped + (e.skipped ?? 0),
         }),
-        { inserted: 0, updated: 0, errors: 0 },
+        { inserted: 0, updated: 0, errors: 0, skipped: 0 },
       );
       if (totals.errors > 0) {
-        toast.warning(`Bling sincronizado com ${totals.errors} erro(s): ${totals.inserted} inseridos, ${totals.updated} atualizados`);
+        toast.warning(`Bling sincronizado com ${totals.errors} erro(s): ${totals.inserted} inseridos, ${totals.updated} atualizados, ${totals.skipped} pulados`);
       } else {
-        toast.success(`Bling sincronizado: ${totals.inserted} inseridos, ${totals.updated} atualizados`);
+        toast.success(`Bling sincronizado: ${totals.inserted} inseridos, ${totals.updated} atualizados, ${totals.skipped} pulados`);
       }
     },
     onError: (err) => {
@@ -495,9 +496,6 @@ export function SettingsPage() {
         onDisconnect={handleDisconnect}
         saving={createCredentialMut.isPending}
       />
-
-      {/* Toasts for actions triggered from this page (e.g. Bling sync) */}
-      <Toaster position="bottom-right" richColors closeButton />
     </>
   );
 }
