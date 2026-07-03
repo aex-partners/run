@@ -124,7 +124,7 @@ export const BLING_ENTITIES = [
   // ---- Tier 4: pedidos ----
   { slug: 'bling_pedidos_venda', name: 'Bling Pedidos Venda', fields: [
     num('numero'), text('numero_loja'), date('data'), date('data_saida'), date('data_prevista'),
-    money('total_produtos'), money('total'), rel('contato', 'bling_contatos', true),
+    money('total_produtos'), money('total'), rel('contato', 'bling_contatos'),
     num('situacao_id'), num('situacao_valor'), text('loja_id'), text('numero_pedido_compra'),
     money('outras_despesas'), long('observacoes'), long('observacoes_internas'), money('desconto_valor'),
     text('desconto_unidade'), text('categoria_id'), text('nota_fiscal_id'), money('total_icms'), money('total_ipi'),

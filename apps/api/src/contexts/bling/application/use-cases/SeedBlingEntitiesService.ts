@@ -8,12 +8,12 @@ import { BLING_ENTITIES } from '@/contexts/bling/domain/mirror/BlingEntitySchema
 export class SeedBlingEntitiesService {
   constructor(private readonly catalog: EntityCatalog) {}
 
-  async execute(): Promise<Result<Map<string, string>>> {
+  async execute(createdBy: string): Promise<Result<Map<string, string>>> {
     const slugToId = new Map<string, string>()
 
     // Phase A: Create entities with non-relation fields
     for (const def of BLING_ENTITIES) {
-      const r = await this.catalog.ensureEntity(def, slugToId)
+      const r = await this.catalog.ensureEntity(def, slugToId, createdBy)
       if (!r.ok) return fail(r.error)
       slugToId.set(def.slug, r.value.entityId)
     }

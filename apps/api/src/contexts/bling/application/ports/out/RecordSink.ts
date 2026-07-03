@@ -11,5 +11,8 @@ export interface RecordSink {
     slug: string
     externalId: string
     data: JsonObject
+    // Resolved sync owner id, threaded through to entity_records.created_by
+    // on insert (updates don't need it).
+    createdBy: string
   }): Promise<Result<{ recordId: string; changed: boolean; inserted: boolean }>>
 }

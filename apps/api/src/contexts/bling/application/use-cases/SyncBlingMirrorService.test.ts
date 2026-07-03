@@ -33,39 +33,50 @@ function fakeClient() {
   }
 }
 
+// Shared in-memory harness: a bling_sync_map-backed store, a RecordSink fake
+// that upserts against it (recording every call it received, so tests can
+// assert on what the orchestrator forwarded -- e.g. createdBy), and an
+// EntityCatalog fake that hands out stable entity ids per slug.
+function makeHarness() {
+  const store = new Map<string, { recordId: string; version: number; contentHash: string }>()
+  const rows: { entitySlug: string; externalId: string; recordId: string }[] = []
+  let n = 0
+  const syncMap = {
+    listAll: async () => rows.slice(),
+    get: async (s: string, e: string) => store.get(`${s}:${e}`) ?? null,
+    put: async (r: { entitySlug: string; externalId: string; recordId: string; version: number; contentHash: string }) => {
+      store.set(`${r.entitySlug}:${r.externalId}`, { recordId: r.recordId, version: r.version, contentHash: r.contentHash })
+      if (!rows.find((x) => x.entitySlug === r.entitySlug && x.externalId === r.externalId)) {
+        rows.push({ entitySlug: r.entitySlug, externalId: r.externalId, recordId: r.recordId })
+      }
+    },
+  }
+  const upsertCalls: { slug: string; externalId: string; data: Record<string, unknown>; createdBy?: string }[] = []
+  const recordSink = {
+    upsertExternal: async (i: { slug: string; externalId: string; data: Record<string, unknown>; createdBy?: string }) => {
+      upsertCalls.push(i)
+      const key = `${i.slug}:${i.externalId}`
+      const existing = store.get(key)
+      const recordId = existing?.recordId ?? `rec-${n++}`
+      const hash = JSON.stringify(i.data)
+      const inserted = !existing
+      const changed = existing?.contentHash !== hash
+      await syncMap.put({ entitySlug: i.slug, externalId: i.externalId, recordId, version: (existing?.version ?? 0) + (changed ? 1 : 0), contentHash: hash })
+      return ok({ recordId, changed, inserted })
+    },
+  }
+  const ids = new Map<string, string>()
+  let m = 0
+  const catalog = {
+    ensureEntity: async (def: { slug: string }) => { if (!ids.has(def.slug)) ids.set(def.slug, `ent-${m++}`); return ok({ entityId: ids.get(def.slug)! }) },
+    ensureRelationFields: async () => ok(undefined),
+  }
+  return { store, syncMap, recordSink, catalog, upsertCalls }
+}
+
 describe('SyncBlingMirrorService', () => {
-  it('scope=all seeds, imports per tier, resolves the categoria parent via 2-pass, skips unresolved required relations, and is idempotent', async () => {
-    const store = new Map<string, { recordId: string; version: number; contentHash: string }>()
-    const rows: { entitySlug: string; externalId: string; recordId: string }[] = []
-    let n = 0
-    const syncMap = {
-      listAll: async () => rows.slice(),
-      get: async (s: string, e: string) => store.get(`${s}:${e}`) ?? null,
-      put: async (r: { entitySlug: string; externalId: string; recordId: string; version: number; contentHash: string }) => {
-        store.set(`${r.entitySlug}:${r.externalId}`, { recordId: r.recordId, version: r.version, contentHash: r.contentHash })
-        if (!rows.find((x) => x.entitySlug === r.entitySlug && x.externalId === r.externalId)) {
-          rows.push({ entitySlug: r.entitySlug, externalId: r.externalId, recordId: r.recordId })
-        }
-      },
-    }
-    const recordSink = {
-      upsertExternal: async (i: { slug: string; externalId: string; data: Record<string, unknown> }) => {
-        const key = `${i.slug}:${i.externalId}`
-        const existing = store.get(key)
-        const recordId = existing?.recordId ?? `rec-${n++}`
-        const hash = JSON.stringify(i.data)
-        const inserted = !existing
-        const changed = existing?.contentHash !== hash
-        await syncMap.put({ entitySlug: i.slug, externalId: i.externalId, recordId, version: (existing?.version ?? 0) + (changed ? 1 : 0), contentHash: hash })
-        return ok({ recordId, changed, inserted })
-      },
-    }
-    const ids = new Map<string, string>()
-    let m = 0
-    const catalog = {
-      ensureEntity: async (def: { slug: string }) => { if (!ids.has(def.slug)) ids.set(def.slug, `ent-${m++}`); return ok({ entityId: ids.get(def.slug)! }) },
-      ensureRelationFields: async () => ok(undefined),
-    }
+  it('scope=all seeds, imports per tier, resolves the categoria parent via 2-pass, skips unresolved required relations, threads createdBy, and is idempotent', async () => {
+    const { store, syncMap, recordSink, catalog, upsertCalls } = makeHarness()
     const resolveOwner = { ownerId: async () => 'owner-1' }
     const svc = new SyncBlingMirrorService({
       seed: new SeedBlingEntitiesService(catalog), client: fakeClient() as never,
@@ -98,6 +109,13 @@ describe('SyncBlingMirrorService', () => {
     expect(joinTally.skipped).toBeGreaterThanOrEqual(1)
     expect(joinTally.inserted).toBe(0)
 
+    // Fix 1 regression: the resolved owner id is threaded into every
+    // upsertExternal call as createdBy -- otherwise entities.created_by /
+    // entity_records.created_by persist as '' and violate the NOT NULL + FK
+    // to users.id on real Postgres.
+    expect(upsertCalls.length).toBeGreaterThan(0)
+    expect(upsertCalls.every((c) => c.createdBy === 'owner-1')).toBe(true)
+
     const before = store.size
     const r2 = await svc.execute({ scope: 'all' })
     if (!r2.ok) throw new Error(r2.error)
@@ -128,5 +146,96 @@ describe('SyncBlingMirrorService', () => {
     })
     const r = await svc.execute({ scope: 'all' })
     expect(r.ok).toBe(false)
+  })
+
+  // Fix 2 regression. A pedido whose contato didn't come through the mirror
+  // (inactive contact, or a Bling `contato.id: 0`) must still persist -- with
+  // `contato: null` -- instead of being silently dropped along with its
+  // itens/parcelas/volumes. Separately, a componente pointing at a produto
+  // that was never imported must still be skipped: that relation stays
+  // required, so a dangling required FK there is correctly refused.
+  it('persists a pedido with contato: null when its contato is unresolved, but still skips a componente whose required target is unresolved', async () => {
+    const { store, syncMap, recordSink, catalog } = makeHarness()
+    const client = {
+      async *paginate(path: string) {
+        if (path === '/pedidos/vendas') yield { id: 77 }
+        if (path === '/produtos') yield { id: 88 }
+      },
+      async get(path: string) {
+        if (path === '/contatos/tipos') return { data: [] }
+        if (path === '/pedidos/vendas/77') {
+          return { data: { id: 77, numero: 1, data: '2026-01-01', contato: { id: 0 } } }
+        }
+        if (path === '/produtos/88') {
+          return {
+            data: {
+              id: 88,
+              nome: 'Kit',
+              estrutura: { componentes: [{ produto: { id: 999 }, quantidade: 1 }] },
+            },
+          }
+        }
+        return { data: {} }
+      },
+    }
+    const resolveOwner = { ownerId: async () => 'owner-1' }
+    const svc = new SyncBlingMirrorService({
+      seed: new SeedBlingEntitiesService(catalog), client: client as never,
+      recordSink, syncMap, resolveOwner, makeFk: () => new FkCache(),
+    })
+
+    const r = await svc.execute({ scope: 'all' })
+    if (!r.ok) throw new Error(r.error)
+
+    const pedido = store.get('bling_pedidos_venda:77')
+    expect(pedido).toBeDefined()
+    expect(JSON.parse(pedido!.contentHash).contato).toBeNull()
+    const pedidoTally = r.value.entities.find((e) => e.slug === 'bling_pedidos_venda')!
+    expect(pedidoTally.inserted).toBe(1)
+    expect(pedidoTally.skipped).toBe(0)
+
+    const compTally = r.value.entities.find((e) => e.slug === 'bling_produto_componentes')!
+    expect(compTally.inserted).toBe(0)
+    expect(compTally.skipped).toBeGreaterThanOrEqual(1)
+  })
+
+  // Fix 3 regression. importDetail fetches one full record per list item; a
+  // single `client.get(.../{id})` throwing must not abort the rest of that
+  // tier -- only the failing item should be skipped (tallied as an error).
+  it('does not abort the rest of a tier when one detail fetch throws', async () => {
+    const { store, syncMap, recordSink, catalog } = makeHarness()
+    const client = {
+      async *paginate(path: string) {
+        if (path === '/contatos') {
+          yield { id: 1 }
+          yield { id: 2 }
+          yield { id: 3 }
+        }
+      },
+      async get(path: string) {
+        if (path === '/contatos/tipos') return { data: [] }
+        if (path === '/contatos/2') throw new Error('boom: detail fetch failed')
+        if (String(path).startsWith('/contatos/')) {
+          const id = Number(String(path).split('/').pop())
+          return { data: { id, nome: `Contato ${id}` } }
+        }
+        return { data: {} }
+      },
+    }
+    const resolveOwner = { ownerId: async () => 'owner-1' }
+    const svc = new SyncBlingMirrorService({
+      seed: new SeedBlingEntitiesService(catalog), client: client as never,
+      recordSink, syncMap, resolveOwner, makeFk: () => new FkCache(),
+    })
+
+    const r = await svc.execute({ scope: 'all' })
+    if (!r.ok) throw new Error(r.error)
+
+    expect(store.get('bling_contatos:1')).toBeDefined()
+    expect(store.get('bling_contatos:3')).toBeDefined()
+    expect(store.has('bling_contatos:2')).toBe(false)
+    const tally = r.value.entities.find((e) => e.slug === 'bling_contatos')!
+    expect(tally.inserted).toBe(2)
+    expect(tally.errors).toBeGreaterThanOrEqual(1)
   })
 })

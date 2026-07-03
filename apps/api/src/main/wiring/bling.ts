@@ -69,7 +69,7 @@ export function wireBling(infra: Infra, deps: BlingDeps) {
   // ACL bridge: bling EntityCatalog -> data CreateEntity/AddField/DescribeEntity/ListEntities.
   const entityCatalog = new DataEntityCatalog({ createEntity, addField, describeEntity, listEntities })
   // ACL bridge: bling RecordSink -> data InsertRecord/UpdateRecord/GetRecord.
-  const recordSink = new DataRecordSink({ insert: insertRecord, update: updateRecord, get: getRecord, syncMap, clock: infra.clock })
+  const recordSink = new DataRecordSink({ insert: insertRecord, update: updateRecord, get: getRecord, syncMap })
   const seed = new SeedBlingEntitiesService(entityCatalog)
   const syncBlingMirror = new SyncBlingMirrorService({
     seed, client: syncClient, recordSink, syncMap, resolveOwner, makeFk: () => new FkCache(),

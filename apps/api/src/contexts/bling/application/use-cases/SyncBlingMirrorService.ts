@@ -75,7 +75,7 @@ export class SyncBlingMirrorService implements SyncBlingMirror {
       return fail('Bling não conectado: nenhum proprietário disponível para atribuir a sincronização.')
     }
 
-    const seeded = await this.seed.execute()
+    const seeded = await this.seed.execute(ownerId)
     if (!seeded.ok) return fail(seeded.error)
     const slugToId = seeded.value
 
@@ -130,6 +130,7 @@ export class SyncBlingMirrorService implements SyncBlingMirror {
         slug: mapped.slug,
         externalId: mapped.externalId,
         data: resolvedData,
+        createdBy: ownerId,
       })
       if (!res.ok) {
         tally.errors++
@@ -194,9 +195,19 @@ export class SyncBlingMirrorService implements SyncBlingMirror {
         let count = 0
         for await (const item of this.client.paginate<TItem>(listPath)) {
           if (limit && count >= limit) break
-          const full = (await this.client.get<BlingSingleResponse<TFull>>(`${listPath}/${item.id}`)).data
-          for (const m of mapFn(full)) await sink(m)
           count++
+          // Per-record guard: one item's detail fetch/map failing must not
+          // abort the rest of the tier -- tally an error against this entity
+          // and move on to the next item. The outer `guarded()` above still
+          // catches a failure in the pagination itself (the list fetch).
+          try {
+            const full = (await this.client.get<BlingSingleResponse<TFull>>(`${listPath}/${item.id}`)).data
+            for (const m of mapFn(full)) await sink(m)
+          } catch (err) {
+            const tally = tallies.get(primarySlug)
+            if (tally) tally.errors++
+            console.error(`[bling] sync: ${primarySlug} detail import failed for id ${item.id}:`, err)
+          }
         }
       })
 

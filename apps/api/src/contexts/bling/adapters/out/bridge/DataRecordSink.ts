@@ -2,15 +2,17 @@ import { Result, ok, fail } from '@/shared/kernel/Result'
 import { JsonObject, Json } from '@/shared/domain/Json'
 import { RecordSink } from '@/contexts/bling/application/ports/out/RecordSink'
 import { BlingSyncMapPort } from '@/contexts/bling/application/ports/out/BlingSyncMapPort'
-import { Clock } from '@/shared/kernel/Clock'
 
 // Local shapes for the data InsertRecord/UpdateRecord/GetRecord in-ports this
 // bridge calls. Structurally identical to the slice of those ports this sink
 // uses -- kept local (not imported) so this adapter never crosses the context
 // boundary at the type level; the concrete data in-ports injected by
 // main/wiring/bling.ts satisfy these shapes structurally.
+// `createdBy` mirrors data's InsertRecordCommand.createdBy (optional there);
+// this bridge always has a resolved owner id by the time it inserts, so it
+// always supplies one. Updates don't take createdBy.
 interface InsertRecordLike {
-  execute(cmd: { entityId: string; data: JsonObject }): Promise<Result<{ id: string; version: number }>>
+  execute(cmd: { entityId: string; data: JsonObject; createdBy?: string }): Promise<Result<{ id: string; version: number }>>
 }
 interface UpdateRecordLike {
   execute(cmd: { recordId: string; data: JsonObject; expectedVersion: number }): Promise<Result<{ version: number }>>
@@ -24,7 +26,6 @@ export interface DataRecordSinkDeps {
   update: UpdateRecordLike
   get: GetRecordLike
   syncMap: BlingSyncMapPort
-  clock: Clock
 }
 
 // Deterministically stringify a JSON value with object keys sorted, so the
@@ -51,14 +52,12 @@ export class DataRecordSink implements RecordSink {
   private readonly update: UpdateRecordLike
   private readonly get: GetRecordLike
   private readonly syncMap: BlingSyncMapPort
-  private readonly clock: Clock
 
   constructor(deps: DataRecordSinkDeps) {
     this.insert = deps.insert
     this.update = deps.update
     this.get = deps.get
     this.syncMap = deps.syncMap
-    this.clock = deps.clock
   }
 
   async upsertExternal(input: {
@@ -66,13 +65,14 @@ export class DataRecordSink implements RecordSink {
     slug: string
     externalId: string
     data: JsonObject
+    createdBy: string
   }): Promise<Result<{ recordId: string; changed: boolean; inserted: boolean }>> {
-    const { entityId, slug, externalId, data } = input
+    const { entityId, slug, externalId, data, createdBy } = input
     const hash = stableStringify(data)
     const existing = await this.syncMap.get(slug, externalId)
 
     if (!existing) {
-      const inserted = await this.insert.execute({ entityId, data })
+      const inserted = await this.insert.execute({ entityId, data, createdBy })
       if (!inserted.ok) return fail(inserted.error)
       await this.syncMap.put({
         entitySlug: slug,

@@ -13,10 +13,16 @@ interface FieldInputLike {
   type: BlingFieldTypeConfig
 }
 
+// `createdBy` is the resolved sync owner id -- structurally identical to data's
+// CreateEntityCommand.createdBy (optional there, since the in-memory/demo path
+// can omit it; this bridge always has a resolved owner id by the time it calls
+// through, so it always supplies one).
+interface CreateEntityLike {
+  execute(cmd: { name: string; fields?: FieldInputLike[]; createdBy?: string }): Promise<Result<{ id: string; slug: string }>>
+}
+
 export interface DataEntityCatalogDeps {
-  createEntity: {
-    execute(cmd: { name: string; fields?: FieldInputLike[] }): Promise<Result<{ id: string; slug: string }>>
-  }
+  createEntity: CreateEntityLike
   addField: {
     execute(cmd: {
       entityId: string
@@ -62,6 +68,7 @@ export class DataEntityCatalog implements EntityCatalog {
   async ensureEntity(
     def: BlingEntityDef,
     slugToId: Map<string, string>,
+    createdBy: string,
   ): Promise<Result<{ entityId: string }>> {
     const existing = await this.listEntities.execute()
     const found = existing.find((e) => e.slug === def.slug)
@@ -71,7 +78,7 @@ export class DataEntityCatalog implements EntityCatalog {
     }
 
     const fields = def.fields.filter((f) => f.type.kind !== 'relation').map(toFieldInput)
-    const created = await this.createEntity.execute({ name: def.name, fields })
+    const created = await this.createEntity.execute({ name: def.name, fields, createdBy })
     if (!created.ok) return fail(created.error)
     slugToId.set(def.slug, created.value.id)
     return ok({ entityId: created.value.id })
