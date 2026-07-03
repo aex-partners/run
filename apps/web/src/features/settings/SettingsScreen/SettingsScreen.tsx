@@ -77,6 +77,8 @@ export interface SettingsScreenProps {
   onTogglePlugin?: (name: string, enabled: boolean) => void
   onSyncPluginRegistry?: () => void
   syncingPlugins?: boolean
+  onSyncBling?: () => void
+  syncingBling?: boolean
   onSaveCompany?: (info: CompanyInfo) => void
 
   // Agents
@@ -175,6 +177,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
     users, installedPlugins, marketplacePlugins, companyInfo,
     activeSection: controlledSection, onSectionChange, onEditUser, onDeleteUser, onChangeRole, onChangeStatus, onInviteUser,
     onInstallPlugin, onConfigurePlugin, onUninstallPlugin, onTogglePlugin, onSyncPluginRegistry, syncingPlugins,
+    onSyncBling, syncingBling,
     onSaveCompany,
     agents = [], skillOptions = [], onCreateAgent, onUpdateAgent, onDeleteAgent,
     skills = [], systemToolOptions = [], onCreateSkill, onUpdateSkill, onDeleteSkill,
@@ -344,11 +347,18 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('settings.plugins')}</h2>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>{t('settings.pluginsSubtitle')}</p>
               </div>
-              {onSyncPluginRegistry && (
-                <Button variant="secondary" size="sm" onClick={onSyncPluginRegistry} loading={syncingPlugins}>
-                  {t('settings.syncRegistry')}
-                </Button>
-              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {onSyncBling && (
+                  <Button variant="secondary" size="sm" onClick={onSyncBling} loading={syncingBling}>
+                    Sincronizar Bling
+                  </Button>
+                )}
+                {onSyncPluginRegistry && (
+                  <Button variant="secondary" size="sm" onClick={onSyncPluginRegistry} loading={syncingPlugins}>
+                    {t('settings.syncRegistry')}
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Tabs: Installed / Marketplace */}

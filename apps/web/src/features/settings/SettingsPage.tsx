@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Coins, Bell } from "lucide-react";
+import { toast, Toaster } from "sonner";
 import { trpc } from "../../platform/trpc";
 import { SettingsScreen, type PieceToolData } from "./SettingsScreen/SettingsScreen";
 import { PluginConnectDialog, type PluginConnectDialogProps } from "./PluginConnectDialog/PluginConnectDialog";
@@ -160,6 +161,32 @@ export function SettingsPage() {
   const uninstallPlugin = trpc.plugins.uninstall.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
   const togglePlugin = trpc.plugins.setEnabled.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
   const syncPluginRegistry = trpc.plugins.syncRegistry.useMutation({ onSuccess: () => utils.plugins.list.invalidate() });
+
+  // ─── Bling sync ─────────────────────────────────────────────
+  // `sync` is typed as optional on the bling router (the API controller only
+  // mounts it once the full-mirror sync use case is wired in), but the
+  // container always wires it, so it's always present at runtime.
+  const syncBling = trpc.bling.sync!.run.useMutation({
+    onSuccess: (summary) => {
+      const totals = summary.entities.reduce(
+        (acc, e) => ({
+          inserted: acc.inserted + e.inserted,
+          updated: acc.updated + e.updated,
+          errors: acc.errors + e.errors,
+        }),
+        { inserted: 0, updated: 0, errors: 0 },
+      );
+      if (totals.errors > 0) {
+        toast.warning(`Bling sincronizado com ${totals.errors} erro(s): ${totals.inserted} inseridos, ${totals.updated} atualizados`);
+      } else {
+        toast.success(`Bling sincronizado: ${totals.inserted} inseridos, ${totals.updated} atualizados`);
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message || "Falha ao sincronizar Bling");
+    },
+  });
+  const handleSyncBling = () => syncBling.mutate({ scope: "all" });
 
   // Auto-sync piece catalog on first load if no plugins exist
   const [didAutoSync, setDidAutoSync] = React.useState(false);
@@ -395,6 +422,8 @@ export function SettingsPage() {
         onTogglePlugin={handlePluginToggle}
         onSyncPluginRegistry={() => syncPluginRegistry.mutate()}
         syncingPlugins={syncPluginRegistry.isPending}
+        onSyncBling={handleSyncBling}
+        syncingBling={syncBling.isPending}
         agents={agents}
         skillOptions={skillOptions}
         systemToolOptions={systemToolOptions}
@@ -466,6 +495,9 @@ export function SettingsPage() {
         onDisconnect={handleDisconnect}
         saving={createCredentialMut.isPending}
       />
+
+      {/* Toasts for actions triggered from this page (e.g. Bling sync) */}
+      <Toaster position="bottom-right" richColors closeButton />
     </>
   );
 }
