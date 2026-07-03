@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Database } from "lucide-react";
+import { Database, Plus } from "lucide-react";
 import { Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
 import { trpc } from "../../platform/trpc";
@@ -22,12 +22,13 @@ import type { CreateEntityPayload } from "./CreateEntityScreen/CreateEntityScree
 
 export function DatabasePage() {
   const { t } = useTranslation();
-  const [creating, setCreating] = useState(false);
 
-  // Active entity in the URL (`?entity=<id>`) so it is deep-linkable and survives
-  // reload/back-forward. Other params (?tab, ?tabs, ?c) are preserved.
+  // Navigation state lives in the URL so it is deep-linkable and survives
+  // reload/back-forward: `?entity=<id>` = active entity, `?new=1` = the
+  // entity-creation screen. Other params (?tab, ?tabs, ?c) are preserved.
   const [searchParams, setSearchParams] = useSearchParams();
   const activeEntityId = searchParams.get("entity") ?? undefined;
+  const creating = searchParams.get("new") === "1";
   const setActiveEntityId = useCallback(
     (id?: string, replace = false) => {
       setSearchParams(
@@ -39,6 +40,17 @@ export function DatabasePage() {
         },
         { replace },
       );
+    },
+    [setSearchParams],
+  );
+  const setCreating = useCallback(
+    (v: boolean) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (v) next.set("new", "1");
+        else next.delete("new");
+        return next;
+      });
     },
     [setSearchParams],
   );
@@ -211,8 +223,13 @@ export function DatabasePage() {
   const createEntity = trpc.entities.createEntity.useMutation({
     onSuccess: (data) => {
       entitiesQuery.refetch();
-      setActiveEntityId(data.id);
-      setCreating(false);
+      // Atomic URL update: select the new entity + leave the creation screen.
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("entity", data.id);
+        next.delete("new");
+        return next;
+      });
     },
   });
 
@@ -268,7 +285,10 @@ export function DatabasePage() {
     renameEntity.mutate({ id, name });
   };
 
-  if (entitiesQuery.isSuccess && entities.length === 0) {
+  // No entities yet (and not mid-creation): a centered empty state WITH a create
+  // button. When `creating`, fall through to the normal render so the creation
+  // screen shows (the sidebar just lists zero entities).
+  if (entitiesQuery.isSuccess && entities.length === 0 && !creating) {
     return (
       <div
         style={{
@@ -303,6 +323,25 @@ export function DatabasePage() {
             {t('databasePage.emptyDescription')}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 16px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#ffffff",
+            background: "var(--accent)",
+            border: "1px solid var(--accent)",
+            borderRadius: 8,
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={15} /> Nova entidade
+        </button>
       </div>
     );
   }
