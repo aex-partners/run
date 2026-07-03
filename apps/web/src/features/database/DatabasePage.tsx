@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Database } from "lucide-react";
 import { Toaster } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -21,8 +22,26 @@ import type { CreateEntityPayload } from "./CreateEntityScreen/CreateEntityScree
 
 export function DatabasePage() {
   const { t } = useTranslation();
-  const [activeEntityId, setActiveEntityId] = useState<string | undefined>();
   const [creating, setCreating] = useState(false);
+
+  // Active entity in the URL (`?entity=<id>`) so it is deep-linkable and survives
+  // reload/back-forward. Other params (?tab, ?tabs, ?c) are preserved.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeEntityId = searchParams.get("entity") ?? undefined;
+  const setActiveEntityId = useCallback(
+    (id?: string, replace = false) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (id) next.set("entity", id);
+          else next.delete("entity");
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setSearchParams],
+  );
 
   const entitiesQuery = trpc.entities.list.useQuery();
 
@@ -230,13 +249,13 @@ export function DatabasePage() {
     count: e.recordCount,
   }));
 
-  // Auto-select first entity when loaded and none selected
+  // Auto-select first entity when loaded and none selected (replace: no history
+  // entry for the default pick).
   useEffect(() => {
     if (!activeEntityId && entities.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional auto-select
-      setActiveEntityId(entities[0].id);
+      setActiveEntityId(entities[0].id, true);
     }
-  }, [activeEntityId, entities]);
+  }, [activeEntityId, entities, setActiveEntityId]);
 
   const handleDeleteEntity = (id: string) => {
     deleteEntity.mutate({ id });

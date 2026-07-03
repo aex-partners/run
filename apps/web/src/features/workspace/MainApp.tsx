@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { AppShell, type Section } from "./AppShell/AppShell";
 import { TabBar } from "./TabBar/TabBar";
@@ -21,32 +22,64 @@ const allSections: Section[] = ['chat', 'mail', 'files', 'knowledge', 'database'
 
 function MainAppInner() {
   const { user, logout } = useAuth();
-  const [openTabs, setOpenTabs] = useState<Section[]>(["chat"]);
-  const [activeTab, setActiveTab] = useState<Section>("chat");
   const { isConnected } = useWS();
   const isMobile = useIsMobile();
 
-  const openSection = useCallback((section: Section) => {
-    setOpenTabs((prev) => {
-      if (prev.includes(section)) return prev;
-      return [...prev, section];
-    });
-    setActiveTab(section);
-  }, []);
+  // Navigation lives in the URL (source of truth): `?tab=` = active section,
+  // `?tabs=` = the open-tab bar. So back/forward + reload keep the place, and a
+  // section is deep-linkable. Other params (?c= conversation, ?entity=) survive.
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const closeTab = useCallback((section: Section) => {
-    setOpenTabs((prev) => {
-      if (prev.length <= 1) return prev;
-      const next = prev.filter((s) => s !== section);
-      return next;
-    });
-    setActiveTab((prev) => {
-      if (prev !== section) return prev;
-      const remaining = openTabs.filter((s) => s !== section);
-      const closedIndex = openTabs.indexOf(section);
-      return remaining[Math.min(closedIndex, remaining.length - 1)] ?? "chat";
-    });
-  }, [openTabs]);
+  const activeTab: Section = allSections.includes(searchParams.get("tab") as Section)
+    ? (searchParams.get("tab") as Section)
+    : "chat";
+
+  const openTabs: Section[] = (() => {
+    const parsed = (searchParams.get("tabs")?.split(",") ?? []).filter(
+      (s): s is Section => allSections.includes(s as Section),
+    );
+    if (parsed.length === 0) return [activeTab];
+    return parsed.includes(activeTab) ? parsed : [...parsed, activeTab];
+  })();
+
+  const applyNav = useCallback(
+    (tab: Section, tabs: Section[]) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("tab", tab);
+          next.set("tabs", tabs.join(","));
+          return next;
+        },
+        { replace: false },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const openSection = useCallback(
+    (section: Section) => {
+      applyNav(section, openTabs.includes(section) ? openTabs : [...openTabs, section]);
+    },
+    [applyNav, openTabs],
+  );
+
+  // switching to an already-open tab (TabBar click) = same as openSection.
+  const setActiveTab = openSection;
+
+  const closeTab = useCallback(
+    (section: Section) => {
+      if (openTabs.length <= 1) return;
+      const next = openTabs.filter((s) => s !== section);
+      let nextActive = activeTab;
+      if (activeTab === section) {
+        const closedIndex = openTabs.indexOf(section);
+        nextActive = next[Math.min(closedIndex, next.length - 1)] ?? "chat";
+      }
+      applyNav(nextActive, next);
+    },
+    [applyNav, openTabs, activeTab],
+  );
 
   const isAdmin = user.role === "admin" || user.role === "owner";
 
