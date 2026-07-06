@@ -1,6 +1,6 @@
 import { BlingContatoFull } from '@/contexts/bling/domain/mirror/BlingApiTypes'
 import { MappedRecord, relRef } from '@/contexts/bling/domain/mirror/MappedRecord'
-import { nStr, nDate } from '@/contexts/bling/domain/mirror/normalize'
+import { nStr, nDate, nAddress } from '@/contexts/bling/domain/mirror/normalize'
 
 export function mapContato(full: BlingContatoFull): MappedRecord[] {
   const out: MappedRecord[] = []
@@ -21,20 +21,24 @@ export function mapContato(full: BlingContatoFull): MappedRecord[] {
       rg: nStr(full.rg),
       orgao_emissor: nStr(full.orgaoEmissor),
       email: nStr(full.email),
-      endereco_geral_logradouro: nStr(full.endereco?.geral?.endereco),
-      endereco_geral_cep: nStr(full.endereco?.geral?.cep),
-      endereco_geral_bairro: nStr(full.endereco?.geral?.bairro),
-      endereco_geral_municipio: nStr(full.endereco?.geral?.municipio),
-      endereco_geral_uf: nStr(full.endereco?.geral?.uf),
-      endereco_geral_numero: nStr(full.endereco?.geral?.numero),
-      endereco_geral_complemento: nStr(full.endereco?.geral?.complemento),
-      endereco_cobranca_logradouro: nStr(full.endereco?.cobranca?.endereco),
-      endereco_cobranca_cep: nStr(full.endereco?.cobranca?.cep),
-      endereco_cobranca_bairro: nStr(full.endereco?.cobranca?.bairro),
-      endereco_cobranca_municipio: nStr(full.endereco?.cobranca?.municipio),
-      endereco_cobranca_uf: nStr(full.endereco?.cobranca?.uf),
-      endereco_cobranca_numero: nStr(full.endereco?.cobranca?.numero),
-      endereco_cobranca_complemento: nStr(full.endereco?.cobranca?.complemento),
+      endereco_geral: nAddress({
+        logradouro: full.endereco?.geral?.endereco,
+        numero: full.endereco?.geral?.numero,
+        complemento: full.endereco?.geral?.complemento,
+        bairro: full.endereco?.geral?.bairro,
+        cep: full.endereco?.geral?.cep,
+        municipio: full.endereco?.geral?.municipio,
+        uf: full.endereco?.geral?.uf,
+      }),
+      endereco_cobranca: nAddress({
+        logradouro: full.endereco?.cobranca?.endereco,
+        numero: full.endereco?.cobranca?.numero,
+        complemento: full.endereco?.cobranca?.complemento,
+        bairro: full.endereco?.cobranca?.bairro,
+        cep: full.endereco?.cobranca?.cep,
+        municipio: full.endereco?.cobranca?.municipio,
+        uf: full.endereco?.cobranca?.uf,
+      }),
       vendedor_id: full.vendedor?.id ? String(full.vendedor.id) : null,
       data_nascimento: nDate(full.dadosAdicionais?.dataNascimento),
       sexo: nStr(full.dadosAdicionais?.sexo),

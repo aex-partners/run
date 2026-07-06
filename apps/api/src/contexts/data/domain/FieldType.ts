@@ -52,6 +52,11 @@ export type FieldTypeConfig =
   | { kind: 'email' }
   | { kind: 'url' }
   | { kind: 'phone' }
+  // Image(s): value is an image URL (or an array of URLs). Rendered as thumbnails.
+  | { kind: 'image' }
+  // Postal address: value is a structured object (logradouro, numero, bairro, cep,
+  // municipio, uf, ...). Stored as a JSON object in the record data.
+  | { kind: 'address' }
   | { kind: 'person' }
   | {
       kind: 'relation'
@@ -209,6 +214,51 @@ class JsonFieldType implements FieldType {
   }
   toConfig(): FieldTypeConfig {
     return { kind: 'json' }
+  }
+}
+
+// Image(s): a URL string, or an array of URL strings. Rendered as thumbnails on
+// the read side. Accepts null/empty; no strict URL check (Bling links vary).
+class ImageFieldType implements FieldType {
+  readonly kind = 'image'
+  readonly computed = false
+  validate(value: Json): Result<TypedValue> {
+    if (value === null || value === '') return ok(value)
+    if (typeof value === 'string') return ok(value)
+    if (Array.isArray(value) && value.every((v) => typeof v === 'string')) return ok(value)
+    return fail('image: expected a URL string or array of URL strings')
+  }
+  compare(a: TypedValue, b: TypedValue): number {
+    return cmpString(a, b)
+  }
+  castKind(): CastKind {
+    return 'text'
+  }
+  toConfig(): FieldTypeConfig {
+    return { kind: 'image' }
+  }
+}
+
+// Postal address: a structured object (logradouro/numero/complemento/bairro/cep/
+// municipio/uf/pais, all optional). Accepts null, an object, or a plain string
+// (legacy/loose input). Stored as-is in the record's JSON data.
+class AddressFieldType implements FieldType {
+  readonly kind = 'address'
+  readonly computed = false
+  validate(value: Json): Result<TypedValue> {
+    if (value === null || value === '') return ok(value)
+    if (typeof value === 'string') return ok(value)
+    if (isJsonObject(value)) return ok(value)
+    return fail('address: expected an object or string')
+  }
+  compare(a: TypedValue, b: TypedValue): number {
+    return cmpString(JSON.stringify(a ?? ''), JSON.stringify(b ?? ''))
+  }
+  castKind(): CastKind {
+    return 'text'
+  }
+  toConfig(): FieldTypeConfig {
+    return { kind: 'address' }
   }
 }
 
@@ -512,6 +562,10 @@ export const FieldTypeFactory = {
         return ok(new EmailFieldType())
       case 'url':
         return ok(new UrlFieldType())
+      case 'image':
+        return ok(new ImageFieldType())
+      case 'address':
+        return ok(new AddressFieldType())
       case 'ai':
         return ok(new AiFieldType(config.aiPrompt))
       case 'json':

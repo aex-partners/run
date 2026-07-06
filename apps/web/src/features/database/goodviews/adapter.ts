@@ -149,6 +149,10 @@ function toGvType(t: string): FieldType {
       return 'person'
     case 'url':
       return 'url'
+    case 'image':
+      return 'image'
+    case 'address':
+      return 'address'
     case 'relation':
     case 'relationship':
       return 'relation'
@@ -184,8 +188,9 @@ export function toAexType(t: FieldType): string {
     case 'rating': return 'rating'
     case 'duration': return 'duration'
     case 'lookup': return 'lookup'
-    case 'file':
-    case 'image': return 'attachment'
+    case 'address': return 'address'
+    case 'image': return 'image'
+    case 'file': return 'attachment'
     case 'text':
     case 'id':
     case 'geo':
@@ -202,13 +207,28 @@ const READONLY_TYPES = new Set([
   'created_at', 'updated_at', 'created_by', 'updated_by',
 ])
 
-export function toFields(fields: RunHexField[]): Field[] {
+/** opção de pessoa (usuário do workspace): id + nome + avatar. */
+export interface PersonOption {
+  value: string
+  label: string
+  image?: string
+}
+
+// `personOptions` = usuários do workspace (users.listAssignable). Quando dados, os
+// campos do tipo `person` (inclusive created_by/updated_by) viram um seletor de
+// USUÁRIO: renderizam avatar + nome e guardam o id do usuário.
+export function toFields(fields: RunHexField[], personOptions: PersonOption[] = []): Field[] {
   return fields.map((f) => {
     const type = toGvType(f.type)
     const field: Field = { id: f.slug, label: f.name || f.slug, type }
     if (f.options?.length && OPTION_TYPES.includes(type)) {
       field.options = f.options.map((o) => ({ value: o.value, label: o.label, color: o.color }))
       if (type === 'multiselect') field.creatable = false
+    }
+    // Pessoa -> usuários reais do workspace (avatar + nome; valor = id do usuário).
+    if (type === 'person' && personOptions.length) {
+      field.options = personOptions.map((o) => ({ value: o.value, label: o.label, image: o.image }))
+      field.avatar = true
     }
     if (type === 'currency') field.currency = f.currencyCode || 'BRL'
     if (type === 'rating') field.maxRating = f.maxRating ?? 5
@@ -573,6 +593,8 @@ function toStored(value: unknown, gvType: FieldType | undefined): Json {
     if (Array.isArray(value)) return value.map(String)
     return [String(value)]
   }
+  // Endereço: objeto estruturado guardado NATIVO (o backend valida como objeto JSON).
+  if (gvType === 'address' && typeof value === 'object' && !Array.isArray(value)) return value as Json
   if (Array.isArray(value) || typeof value === 'object') return JSON.stringify(value)
   if (typeof value === 'number' || typeof value === 'boolean') return value
   return String(value)

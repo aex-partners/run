@@ -2,6 +2,7 @@ import { type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Star } from 'lucide-react'
 import { Combobox } from './Combobox'
 import { FileFieldEditor } from './FileField'
+import { AddressEditor } from './AddressEditor'
 import type { Field } from '../types'
 
 /**
@@ -63,6 +64,11 @@ export function EditCell({ field, value, recordOptions, relationOptions, onRelat
   // Select / status / person , a MESMA combobox padrao (single, searchable, creatable opcional)
   if ((field.type === 'select' || field.type === 'status' || field.type === 'person') && field.options) {
     return <Combobox options={field.options} value={value} single creatable={field.creatable} onCommit={onCommit} onClose={onEsc} />
+  }
+
+  // Endereço estruturado: mini-formulário flutuante (comita um objeto).
+  if (field.type === 'address') {
+    return <AddressEditor value={value} onCommit={onCommit} onClose={onEsc} />
   }
 
   // Arquivo(s): Drive + upload + link

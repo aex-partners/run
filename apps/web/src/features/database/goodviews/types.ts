@@ -30,6 +30,9 @@ export type FieldType =
   | 'phone'
   | 'rating'
   | 'duration'
+  // Endereço postal: valor é um objeto { logradouro, numero, bairro, cep, municipio,
+  // uf, ... }. Renderiza formatado; edita num mini-formulário.
+  | 'address'
   // Campo derivado (lê um campo do registro apontado por uma relação). Somente
   // leitura: o host resolve o valor e injeta na célula; não tem editor.
   | 'lookup'

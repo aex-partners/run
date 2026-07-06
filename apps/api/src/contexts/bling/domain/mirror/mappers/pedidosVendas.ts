@@ -1,6 +1,6 @@
 import { BlingPedidoVendaFull } from '@/contexts/bling/domain/mirror/BlingApiTypes'
 import { MappedRecord, relRef } from '@/contexts/bling/domain/mirror/MappedRecord'
-import { nStr, nDate } from '@/contexts/bling/domain/mirror/normalize'
+import { nStr, nDate, nAddress } from '@/contexts/bling/domain/mirror/normalize'
 
 export function mapPedidoVenda(full: BlingPedidoVendaFull): MappedRecord[] {
   const out: MappedRecord[] = []
@@ -37,14 +37,16 @@ export function mapPedidoVenda(full: BlingPedidoVendaFull): MappedRecord[] {
       prazo_entrega: full.transporte?.prazoEntrega ?? null,
       transportadora: relRef('bling_contatos', full.transporte?.contato?.id),
       etiqueta_nome: nStr(full.transporte?.etiqueta?.nome),
-      etiqueta_logradouro: nStr(full.transporte?.etiqueta?.endereco),
-      etiqueta_numero: nStr(full.transporte?.etiqueta?.numero),
-      etiqueta_complemento: nStr(full.transporte?.etiqueta?.complemento),
-      etiqueta_municipio: nStr(full.transporte?.etiqueta?.municipio),
-      etiqueta_uf: nStr(full.transporte?.etiqueta?.uf),
-      etiqueta_cep: nStr(full.transporte?.etiqueta?.cep),
-      etiqueta_bairro: nStr(full.transporte?.etiqueta?.bairro),
-      etiqueta_pais: nStr(full.transporte?.etiqueta?.nomePais),
+      etiqueta_endereco: nAddress({
+        logradouro: full.transporte?.etiqueta?.endereco,
+        numero: full.transporte?.etiqueta?.numero,
+        complemento: full.transporte?.etiqueta?.complemento,
+        bairro: full.transporte?.etiqueta?.bairro,
+        cep: full.transporte?.etiqueta?.cep,
+        municipio: full.transporte?.etiqueta?.municipio,
+        uf: full.transporte?.etiqueta?.uf,
+        pais: full.transporte?.etiqueta?.nomePais,
+      }),
       vendedor_id: full.vendedor?.id ? String(full.vendedor.id) : null,
       intermediador_cnpj: nStr(full.intermediador?.cnpj),
       intermediador_nome: nStr(full.intermediador?.nomeUsuario),

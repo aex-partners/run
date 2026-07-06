@@ -398,6 +398,18 @@ function renderDisplay(field: Field, value: unknown, recordsById: Map<string, Ro
       </a>
     )
   }
+  if (field.type === 'address') {
+    // Endereço estruturado: objeto { logradouro, numero, bairro, cep, municipio, uf }.
+    // (aceita string crua de dados legados.)
+    if (value == null || value === '') return <span className="text-[#94A3B8] text-xs">-</span>
+    if (typeof value === 'string') return <span className="block truncate text-sm text-[#0F172A]">{value}</span>
+    const a = value as Record<string, string>
+    const linha1 = [a.logradouro, a.numero].filter(Boolean).join(', ')
+    const linha2 = [a.bairro, [a.municipio, a.uf].filter(Boolean).join('/')].filter(Boolean).join(' - ')
+    const full = [linha1, linha2, a.cep].filter(Boolean).join(' - ')
+    if (!full) return <span className="text-[#94A3B8] text-xs">-</span>
+    return <span className="block truncate text-sm text-[#0F172A]" title={full}>{full}</span>
+  }
   if (field.type === 'lookup') {
     // Derivado (somente leitura): o valor é resolvido/injetado pelo host (adapter).
     if (value == null || value === '') return <span className="text-[#94A3B8] text-xs">-</span>
@@ -427,6 +439,7 @@ function defaultSize(field: Field): number {
     case 'duration': return 100
     case 'email': return 200
     case 'phone': return 150
+    case 'address': return 260
     case 'lookup': return 180
     case 'text': return field.id === 'nome' ? 240 : 160
     default: return 150
@@ -596,8 +609,23 @@ const FIELD_TYPE_GROUPS: { group: string; options: { value: FieldType; label: st
       { value: 'currency', label: 'Moeda (R$)' },
       { value: 'percent', label: 'Percentual (%)' },
       { value: 'date', label: 'Data' },
+      { value: 'boolean', label: 'Sim / Não' },
       { value: 'url', label: 'Link (URL)' },
       { value: 'rating', label: 'Avaliação (estrelas)' },
+    ],
+  },
+  {
+    group: 'Contato',
+    options: [
+      { value: 'phone', label: 'Telefone' },
+      { value: 'email', label: 'E-mail' },
+      { value: 'address', label: 'Endereço' },
+    ],
+  },
+  {
+    group: 'Mídia',
+    options: [
+      { value: 'image', label: 'Imagem' },
     ],
   },
   {
@@ -610,13 +638,17 @@ const FIELD_TYPE_GROUPS: { group: string; options: { value: FieldType; label: st
     ],
   },
   {
-    group: 'Ligação com outra tabela',
+    group: 'Outra tabela',
     options: [
-      { value: 'relation', label: 'Relação (ligar a outra tabela)' },
-      { value: 'lookup', label: 'Buscar dado de uma relação' },
+      // Um único conceito para o usuário: referenciar outra tabela e escolher qual
+      // campo aparece (o "lookup" fica embutido aqui, sem virar um 2º campo). O tipo
+      // 'lookup' ainda existe para campos legados, mas não é oferecido em novos.
+      { value: 'relation', label: 'Referência a outra tabela' },
     ],
   },
 ]
+// Opção só p/ EDITAR campos lookup legados (não aparece ao criar um campo novo).
+const LOOKUP_LEGACY_OPTION = { value: 'lookup' as FieldType, label: 'Buscar dado (avançado)' }
 const CHOICE_TYPES: FieldType[] = ['select', 'status', 'multiselect']
 
 // Explicação curta do tipo selecionado (aparece abaixo do seletor). Ajuda o leigo
@@ -630,6 +662,11 @@ const TYPE_HELP: Partial<Record<FieldType, string>> = {
   rating: 'Nota em estrelas.',
   currency: 'Valor em dinheiro, formatado (ex: R$ 1.234,56).',
   percent: 'Número exibido como porcentagem.',
+  phone: 'Telefone (vira link de ligar).',
+  email: 'E-mail (vira link de enviar).',
+  address: 'Endereço com CEP, logradouro, número, bairro, cidade e UF em um campo.',
+  image: 'Imagem por URL (mostra miniatura).',
+  boolean: 'Marcador Sim / Não.',
 }
 
 // Saída do popover: nome + tipo + config type-específica (mapeada pelo host p/ o backend).

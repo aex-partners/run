@@ -11,7 +11,7 @@ describe('mapContato', () => {
     } as never)
     expect(out[0].slug).toBe('bling_contatos')
     expect(out[0].externalId).toBe('10')
-    expect(out[0].data).toMatchObject({ nome: 'ACME', email: 'a@b.com', endereco_geral_municipio: 'SP' })
+    expect(out[0].data).toMatchObject({ nome: 'ACME', email: 'a@b.com', endereco_geral: { municipio: 'SP' } })
     const pessoa = out.find((r) => r.slug === 'bling_pessoas_contato')!
     expect(pessoa.externalId).toBe('99')
     expect(pessoa.data.contato).toEqual({ __rel: true, slug: 'bling_contatos', externalId: '10' })

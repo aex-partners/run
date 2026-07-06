@@ -17,3 +17,25 @@ export function nNum(n: unknown): number | null {
   const num = Number(n)
   return Number.isFinite(num) ? num : null
 }
+
+// Structured postal address for the `address` field type. Trims each part; returns
+// null when every part is empty (so an absent address stays clean, not `{}`).
+// A plain string-map (index signature) so it is assignable to the Json data value.
+export type AddressValue = Record<string, string>
+export function nAddress(parts: {
+  logradouro?: unknown
+  numero?: unknown
+  complemento?: unknown
+  bairro?: unknown
+  cep?: unknown
+  municipio?: unknown
+  uf?: unknown
+  pais?: unknown
+}): AddressValue | null {
+  const out: AddressValue = {}
+  for (const key of ['logradouro', 'numero', 'complemento', 'bairro', 'cep', 'municipio', 'uf', 'pais'] as const) {
+    const v = nStr(parts[key])
+    if (v !== null) out[key] = v
+  }
+  return Object.keys(out).length ? out : null
+}

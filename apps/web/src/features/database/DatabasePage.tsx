@@ -103,7 +103,24 @@ export function DatabasePage() {
     [entityDetail.data],
   );
 
-  const tableFields = useMemo(() => toFields(runHexFields), [runHexFields]);
+  // Workspace users for the Person field: any authenticated user may list peers.
+  // Fed into toFields so `person` (and created_by/updated_by) become a user picker
+  // (avatar + name), storing the user id.
+  const assignableUsers = trpc.users.listAssignable.useQuery();
+  const personOptions = useMemo(
+    () =>
+      (assignableUsers.data ?? []).map((u) => ({
+        value: u.id,
+        label: u.name,
+        image: u.image ?? undefined,
+      })),
+    [assignableUsers.data],
+  );
+
+  const tableFields = useMemo(
+    () => toFields(runHexFields, personOptions),
+    [runHexFields, personOptions],
+  );
 
   const fetchPage = useMemo(
     () =>
