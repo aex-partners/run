@@ -43,8 +43,11 @@ export async function startWorkers(container: Container, redis: Redis): Promise<
     new Worker(CREDENTIALS_REFRESH_QUEUE_NAME, makeCredentialsRefreshJobHandler({ refresh: ports.refreshCredential }), { connection }),
     // notifications digest
     new Worker(DIGEST_QUEUE_NAME, makeDigestJobHandler({ runDigest: ports.runDigest }), { connection }),
-    // bling full-mirror sync
-    new Worker(BLING_SYNC_QUEUE_NAME, makeBlingSyncJobHandler({ sync: ports.syncBlingMirror }), { connection }),
+    // bling full-mirror sync. concurrency: 1 so the manual (button) and 6h
+    // repeatable jobs never run two full syncs at once; combined with the manual
+    // job's fixed jobId, at most one sync is ever in-flight. Safe across restarts:
+    // the sync is idempotent (bling_sync_map skips already-synced records).
+    new Worker(BLING_SYNC_QUEUE_NAME, makeBlingSyncJobHandler({ sync: ports.syncBlingMirror }), { connection, concurrency: 1 }),
     // file indexing -> knowledge.IndexFile (extract text + store as file-content KB)
     new Worker(
       FILE_INDEXING_QUEUE_NAME,

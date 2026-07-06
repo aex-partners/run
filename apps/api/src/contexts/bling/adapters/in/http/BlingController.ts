@@ -2,19 +2,21 @@ import { z } from 'zod'
 import { router, protectedProcedure, unwrap } from '@/platform/http/trpc'
 import { ListBlingResource } from '@/contexts/bling/application/ports/in/ListBlingResource'
 import { GetBlingRecord } from '@/contexts/bling/application/ports/in/GetBlingRecord'
-import { SyncBlingMirror } from '@/contexts/bling/application/ports/in/SyncBlingMirror'
+import { EnqueueBlingSync } from '@/contexts/bling/application/ports/in/EnqueueBlingSync'
 
 // Driving adapter (tRPC). Thin shell over the bling in-ports (the same ones the AI
 // tools call). Holds no logic. Read-only ERP access: list a resource or get one
-// record by id. `sync` is optional so this controller keeps compiling for callers
-// that haven't wired the SyncBlingMirror use case yet; when provided, it mounts a
-// `sync` sub-router over the full-mirror sync in-port.
+// record by id. `enqueueSync` is optional so this controller keeps compiling for
+// callers that haven't wired the sync queue yet; when provided, it mounts a `sync`
+// sub-router. `sync.run` ENQUEUES a background job (a full-mirror sync of a large
+// Bling account takes ~1h, which blows the HTTP/proxy timeout and dies on every
+// deploy) and returns immediately — the BlingSyncWorker runs it off the queue.
 const resourceSchema = z.enum(['produtos', 'pedidos', 'contatos'])
 
 export const blingController = (deps: {
   list: ListBlingResource
   get: GetBlingRecord
-  sync?: SyncBlingMirror
+  enqueueSync?: EnqueueBlingSync
 }) =>
   router({
     list: protectedProcedure
@@ -43,21 +45,21 @@ export const blingController = (deps: {
         unwrap(await deps.get.execute({ resource: input.resource, id: input.id })),
       ),
 
-    ...(deps.sync
+    ...(deps.enqueueSync
       ? {
           sync: router({
+            // Fire-and-forget: enqueue a background full-mirror sync and return at
+            // once. Idempotent enqueue (fixed jobId) — repeat clicks don't stack.
             run: protectedProcedure
               .input(
                 z.object({
                   scope: z.enum(['all', 'categorias']).optional(),
-                  limit: z.number().int().positive().optional(),
                 }),
               )
-              .mutation(async ({ input }) =>
-                unwrap(
-                  await deps.sync!.execute({ scope: input.scope ?? 'all', limit: input.limit }),
-                ),
-              ),
+              .mutation(async ({ input }) => {
+                await deps.enqueueSync!.enqueue(input.scope)
+                return { enqueued: true as const }
+              }),
             status: protectedProcedure.query(async () => ({ ok: true })),
           }),
         }

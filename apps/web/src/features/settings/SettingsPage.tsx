@@ -166,22 +166,12 @@ export function SettingsPage() {
   // `sync` is typed as optional on the bling router (the API controller only
   // mounts it once the full-mirror sync use case is wired in), but the
   // container always wires it, so it's always present at runtime.
+  // `run` now ENQUEUES a background sync and returns immediately ({ enqueued:
+  // true }) instead of awaiting the ~1h full-mirror sync (which blew the proxy
+  // timeout). The worker runs it off the queue; here we just confirm it started.
   const syncBling = trpc.bling.sync!.run.useMutation({
-    onSuccess: (summary) => {
-      const totals = summary.entities.reduce(
-        (acc, e) => ({
-          inserted: acc.inserted + e.inserted,
-          updated: acc.updated + e.updated,
-          errors: acc.errors + e.errors,
-          skipped: acc.skipped + (e.skipped ?? 0),
-        }),
-        { inserted: 0, updated: 0, errors: 0, skipped: 0 },
-      );
-      if (totals.errors > 0) {
-        toast.warning(`Bling sincronizado com ${totals.errors} erro(s): ${totals.inserted} inseridos, ${totals.updated} atualizados, ${totals.skipped} pulados`);
-      } else {
-        toast.success(`Bling sincronizado: ${totals.inserted} inseridos, ${totals.updated} atualizados, ${totals.skipped} pulados`);
-      }
+    onSuccess: () => {
+      toast.success("Sincronização iniciada em segundo plano");
     },
     onError: (err) => {
       toast.error(err.message || "Falha ao sincronizar Bling");

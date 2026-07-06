@@ -10,6 +10,16 @@ export const BLING_SYNC_QUEUE_NAME = 'bling-sync'
 const REPEAT_JOB_ID = 'bling-sync-6h'
 const REPEAT_PATTERN = '0 */6 * * *'
 
+// One-off (manual, "Sincronizar Bling" button) job. A FIXED jobId so repeated
+// button clicks never stack duplicate concurrent syncs: while a manual job is
+// waiting/active BullMQ ignores a second add with the same id (no-op); once it
+// finishes (removeOnComplete) a later click enqueues a fresh run.
+const MANUAL_JOB_NAME = 'bling-sync-now'
+const MANUAL_JOB_ID = 'bling-sync-manual'
+
+// Sync scope the manual/repeatable job runs. Mirrors SyncBlingMirrorCommand.
+export type BlingSyncScope = 'all' | 'categorias'
+
 // Driven adapter. Ensures the single 6h repeatable sync job exists over the
 // shared Redis connection (platform/queue). Idempotent.
 export class BullBlingSyncScheduler {
@@ -35,6 +45,25 @@ export class BullBlingSyncScheduler {
         repeat: { pattern: REPEAT_PATTERN },
         removeOnComplete: true,
         removeOnFail: 50,
+      },
+    )
+  }
+
+  // Enqueue a one-off manual sync (the "Sincronizar Bling" button). Returns
+  // immediately — the existing BlingSyncWorker (Worker over this same queue)
+  // picks the job up and runs the full mirror in the background, so an api
+  // restart mid-sync no longer kills it: the worker re-processes on next boot
+  // and the sync resumes safely because bling_sync_map's content-hash skips
+  // records that are already up to date. The fixed jobId collapses rapid repeat
+  // clicks into a single run (see MANUAL_JOB_ID).
+  async enqueueNow(scope: BlingSyncScope = 'all'): Promise<void> {
+    await this.queue.add(
+      MANUAL_JOB_NAME,
+      { scope },
+      {
+        jobId: MANUAL_JOB_ID,
+        removeOnComplete: true,
+        removeOnFail: 100,
       },
     )
   }

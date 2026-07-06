@@ -33,6 +33,7 @@ import { SyncBlingMirrorService } from '@/contexts/bling/application/use-cases/S
 import { FkCache } from '@/contexts/bling/application/mirror/FkCache'
 import { blingController } from '@/contexts/bling/adapters/in/http/BlingController'
 import { ResolveCredential as BlingResolveCredential } from '@/contexts/bling/application/ports/out/ResolveCredential'
+import { EnqueueBlingSync } from '@/contexts/bling/application/ports/in/EnqueueBlingSync'
 
 type BlingDeps = {
   resolveCredential: CredentialsResolveCredential
@@ -76,7 +77,19 @@ export function wireBling(infra: Infra, deps: BlingDeps) {
   })
   const blingSyncScheduler = new BullBlingSyncScheduler(infra.redisUrl)
 
-  const blingCtl = blingController({ list: listBlingResource, get: getBlingRecord, sync: syncBlingMirror })
+  // The "Sincronizar Bling" button ENQUEUES a one-off job (returns instantly)
+  // instead of running the ~1h sync inline in the request. The BlingSyncWorker
+  // consumes it and runs syncBlingMirror off the queue. syncBlingMirror itself
+  // stays wired to the WORKER only (via ports.syncBlingMirror below).
+  const enqueueBlingSync: EnqueueBlingSync = {
+    enqueue: (scope) => blingSyncScheduler.enqueueNow(scope),
+  }
+
+  const blingCtl = blingController({
+    list: listBlingResource,
+    get: getBlingRecord,
+    enqueueSync: enqueueBlingSync,
+  })
 
   return {
     controller: blingCtl,

@@ -27,5 +27,22 @@ else
   ) &
 fi
 
+# One-off: retype already-imported Bling entity fields to their real types and
+# fold the flat address keys into the composite `address` object. Idempotent, but
+# it rewrites potentially MANY entity_records (contatos + pedidos, paged), so run
+# it in the BACKGROUND like the seeds — the server still binds fast for the
+# healthcheck. Guarded by its own marker so it runs exactly once, ever. The `&&`/
+# `||` chain means the marker is written ONLY on success, and a failure just logs
+# and continues (never aborts boot, even under `set -e`).
+if [ ! -f /app/uploads/.bling-types-migrated ]; then
+  echo "[boot] migrating bling field types (background)"
+  (
+    npx tsx src/scripts/migrate-bling-types.ts \
+      && touch /app/uploads/.bling-types-migrated \
+      && echo "[boot] bling-types migration complete" \
+      || echo "[boot] bling-types migration failed"
+  ) &
+fi
+
 echo "[boot] starting api"
 exec npx tsx src/index.ts
