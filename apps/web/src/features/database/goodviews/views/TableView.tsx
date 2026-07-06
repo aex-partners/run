@@ -694,9 +694,12 @@ function FieldSchemaPopover({
   initialLookupFieldId = '',
   initialMaxRating = 5,
   initialCurrencyCode = 'BRL',
+  initialRequired = false,
+  initialDefault = '',
   entities = [],
   thisFields = [],
   loadEntityFields,
+  loadDefaultOptions,
   onSave,
   onClose,
 }: {
@@ -713,9 +716,13 @@ function FieldSchemaPopover({
   initialLookupFieldId?: string
   initialMaxRating?: number
   initialCurrencyCode?: string
+  initialRequired?: boolean
+  initialDefault?: string
   entities?: { id: string; name: string }[]
   thisFields?: Field[]
   loadEntityFields?: (entityId: string) => Promise<EntityFieldLite[]>
+  /** carregador das opções do ALVO de uma relação (id + rótulo), p/ o valor-padrão. */
+  loadDefaultOptions?: (search: string) => Promise<{ value: string; label: string }[]>
   onSave: (out: FieldSchemaOut) => void
   onClose: () => void
 }) {
@@ -729,12 +736,19 @@ function FieldSchemaPopover({
   const [lookupFieldId, setLookupFieldId] = useState(initialLookupFieldId)
   const [maxRating, setMaxRating] = useState(initialMaxRating)
   const [currencyCode, setCurrencyCode] = useState(initialCurrencyCode)
+  const [required, setRequired] = useState(initialRequired)
+  const [defaultValue, setDefaultValue] = useState(initialDefault)
+  const [relOpts, setRelOpts] = useState<{ value: string; label: string }[]>([])
+  const [relSearch, setRelSearch] = useState('')
   // Campos da entidade-alvo (relation) e da entidade apontada pela "via" (lookup),
   // carregados sob demanda via o host (utils.entities.getById).
   const [targetFields, setTargetFields] = useState<EntityFieldLite[]>([])
   const [lookupTargetFields, setLookupTargetFields] = useState<EntityFieldLite[]>([])
 
   const isChoice = CHOICE_TYPES.includes(type)
+  const isRelation = type === 'relation'
+  // valor-padrão só p/ seletor: choice (options) ou relação (registros do alvo).
+  const canDefault = isChoice || (isRelation && !!loadDefaultOptions)
   // campos relation DESTA entidade, p/ o select "via relação" do lookup
   const relationFieldsHere = useMemo(() => thisFields.filter((f) => f.type === 'relation'), [thisFields])
   // entidade apontada pela relação escolhida no lookup (p/ "campo a puxar")
@@ -755,6 +769,14 @@ function FieldSchemaPopover({
     loadEntityFields(viaTargetEntityId).then((fs) => { if (alive) setLookupTargetFields(fs) }).catch(() => { if (alive) setLookupTargetFields([]) })
     return () => { alive = false }
   }, [type, viaTargetEntityId, loadEntityFields])
+
+  // relação: carrega as opções do alvo (id + rótulo) p/ o valor-padrão, com busca server-side.
+  useEffect(() => {
+    if (!isRelation || !loadDefaultOptions) { setRelOpts([]); return }
+    let alive = true
+    loadDefaultOptions(relSearch).then((o) => { if (alive) setRelOpts(o) }).catch(() => {})
+    return () => { alive = false }
+  }, [isRelation, loadDefaultOptions, relSearch])
 
   const left = Math.max(8, Math.min(x, window.innerWidth - 320))
   const top = Math.max(8, Math.min(y, window.innerHeight - 120))
@@ -779,6 +801,9 @@ function FieldSchemaPopover({
     }
     if (type === 'rating') out.maxRating = maxRating
     if (type === 'currency') out.currencyCode = (currencyCode || 'BRL').trim().toUpperCase()
+    // obrigatório + valor-padrão (limpa o default se o tipo não é seletor)
+    out.required = required
+    out.defaultValue = canDefault ? defaultValue : ''
     onSave(out)
     onClose()
   }
@@ -980,6 +1005,56 @@ function FieldSchemaPopover({
               className={`${inputCls} uppercase`}
             />
           </>
+        )}
+
+        {/* obrigatório */}
+        <label className="mt-3 flex cursor-pointer select-none items-center gap-2">
+          <input
+            type="checkbox"
+            checked={required}
+            onChange={(e) => setRequired(e.target.checked)}
+            className="h-3.5 w-3.5 accent-[#2563EB]"
+          />
+          <span className="text-xs text-[#475569]">Obrigatório</span>
+        </label>
+
+        {/* valor padrão (só p/ seletor: choice ou relação) */}
+        {canDefault && (
+          <div className="mt-3">
+            <label className="mb-1 block text-[11px] font-medium text-[#94A3B8]">Valor padrão</label>
+            {isChoice ? (
+              <select value={defaultValue} onChange={(e) => setDefaultValue(e.target.value)} className={inputCls}>
+                <option value="">Nenhum</option>
+                {options
+                  .filter((o) => o.label.trim())
+                  .map((o, i) => {
+                    const v = (o.value || o.label).trim()
+                    return (
+                      <option key={i} value={v}>
+                        {o.label.trim()}
+                      </option>
+                    )
+                  })}
+              </select>
+            ) : (
+              <>
+                <input
+                  value={relSearch}
+                  onChange={(e) => setRelSearch(e.target.value)}
+                  placeholder="Buscar registro do alvo..."
+                  className={`${inputCls} mb-1`}
+                />
+                <select value={defaultValue} onChange={(e) => setDefaultValue(e.target.value)} className={inputCls}>
+                  <option value="">Nenhum</option>
+                  {relOpts.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
         )}
 
         <div className="mt-4 flex justify-end gap-2">
@@ -1452,7 +1527,7 @@ export default function TableView({
   const editingCol = fieldEdit ? fields.find((f) => f.id === fieldEdit.colId) : undefined
   function saveFieldEdit(out: FieldSchemaOut) {
     if (!fieldEdit || !onFieldUpdate || !editingCol) { setFieldEdit(null); return }
-    const updates: { name?: string; type?: FieldType; required?: boolean } & FieldConfigInput = {}
+    const updates: { name?: string; type?: FieldType; required?: boolean; defaultValue?: string } & FieldConfigInput = {}
     if (out.name !== editingCol.label) updates.name = out.name
     const isChoice = CHOICE_TYPES.includes(out.type)
     const typeChanged = out.type !== editingCol.type
@@ -1483,6 +1558,9 @@ export default function TableView({
       if (out.type === 'rating') updates.maxRating = out.maxRating
       if (out.type === 'currency') updates.currencyCode = out.currencyCode
     }
+    // required + valor-padrão: só enviam quando mudam (evita reescrita à toa).
+    if (!!out.required !== !!editingCol.required) updates.required = !!out.required
+    if ((out.defaultValue ?? '') !== (editingCol.defaultValue ?? '')) updates.defaultValue = out.defaultValue ?? ''
     if (Object.keys(updates).length) onFieldUpdate(editingCol.id, updates)
     setFieldEdit(null)
   }
@@ -2473,9 +2551,14 @@ export default function TableView({
           initialLookupFieldId={editingCol.lookupFieldId ?? ''}
           initialMaxRating={editingCol.maxRating ?? 5}
           initialCurrencyCode={editingCol.currency ?? 'BRL'}
+          initialRequired={editingCol.required ?? false}
+          initialDefault={editingCol.defaultValue ?? ''}
           entities={entityList}
           thisFields={fields}
           loadEntityFields={loadEntityFields}
+          loadDefaultOptions={
+            loadRelationOptions ? (s) => loadRelationOptions(editingCol.id, s) : undefined
+          }
           onSave={saveFieldEdit}
           onClose={() => setFieldEdit(null)}
         />
@@ -2502,6 +2585,8 @@ export default function TableView({
               ...(out.lookupFieldId ? { lookupFieldId: out.lookupFieldId } : {}),
               ...(out.maxRating !== undefined ? { maxRating: out.maxRating } : {}),
               ...(out.currencyCode ? { currencyCode: out.currencyCode } : {}),
+              ...(out.required !== undefined ? { required: out.required } : {}),
+              ...(out.defaultValue ? { defaultValue: out.defaultValue } : {}),
             })
             setNewFieldAt(null)
           }}

@@ -110,6 +110,10 @@ export interface Field {
    */
   currency?: string
   currencyField?: string
+  /** campo obrigatorio: bloqueia salvar registro sem valor. */
+  required?: boolean
+  /** valor padrao aplicado a novos registros (choice = value da opcao; relacao = id do alvo). */
+  defaultValue?: string
 }
 
 /** Um registro. Sempre tem `id`; demais chaves seguem os fields. */
@@ -143,6 +147,10 @@ export interface FieldConfigInput {
   maxRating?: number
   /** currency: código ISO da moeda. */
   currencyCode?: string
+  /** campo obrigatório: bloqueia salvar registro sem valor. */
+  required?: boolean
+  /** valor padrão aplicado a novos registros (choice = value da opção; relação = id do alvo). */
+  defaultValue?: string
 }
 
 /** Uma alteracao de valor (numa celula). Guarda antes/depois p/ reverter. */
@@ -239,10 +247,10 @@ export interface ViewProps {
    * duplo-clique p/ renomear). `fieldId` é o id do campo no good-views (o host
    * mapeia p/ o id real do backend). `type` é o FieldType do good-views.
    */
-  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; required?: boolean } & FieldConfigInput) => void
+  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; required?: boolean; defaultValue?: string } & FieldConfigInput) => void
   onFieldDelete?: (fieldId: string) => void
   onFieldDuplicate?: (fieldId: string) => void
-  onFieldAdd?: (spec: { name: string; type: FieldType } & FieldConfigInput) => void
+  onFieldAdd?: (spec: { name: string; type: FieldType; required?: boolean; defaultValue?: string } & FieldConfigInput) => void
   /**
    * Lista de entidades (id + nome) p/ o select "Tabela de destino" do editor de
    * campo relation. Ligado pelo host quando a edição de schema está disponível.

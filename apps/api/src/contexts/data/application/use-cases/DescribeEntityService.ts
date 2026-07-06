@@ -35,6 +35,7 @@ export class DescribeEntityService implements DescribeEntity {
         type: aex.type,
         required: aex.required,
       }
+      if (aex.defaultValue) view.defaultValue = aex.defaultValue
       if (aex.description) view.description = aex.description
       if (aex.options) view.options = aex.options
       if (aex.maxRating !== undefined) view.maxRating = aex.maxRating

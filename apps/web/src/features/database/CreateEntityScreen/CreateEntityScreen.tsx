@@ -27,6 +27,10 @@ interface FieldDraft {
   optionsText: string
   /** target entity id (relation). */
   relTarget: string
+  /** campo obrigatório. */
+  required: boolean
+  /** valor padrão (option value) p/ campo de seleção. */
+  defaultValue: string
 }
 
 /** The payload shape the host turns into `entities.createEntity`. */
@@ -38,6 +42,8 @@ export interface CreateEntityPayload {
     type: FieldType
     options?: { value: string; label: string }[]
     relationshipEntityId?: string
+    required?: boolean
+    defaultValue?: string
   }[]
 }
 
@@ -62,7 +68,7 @@ export function CreateEntityScreen({ entities, onCreate, onCancel, busy }: Props
   const [fields, setFields] = useState<FieldDraft[]>([])
 
   function addField() {
-    setFields((f) => [...f, { key: nextKey++, name: '', type: 'text', optionsText: '', relTarget: '' }])
+    setFields((f) => [...f, { key: nextKey++, name: '', type: 'text', optionsText: '', relTarget: '', required: false, defaultValue: '' }])
   }
   function patchField(key: number, patch: Partial<FieldDraft>) {
     setFields((f) => f.map((x) => (x.key === key ? { ...x, ...patch } : x)))
@@ -82,11 +88,14 @@ export function CreateEntityScreen({ entities, onCreate, onCancel, busy }: Props
           .map((s) => s.trim())
           .filter(Boolean)
           .map((label) => ({ value: label, label }))
+        const isChoice = CHOICE_TYPES.includes(f.type)
         return {
           name: f.name.trim(),
           type: f.type,
-          ...(CHOICE_TYPES.includes(f.type) && opts.length ? { options: opts } : {}),
+          ...(isChoice && opts.length ? { options: opts } : {}),
           ...(f.type === 'relation' && f.relTarget ? { relationshipEntityId: f.relTarget } : {}),
+          ...(f.required ? { required: true } : {}),
+          ...(isChoice && f.defaultValue ? { defaultValue: f.defaultValue } : {}),
         }
       })
     onCreate({ name: trimmed, description: description.trim() || undefined, fields: payloadFields })
@@ -176,6 +185,37 @@ export function CreateEntityScreen({ entities, onCreate, onCancel, busy }: Props
                       ))}
                     </select>
                   )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={f.required}
+                        onChange={(e) => patchField(f.key, { required: e.target.checked })}
+                        style={{ accentColor: 'var(--accent)' }}
+                      />
+                      Obrigatório
+                    </label>
+
+                    {CHOICE_TYPES.includes(f.type) && (() => {
+                      const opts = f.optionsText.split(/[\n,]/).map((s) => s.trim()).filter(Boolean)
+                      return (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', flex: 1, minWidth: 160 }}>
+                          Padrão
+                          <select
+                            value={f.defaultValue}
+                            onChange={(e) => patchField(f.key, { defaultValue: e.target.value })}
+                            style={{ ...input, flex: 1 }}
+                          >
+                            <option value="">Nenhum</option>
+                            {opts.map((o) => (
+                              <option key={o} value={o}>{o}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )
+                    })()}
+                  </div>
                 </div>
               ))}
             </div>

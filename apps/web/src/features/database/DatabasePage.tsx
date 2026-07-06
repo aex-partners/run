@@ -249,6 +249,8 @@ export function DatabasePage() {
                 // rating / currency
                 ...(updates.maxRating !== undefined ? { maxRating: updates.maxRating } : {}),
                 ...(updates.currencyCode !== undefined ? { currencyCode: updates.currencyCode } : {}),
+                // valor padrão (seletor: choice / relação)
+                ...(updates.defaultValue !== undefined ? { defaultValue: updates.defaultValue } : {}),
               },
             },
             { onSuccess: invalidateSchema },
@@ -284,8 +286,9 @@ export function DatabasePage() {
               entityId: activeEntityId,
               name: spec.name,
               type: toAexType(spec.type),
-              required: false,
+              required: spec.required ?? false,
               ...(spec.options ? { options: spec.options } : {}),
+              ...(spec.defaultValue ? { defaultValue: spec.defaultValue } : {}),
               ...(spec.relationshipEntityId
                 ? {
                     relationshipEntityId: spec.relationshipEntityId,
@@ -329,8 +332,9 @@ export function DatabasePage() {
       fields: payload.fields.map((f) => ({
         name: f.name,
         type: toAexType(f.type),
-        required: false,
+        required: f.required ?? false,
         ...(f.options ? { options: f.options } : {}),
+        ...(f.defaultValue ? { defaultValue: f.defaultValue } : {}),
         ...(f.relationshipEntityId
           ? {
               relationshipEntityId: f.relationshipEntityId,

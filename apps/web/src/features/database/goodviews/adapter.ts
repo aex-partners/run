@@ -22,6 +22,7 @@ export interface RunHexField {
   slug: string
   type: string
   required?: boolean
+  defaultValue?: string
   options?: { value: string; label: string; color?: string }[]
   // Campo relation (type 'relationship'): entidade-alvo apontada.
   relationshipEntityId?: string
@@ -221,6 +222,8 @@ export function toFields(fields: RunHexField[], personOptions: PersonOption[] = 
   return fields.map((f) => {
     const type = toGvType(f.type)
     const field: Field = { id: f.slug, label: f.name || f.slug, type }
+    if (f.required) field.required = true
+    if (f.defaultValue != null && f.defaultValue !== '') field.defaultValue = f.defaultValue
     if (f.options?.length && OPTION_TYPES.includes(type)) {
       field.options = f.options.map((o) => ({ value: o.value, label: o.label, color: o.color }))
       if (type === 'multiselect') field.creatable = false

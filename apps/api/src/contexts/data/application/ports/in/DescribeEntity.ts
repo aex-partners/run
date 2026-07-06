@@ -11,6 +11,7 @@ export interface EntityFieldView {
   slug: string
   type: string
   required: boolean
+  defaultValue?: string
   description?: string
   options?: EntityFieldOption[]
   maxRating?: number

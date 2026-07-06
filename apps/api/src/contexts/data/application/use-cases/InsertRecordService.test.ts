@@ -131,4 +131,37 @@ describe('InsertRecordService', () => {
     if (!r.ok) return
     expect(records.store.get(r.value.id)!.data).toEqual({ customer: 'rec-x' })
   })
+
+  it('applies a field default when the key is omitted (satisfies required)', async () => {
+    const entities = new FakeEntityRepository()
+    const records = new FakeRecordRepository()
+    const e = EntityDefinition.create(EntityId.of('ent-1'), 'Notes', new Date(0))
+    if (!e.ok) throw new Error(e.error)
+    e.value.addField({ name: 'title', required: true, type: { kind: 'text' } }, new Date(0))
+    e.value.addField({ name: 'origin', required: true, type: { kind: 'text' }, defaultValue: 'web' }, new Date(0))
+    entities.store.set('ent-1', e.value)
+    const service = new InsertRecordService(entities, records, noopEvents, fakeClock)
+
+    const r = await service.execute({ entityId: 'ent-1', data: { title: 'Hi' } })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    // the default fills the omitted required field → validation passes + persists it
+    expect(records.store.get(r.value.id)!.data).toEqual({ title: 'Hi', origin: 'web' })
+  })
+
+  it('keeps an explicit value over the field default', async () => {
+    const entities = new FakeEntityRepository()
+    const records = new FakeRecordRepository()
+    const e = EntityDefinition.create(EntityId.of('ent-1'), 'Notes', new Date(0))
+    if (!e.ok) throw new Error(e.error)
+    e.value.addField({ name: 'title', required: true, type: { kind: 'text' } }, new Date(0))
+    e.value.addField({ name: 'origin', required: false, type: { kind: 'text' }, defaultValue: 'web' }, new Date(0))
+    entities.store.set('ent-1', e.value)
+    const service = new InsertRecordService(entities, records, noopEvents, fakeClock)
+
+    const r = await service.execute({ entityId: 'ent-1', data: { title: 'Hi', origin: 'mobile' } })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(records.store.get(r.value.id)!.data).toEqual({ title: 'Hi', origin: 'mobile' })
+  })
 })

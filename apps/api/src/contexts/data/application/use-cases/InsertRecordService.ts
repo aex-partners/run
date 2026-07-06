@@ -22,11 +22,21 @@ export class InsertRecordService implements InsertRecord {
     const entity = await this.entities.findById(EntityId.of(cmd.entityId))
     if (!entity) return fail('InsertRecord: entity not found')
 
+    // Apply per-field default values for any key the caller omitted (or left
+    // null). Defaults belong to INSERT only: an update carries the full record,
+    // so re-applying a default there would resurrect a value the user cleared.
+    const data = { ...cmd.data }
+    for (const field of entity.fields()) {
+      const def = field.meta.defaultValue
+      if (def == null || def === '') continue
+      if (data[field.name.value] == null) data[field.name.value] = def
+    }
+
     // Cross-aggregate referential integrity: relation targets must exist. This
     // lives in the service, not the Record aggregate.
     for (const field of entity.fields()) {
       if (!(field.type instanceof RelationFieldType)) continue
-      const value: Json = cmd.data[field.name.value] ?? null
+      const value: Json = data[field.name.value] ?? null
       if (typeof value !== 'string') continue
       const present = await this.records.exists(
         EntityId.of(field.type.targetEntityId),
@@ -36,7 +46,7 @@ export class InsertRecordService implements InsertRecord {
     }
 
     const id = this.records.nextId()
-    const record = Record.create(id, entity.id, entity.toSchema(), cmd.data, this.clock.now(), {
+    const record = Record.create(id, entity.id, entity.toSchema(), data, this.clock.now(), {
       createdBy: cmd.createdBy,
     })
     if (!record.ok) return fail(record.error)

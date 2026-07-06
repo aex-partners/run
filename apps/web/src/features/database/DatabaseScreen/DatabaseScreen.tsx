@@ -9,10 +9,10 @@ import { CreateEntityScreen, type CreateEntityPayload } from '../CreateEntityScr
 
 /** callbacks de edição de schema + loaders de relação/campos (Part A/B). */
 export interface SchemaCallbacks {
-  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; required?: boolean } & FieldConfigInput) => void
+  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; required?: boolean; defaultValue?: string } & FieldConfigInput) => void
   onFieldDelete?: (fieldId: string) => void
   onFieldDuplicate?: (fieldId: string) => void
-  onFieldAdd?: (spec: { name: string; type: FieldType } & FieldConfigInput) => void
+  onFieldAdd?: (spec: { name: string; type: FieldType; required?: boolean; defaultValue?: string } & FieldConfigInput) => void
   loadRelationOptions?: (fieldId: string, search: string) => Promise<{ value: string; label: string }[]>
   /** carrega os campos de OUTRA entidade p/ os selects do editor de schema. */
   loadEntityFields?: (entityId: string) => Promise<EntityFieldLite[]>
