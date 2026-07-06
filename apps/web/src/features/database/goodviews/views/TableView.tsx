@@ -654,11 +654,13 @@ const CHOICE_TYPES: FieldType[] = ['select', 'status', 'multiselect']
 // Explicação curta do tipo selecionado (aparece abaixo do seletor). Ajuda o leigo
 // e deixa claro, em especial, a diferença entre Relação e "Buscar dado".
 const TYPE_HELP: Partial<Record<FieldType, string>> = {
-  relation: 'Liga cada registro a um registro de OUTRA tabela (você escolhe qual). Guarda o vínculo.',
-  lookup: 'Mostra (só leitura) um campo do registro já ligado por uma Relação. Não cria vínculo novo.',
+  relation:
+    'Liga a outra tabela e mostra o campo que você escolher em "Campo a mostrar". A ligação é criada quando você escolhe o registro. Uma coluna só.',
+  lookup: 'Campo derivado (só leitura): mostra um dado do registro ligado por uma referência.',
   select: 'Escolher UMA opção de uma lista que você define.',
   status: 'Como Seleção, para etapas/estados (ex: Aberto, Concluído).',
   multiselect: 'Escolher VÁRIAS opções de uma lista.',
+  person: 'Escolher um usuário do sistema (mostra avatar + nome).',
   rating: 'Nota em estrelas.',
   currency: 'Valor em dinheiro, formatado (ex: R$ 1.234,56).',
   percent: 'Número exibido como porcentagem.',
@@ -826,6 +828,12 @@ function FieldSchemaPopover({
               ))}
             </optgroup>
           ))}
+          {/* campo lookup legado: mantém a opção visível só ao editá-lo */}
+          {type === 'lookup' && (
+            <optgroup label="Avançado">
+              <option value={LOOKUP_LEGACY_OPTION.value}>{LOOKUP_LEGACY_OPTION.label}</option>
+            </optgroup>
+          )}
         </select>
         {TYPE_HELP[type] && (
           <p className="mt-1.5 text-[11px] leading-snug text-[#64748B]">{TYPE_HELP[type]}</p>
@@ -896,14 +904,14 @@ function FieldSchemaPopover({
               placeholder="Selecione uma tabela…"
             />
 
-            <label className={labelCls}>Campo a exibir (rótulo)</label>
+            <label className={labelCls}>Campo a mostrar</label>
             <SearchSelect
               value={labelFieldId}
               onChange={setLabelFieldId}
               disabled={!relEntityId || targetFields.length === 0}
-              placeholder="Título padrão"
+              placeholder="Título padrão (nome)"
               options={[
-                { value: '', label: 'Título padrão' },
+                { value: '', label: 'Título padrão (nome)' },
                 ...targetFields.map((f) => ({ value: f.id, label: f.name || f.slug })),
               ]}
             />
