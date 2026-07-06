@@ -11,6 +11,7 @@ import { DescribeEntity } from '@/contexts/data/application/ports/in/DescribeEnt
 import { ListEntities } from '@/contexts/data/application/queries/ListEntities'
 import { SearchRecords } from '@/contexts/data/application/queries/SearchRecords'
 import { ResolveLabels } from '@/contexts/data/application/queries/ResolveLabels'
+import { ResolveFieldValues } from '@/contexts/data/application/queries/ResolveFieldValues'
 import { ListOptions } from '@/contexts/data/application/queries/ListOptions'
 import { PivotRecords } from '@/contexts/data/application/queries/PivotRecords'
 import {
@@ -64,6 +65,7 @@ export const entityController = (deps: {
   search: SearchRecords
   pivot: PivotRecords
   resolveLabels: ResolveLabels
+  resolveFieldValues: ResolveFieldValues
   listOptions: ListOptions
 }) =>
   router({
@@ -185,6 +187,13 @@ export const entityController = (deps: {
     resolveLabels: protectedProcedure
       .input(z.object({ entityId: z.string(), ids: z.array(z.string()) }))
       .query(({ input }) => deps.resolveLabels.execute(input)),
+
+    // entities.resolveFieldValues — batch-resolve target record ids to the value
+    // of ONE field (by slug or id). Generalizes resolveLabels; powers the Table
+    // View's LOOKUP columns (read `lookupFieldId` off the relation's target rows).
+    resolveFieldValues: protectedProcedure
+      .input(z.object({ entityId: z.string(), ids: z.array(z.string()), fieldSlug: z.string() }))
+      .query(({ input }) => deps.resolveFieldValues.execute(input)),
 
     // entities.listOptions — list an entity's records as picker options ({ value:
     // id, label: title }), optionally filtered by a case-insensitive search over

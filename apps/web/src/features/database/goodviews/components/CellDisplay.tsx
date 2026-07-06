@@ -1,3 +1,4 @@
+import { Check, Minus, Star } from 'lucide-react'
 import { useLightbox } from './Lightbox'
 
 /**
@@ -6,6 +7,43 @@ import { useLightbox } from './Lightbox'
  * + hover/lightbox). Compartilhadas por TableView e demais views (ex sublinha da List).
  * ImageThumb/ImageStack usam o LightboxProvider (envolva a view).
  */
+
+/** boolean (read): marca ✓ (verdadeiro) ou traço (falso/vazio). */
+export function BoolCheck({ value }: { value: unknown }) {
+  const on = value === true || value === 'true' || value === 1 || value === '1'
+  return on ? (
+    <Check size={15} className="text-[#16A34A]" aria-label="Sim" />
+  ) : (
+    <Minus size={14} className="text-[#CBD5E1]" aria-label="Não" />
+  )
+}
+
+/** rating (read): N estrelas preenchidas de `max` (default 5). */
+export function Stars({ value, max = 5 }: { value: number; max?: number }) {
+  const n = Math.max(0, Math.min(max, Math.round(Number(value) || 0)))
+  return (
+    <span className="inline-flex items-center gap-0.5" title={`${n}/${max}`}>
+      {Array.from({ length: max }, (_, i) => (
+        <Star
+          key={i}
+          size={13}
+          className={i < n ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-[#CBD5E1]'}
+        />
+      ))}
+    </span>
+  )
+}
+
+/** duration (read): trata o número guardado como MINUTOS e formata `H:MM`. */
+export function formatDuration(value: unknown): string {
+  const total = Number(value)
+  if (!Number.isFinite(total)) return ''
+  const sign = total < 0 ? '-' : ''
+  const mins = Math.abs(Math.round(total))
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return `${sign}${h}:${String(m).padStart(2, '0')}`
+}
 export function Avatar({ label, image, size = 22 }: { label: string; image?: string; size?: number }) {
   const initials = label.trim().slice(0, 2).toUpperCase()
   if (image)

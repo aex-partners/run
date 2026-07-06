@@ -81,11 +81,11 @@ import { FileChips } from '../components/FileField'
 import { EditCell } from '../components/CellEditor'
 import { AggFooterCell, defaultAgg, type AggFn } from '../components/AggFooterCell'
 import { ContextMenu, type MenuEntry } from '../components/ContextMenu'
-import { filterRows, isGroup, sortRows, type FilterCond, type FilterGroup } from '../server'
+import { filterRows, isGroup, sortRows, type FilterCond, type FilterGroup, type FieldAggregate } from '../server'
 import { SavedMenu } from '../components/SavedMenu'
 import { AuditCloud } from '../components/AuditCloud'
 import { LightboxProvider } from '../components/Lightbox'
-import { Avatar, AvatarStack, ImageStack, ImageThumb } from '../components/CellDisplay'
+import { Avatar, AvatarStack, BoolCheck, ImageStack, ImageThumb, Stars, formatDuration } from '../components/CellDisplay'
 import { addSaved, deepEqual, FILTERS_KEY, getDefaultView, loadSaved, removeSaved, saveDefaultView, updateSaved, VIEWS_KEY, type Saved, type Scope } from '../storage'
 import { ViewKeyContext } from '../viewKeyContext'
 import { ViewSkeleton } from '../components/ViewSkeleton'
@@ -143,9 +143,10 @@ const DEFAULT_VISIBLE = [
   'cidade', 'valorContrato', 'progresso', 'parentId', 'dependeDe', 'tags',
 ]
 
-// Todo campo e editavel, menos o id.
+// Todo campo e editavel, menos o id e os somente-leitura (derivados/computados:
+// lookup, rollup, formula, autonumber, campos de sistema — marcados no adapter).
 function isEditableField(f?: Field): boolean {
-  return !!f && f.type !== 'id'
+  return !!f && f.type !== 'id' && !f.readonly
 }
 
 // ---------- helpers de formatacao ----------
@@ -356,6 +357,50 @@ function renderDisplay(field: Field, value: unknown, recordsById: Map<string, Ro
     // inteiros sem casas; decimais ate 4 casas sem zeros a direita (ex: 100, 1,5)
     return <span className="text-xs text-[#475569] font-mono">{isNaN(n) ? '-' : n.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}</span>
   }
+  if (field.type === 'boolean') {
+    return <BoolCheck value={value} />
+  }
+  if (field.type === 'rating') {
+    if (value == null || value === '') return <span className="text-[#94A3B8] text-xs">-</span>
+    return <Stars value={Number(value)} max={field.maxRating ?? 5} />
+  }
+  if (field.type === 'duration') {
+    if (value == null || value === '') return <span className="text-[#94A3B8] text-xs">-</span>
+    return <span className="text-xs text-[#475569] font-mono tabular-nums">{formatDuration(value)}</span>
+  }
+  if (field.type === 'email') {
+    if (value == null || value === '') return <span className="text-[#94A3B8] text-xs">-</span>
+    const email = String(value)
+    return (
+      <a
+        href={`mailto:${email}`}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="block truncate text-sm text-[#2563EB] hover:underline"
+      >
+        {email}
+      </a>
+    )
+  }
+  if (field.type === 'phone') {
+    if (value == null || value === '') return <span className="text-[#94A3B8] text-xs">-</span>
+    const phone = String(value)
+    return (
+      <a
+        href={`tel:${phone.replace(/[^\d+]/g, '')}`}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="block truncate text-sm text-[#2563EB] hover:underline"
+      >
+        {phone}
+      </a>
+    )
+  }
+  if (field.type === 'lookup') {
+    // Derivado (somente leitura): o valor é resolvido/injetado pelo host (adapter).
+    if (value == null || value === '') return <span className="text-[#94A3B8] text-xs">-</span>
+    return <span className="block truncate text-sm text-[#475569]">{String(value)}</span>
+  }
   return <span className="block truncate text-sm text-[#0F172A]">{value != null ? String(value) : ''}</span>
 }
 
@@ -375,6 +420,12 @@ function defaultSize(field: Field): number {
     case 'file': return 200
     case 'image': return 90
     case 'number': return 110
+    case 'boolean': return 80
+    case 'rating': return 130
+    case 'duration': return 100
+    case 'email': return 200
+    case 'phone': return 150
+    case 'lookup': return 180
     case 'text': return field.id === 'nome' ? 240 : 160
     default: return 150
   }
@@ -750,6 +801,8 @@ export default function TableView({
   const [pageSize, setPageSize] = useState(25)
   const [serverRows, setServerRows] = useState<Row[]>([])
   const [serverAggRows, setServerAggRows] = useState<Row[]>([])
+  // agregações numéricas por campo (SQL, conjunto filtrado inteiro) p/ o rodapé
+  const [serverAggregates, setServerAggregates] = useState<Record<string, FieldAggregate>>({})
   const [serverTotal, setServerTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [filterRoot, setFilterRoot] = useState<FilterGroup>({ conj: 'and', items: [] })
@@ -777,6 +830,7 @@ export default function TableView({
       if (!alive) return
       setServerRows(res.rows)
       setServerAggRows(res.aggregateRows)
+      setServerAggregates(res.aggregates ?? {})
       setServerTotal(res.total)
       setLoading(false)
     })
@@ -882,7 +936,7 @@ export default function TableView({
         size: defaultSize(field),
         minSize: 60,
         enableResizing: true,
-        enableSorting: !['multiselect', 'image', 'relation'].includes(field.type),
+        enableSorting: !['multiselect', 'image', 'relation', 'lookup'].includes(field.type),
         cell: ({ row, getValue }) => renderDisplay(field, getValue(), recordsById, row.original),
       })),
     [visibleFields, recordsById],
@@ -2079,6 +2133,7 @@ export default function TableView({
                           onAggChange={(fn) => setAgg(field.id, fn)}
                           align={align}
                           onFilter={addFilterValue}
+                          aggregate={serverMode ? serverAggregates[field.id] : undefined}
                         />
                       ) : null}
                     </td>

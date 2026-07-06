@@ -1,4 +1,5 @@
 import { type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { Star } from 'lucide-react'
 import { Combobox } from './Combobox'
 import { FileFieldEditor } from './FileField'
 import type { Field } from '../types'
@@ -72,6 +73,72 @@ export function EditCell({ field, value, recordOptions, relationOptions, onRelat
   // Imagem(ns): mesmo editor (Drive + upload + link), modo imagem (thumbnails, URLs)
   if (field.type === 'image') {
     return <FileFieldEditor value={value} onCommit={onCommit} onClose={onEsc} imagesOnly multiple={field.multiple ?? false} />
+  }
+
+  // Boolean , checkbox: alterna e comita true/false (fecha o editor)
+  if (field.type === 'boolean') {
+    const on = value === true || value === 'true' || value === 1 || value === '1'
+    return (
+      <input
+        type="checkbox"
+        autoFocus
+        defaultChecked={on}
+        onMouseDown={(e) => e.stopPropagation()}
+        onChange={(e) => { onCommit(e.currentTarget.checked); onEnter() }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') { e.preventDefault(); onEsc() }
+          else if (e.key === 'Enter') { e.preventDefault(); onCommit((e.target as HTMLInputElement).checked); onEnter() }
+        }}
+        className="size-4 accent-[#2563EB]"
+      />
+    )
+  }
+
+  // Rating , estrelas clicaveis (clicar na Nª define N; reclicar a atual zera)
+  if (field.type === 'rating') {
+    const max = field.maxRating ?? 5
+    const cur = Math.max(0, Math.min(max, Math.round(Number(value) || 0)))
+    return (
+      <div className="flex items-center gap-0.5" onMouseDown={(e) => e.stopPropagation()}>
+        {Array.from({ length: max }, (_, i) => {
+          const n = i + 1
+          return (
+            <button
+              key={i}
+              type="button"
+              title={`${n}/${max}`}
+              onClick={() => { onCommit(n === cur ? 0 : n); onEnter() }}
+              className="p-0.5 leading-none"
+            >
+              <Star size={15} className={n <= cur ? 'fill-[#F59E0B] text-[#F59E0B]' : 'text-[#CBD5E1]'} />
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // Duration , input numerico em MINUTOS (exibido como H:MM na leitura)
+  if (field.type === 'duration') {
+    const noSpin = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+    return (
+      <input
+        type="number"
+        step="1"
+        min="0"
+        autoFocus
+        placeholder="min"
+        className={`${EDIT_BASE} text-xs font-mono text-[#0F172A] text-right ${noSpin}`}
+        defaultValue={value == null ? '' : String(value)}
+        onMouseDown={(e) => e.stopPropagation()}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={(e) => onCommit(e.currentTarget.value === '' ? null : Number(e.currentTarget.value))}
+        onKeyDown={(e) => handleKey(e, () => {
+          const v = (e.target as HTMLInputElement).value
+          onCommit(v === '' ? null : Number(v))
+        })}
+      />
+    )
   }
 
   // Numero / moeda / percentual , input numerico puro sem spinner (moeda edita como numero; % com sufixo)

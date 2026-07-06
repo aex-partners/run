@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Database, Plus } from "lucide-react";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { trpc } from "../../platform/trpc";
 import {
@@ -80,6 +80,24 @@ export function DatabasePage() {
   // known ids are not re-resolved. Reset when the active entity changes.
   const labelCache = useMemo<LabelCache>(() => new Map(), [activeEntityId]);
 
+  // Bumped on a failed mutation to force `fetchPage` to a new identity, so the
+  // Table View re-runs its fetch effect and reconciles the optimistic grid with
+  // the server truth (paired with invalidating the query cache below).
+  const [reloadToken, setReloadToken] = useState(0);
+
+  // Mutation failure feedback: a clear PT toast + invalidate the affected caches
+  // and bump the reload token so the grid refetches (undoing the optimistic edit/
+  // delete/create). Threaded into the adapter's makeCallbacks as `onError`.
+  const handleMutationError = useCallback(
+    (message: string) => {
+      toast.error(message);
+      void utils.entities.query.invalidate();
+      void utils.entities.resolveLabels.invalidate();
+      setReloadToken((t) => t + 1);
+    },
+    [utils],
+  );
+
   const runHexFields = useMemo(
     () => (entityDetail.data?.fields ?? []) as RunHexField[],
     [entityDetail.data],
@@ -97,21 +115,31 @@ export function DatabasePage() {
             runHexFields,
             (input) => utils.entities.resolveLabels.fetch(input),
             labelCache,
+            // números do rodapé em SQL (sem teto) + resolução de campos lookup
+            (input) => utils.entities.aggregate.fetch(input),
+            (input) => utils.entities.resolveFieldValues.fetch(input),
           )
         : undefined,
-    [activeEntityId, utils, cache, runHexFields, labelCache],
+    // reloadToken força nova identidade após falha de mutation -> a grade refaz o fetch
+    [activeEntityId, utils, cache, runHexFields, labelCache, reloadToken],
   );
 
   const callbacks = useMemo(
     () =>
       activeEntityId
-        ? makeCallbacks(activeEntityId, tableFields, cache, {
-            update: (i) => updateRecord.mutateAsync(i),
-            remove: (i) => deleteRecord.mutateAsync(i),
-            create: (i) => createRecord.mutateAsync(i),
-          })
+        ? makeCallbacks(
+            activeEntityId,
+            tableFields,
+            cache,
+            {
+              update: (i) => updateRecord.mutateAsync(i),
+              remove: (i) => deleteRecord.mutateAsync(i),
+              create: (i) => createRecord.mutateAsync(i),
+            },
+            { onError: handleMutationError },
+          )
         : undefined,
-    [activeEntityId, tableFields, cache, updateRecord, deleteRecord, createRecord],
+    [activeEntityId, tableFields, cache, updateRecord, deleteRecord, createRecord, handleMutationError],
   );
 
   // good-views field id (slug) -> run-hex field (carries the real backend field id

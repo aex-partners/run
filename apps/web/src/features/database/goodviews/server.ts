@@ -29,15 +29,38 @@ export interface PageQuery {
   /** arvore de filtros (grupo raiz). */
   filter?: FilterGroup
 }
+/**
+ * Agregações numéricas de UM campo, pré-calculadas em SQL sobre o conjunto
+ * FILTRADO completo (sem teto de linhas). Alimenta o rodapé numérico
+ * (sum/avg/min/max/count) sem puxar linhas pro cliente. `total` = total de linhas
+ * do conjunto filtrado (p/ derivar "vazios" = total - count).
+ */
+export interface FieldAggregate {
+  sum: number
+  avg: number
+  min: number
+  max: number
+  /** contagem de valores não-nulos (preenchidos). */
+  count: number
+  total: number
+}
+
 export interface PageResult {
   rows: Row[]
   total: number
   /**
-   * conjunto FILTRADO completo (pre-paginacao). O rodape/indicadores agregam
-   * sobre este conjunto. No adapter, vem do server (a mesma `entities.query`
-   * lida em paginas ate o fim do conjunto filtrado).
+   * conjunto FILTRADO completo (pre-paginacao), usado p/ os breakdowns
+   * CATEGÓRICOS do rodapé (contagem por valor), export CSV e "selecionar tudo".
+   * BOUNDED: pode vir truncado (o adapter loga ao atingir o teto). Números do
+   * rodapé NÃO saem daqui — vêm de `aggregates` (SQL, sem teto).
    */
   aggregateRows: Row[]
+  /**
+   * Agregações numéricas por campo (id do good-views), calculadas em SQL sobre o
+   * conjunto filtrado inteiro. Quando presente, o rodapé numérico lê daqui em vez
+   * de iterar `aggregateRows` — correto mesmo com > teto de linhas.
+   */
+  aggregates?: Record<string, FieldAggregate>
 }
 
 function isEmpty(v: unknown): boolean {

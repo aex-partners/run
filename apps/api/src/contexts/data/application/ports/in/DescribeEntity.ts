@@ -17,6 +17,7 @@ export interface EntityFieldView {
   relationshipEntityId?: string
   relationshipEntityName?: string
   viaFieldId?: string
+  lookupFieldId?: string
   aiPrompt?: string
 }
 

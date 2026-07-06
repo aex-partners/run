@@ -25,6 +25,14 @@ export type FieldType =
   | 'geo'
   | 'relation'
   | 'file'
+  | 'boolean'
+  | 'email'
+  | 'phone'
+  | 'rating'
+  | 'duration'
+  // Campo derivado (lê um campo do registro apontado por uma relação). Somente
+  // leitura: o host resolve o valor e injeta na célula; não tem editor.
+  | 'lookup'
 
 /**
  * Metadado de um arquivo (campo 'file'). Pensado p/ conectar depois com a view
@@ -70,6 +78,17 @@ export interface Field {
   creatable?: boolean
   /** campo aceita varios itens (image/file): array vs item unico. */
   multiple?: boolean
+  /**
+   * Campo somente-leitura: a célula não entra em edição (nem inline nem em massa).
+   * Usado por campos derivados/computados/de sistema (lookup, rollup, formula,
+   * autonumber, created_at/by, updated_at/by) — o host resolve o valor.
+   */
+  readonly?: boolean
+  /**
+   * Rating: nº máximo de estrelas (default 5). Reaproveita nada de multiselect;
+   * `max` (min/max de itens) é de array, então rating usa este campo próprio.
+   */
+  maxRating?: number
   /** renderiza como avatar (img + nome); arrays viram avatares aninhados (stacked). */
   avatar?: boolean
   /**

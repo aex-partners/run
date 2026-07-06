@@ -41,6 +41,7 @@ export class DescribeEntityService implements DescribeEntity {
       if (aex.relationshipEntityId) view.relationshipEntityId = aex.relationshipEntityId
       if (aex.relationshipEntityName) view.relationshipEntityName = aex.relationshipEntityName
       if (aex.viaFieldId) view.viaFieldId = aex.viaFieldId
+      if (aex.lookupFieldId) view.lookupFieldId = aex.lookupFieldId
       if (aex.aiPrompt) view.aiPrompt = aex.aiPrompt
       return view
     })

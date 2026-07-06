@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import type { Field, Row } from '../types'
+import type { FieldAggregate } from '../server'
 
 export type AggFn = 'none' | 'sum' | 'avg' | 'min' | 'max' | 'count' | 'unique' | 'filled' | 'empty'
 
@@ -50,17 +51,22 @@ interface Computed {
   breakdownTitle: string
 }
 
-function compute(field: Field, records: Row[], recordsById: Map<string, Row>, fn: AggFn): Computed {
+function compute(field: Field, records: Row[], recordsById: Map<string, Row>, fn: AggFn, precomputed?: FieldAggregate): Computed {
   // ---- numerico (number / currency / percent) ----
   if (isNumeric(field)) {
     const nums = records.map((r) => Number(r[field.id])).filter((n) => !isNaN(n))
-    const count = nums.length
-    const sum = nums.reduce((a, b) => a + b, 0)
-    const avg = count ? sum / count : 0
-    const min = count ? Math.min(...nums) : 0
-    const max = count ? Math.max(...nums) : 0
-    const filled = records.filter((r) => r[field.id] != null && r[field.id] !== '').length
-    const empty = records.length - filled
+    // Números do rodapé: quando o host fornece `precomputed` (SQL sobre o conjunto
+    // filtrado INTEIRO, sem teto), lê de lá — correto mesmo com > 10k linhas e sem
+    // puxá-las pro cliente. Sem ele, cai no cálculo local sobre `records`.
+    const rCount = nums.length
+    const rSum = nums.reduce((a, b) => a + b, 0)
+    const count = precomputed ? precomputed.count : rCount
+    const sum = precomputed ? precomputed.sum : rSum
+    const avg = precomputed ? precomputed.avg : rCount ? rSum / rCount : 0
+    const min = precomputed ? precomputed.min : rCount ? Math.min(...nums) : 0
+    const max = precomputed ? precomputed.max : rCount ? Math.max(...nums) : 0
+    const filled = precomputed ? precomputed.count : records.filter((r) => r[field.id] != null && r[field.id] !== '').length
+    const empty = precomputed ? Math.max(0, precomputed.total - precomputed.count) : records.length - filled
 
     // moeda: agrupa por codigo (currencyField por registro, senao fixo)
     let groups: [string, number][] | null = null
@@ -233,9 +239,15 @@ export interface AggFooterCellProps {
   align?: 'left' | 'right'
   /** clicar numa opcao do resumo filtra a tabela por aquele valor. */
   onFilter?: (fieldId: string, value: string) => void
+  /**
+   * Agregação numérica pré-calculada em SQL (conjunto filtrado inteiro, sem teto).
+   * Quando presente, o rodapé numérico lê daqui em vez de iterar `records` — assim
+   * soma/média/etc ficam corretas acima do teto e sem puxar as linhas.
+   */
+  aggregate?: FieldAggregate
 }
 
-export function AggFooterCell({ field, records, recordsById, agg, onAggChange, align = 'left', onFilter }: AggFooterCellProps) {
+export function AggFooterCell({ field, records, recordsById, agg, onAggChange, align = 'left', onFilter, aggregate }: AggFooterCellProps) {
   const cellRef = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState(false)
   const [alignRight, setAlignRight] = useState(false)
@@ -245,7 +257,7 @@ export function AggFooterCell({ field, records, recordsById, agg, onAggChange, a
     if (r) setAlignRight(r.left + r.width / 2 > window.innerWidth / 2)
   })
 
-  const { display, breakdown, breakdownTitle } = compute(field, records, recordsById, agg)
+  const { display, breakdown, breakdownTitle } = compute(field, records, recordsById, agg, aggregate)
 
   return (
     <div
