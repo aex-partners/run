@@ -38,8 +38,11 @@ export class DescribeEntityService implements DescribeEntity {
       if (aex.description) view.description = aex.description
       if (aex.options) view.options = aex.options
       if (aex.maxRating !== undefined) view.maxRating = aex.maxRating
+      if (aex.currencyCode) view.currencyCode = aex.currencyCode
       if (aex.relationshipEntityId) view.relationshipEntityId = aex.relationshipEntityId
       if (aex.relationshipEntityName) view.relationshipEntityName = aex.relationshipEntityName
+      if (aex.labelFieldId) view.labelFieldId = aex.labelFieldId
+      if (aex.multiple) view.multiple = true
       if (aex.viaFieldId) view.viaFieldId = aex.viaFieldId
       if (aex.lookupFieldId) view.lookupFieldId = aex.lookupFieldId
       if (aex.aiPrompt) view.aiPrompt = aex.aiPrompt

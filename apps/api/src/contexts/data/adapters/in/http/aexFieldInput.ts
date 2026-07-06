@@ -18,6 +18,8 @@ export interface AexFieldInput {
   formula?: string
   relationshipEntityId?: string
   relationshipEntityName?: string
+  labelFieldId?: string
+  multiple?: boolean
   viaFieldId?: string
   lookupFieldId?: string
   rollupFunction?: string
@@ -50,6 +52,8 @@ export function toFieldDefinitionInput(raw: AexFieldInput): FieldDefinitionInput
     formula: raw.formula,
     relationshipEntityId: raw.relationshipEntityId,
     relationshipEntityName: raw.relationshipEntityName,
+    labelFieldId: raw.labelFieldId,
+    multiple: raw.multiple,
     viaFieldId: raw.viaFieldId,
     lookupFieldId: raw.lookupFieldId,
     rollupFunction: raw.rollupFunction,

@@ -49,6 +49,7 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -90,6 +91,7 @@ import { addSaved, deepEqual, FILTERS_KEY, getDefaultView, loadSaved, removeSave
 import { ViewKeyContext } from '../viewKeyContext'
 import { ViewSkeleton } from '../components/ViewSkeleton'
 import { HeaderBtn } from '../components/HeaderBtn'
+import { SearchSelect } from '../components/SearchSelect'
 import { FieldsPanel } from '../components/FieldsPanel'
 import { FilterPanel } from '../components/FilterPanel'
 import { countFilterLeaves } from '../components/FilterPanel'
@@ -113,7 +115,7 @@ interface ViewPayload {
 const SCHEMA_PERMS = { canEdit: true, canCreate: false, canDelete: false }
 
 const PAGE_SIZES = [10, 25, 50, 100]
-import type { ViewProps, Field, FieldType, FieldOption, Row, AuditEntry, AuditCell } from '../types'
+import type { ViewProps, Field, FieldType, FieldOption, Row, AuditEntry, AuditCell, EntityFieldLite, FieldConfigInput } from '../types'
 
 // schema do grid de LOGS (a tabela de auditoria renderiza usando a propria TableView)
 const LOG_FIELDS: Field[] = [
@@ -581,25 +583,64 @@ function DraggableHeader({
 
 // ---------- edição de schema (campo): popover de editar/novo campo ----------
 
-// Tipos oferecidos no popover (subconjunto util do FieldType do good-views).
-const FIELD_TYPE_OPTIONS: { value: FieldType; label: string }[] = [
-  { value: 'text', label: 'Texto' },
-  { value: 'longtext', label: 'Texto longo' },
-  { value: 'number', label: 'Número' },
-  { value: 'currency', label: 'Moeda' },
-  { value: 'percent', label: 'Percentual' },
-  { value: 'date', label: 'Data' },
-  { value: 'select', label: 'Seleção' },
-  { value: 'status', label: 'Status' },
-  { value: 'multiselect', label: 'Multi-seleção' },
-  { value: 'person', label: 'Pessoa' },
-  { value: 'url', label: 'URL' },
-  { value: 'relation', label: 'Relação' },
+// Tipos oferecidos no popover, AGRUPADOS por família com rótulos em linguagem
+// simples (o usuário é leigo). Renderizados como <optgroup> p/ dar contexto e não
+// misturar "básico" com "ligações entre tabelas".
+const FIELD_TYPE_GROUPS: { group: string; options: { value: FieldType; label: string }[] }[] = [
+  {
+    group: 'Básico',
+    options: [
+      { value: 'text', label: 'Texto' },
+      { value: 'longtext', label: 'Texto longo' },
+      { value: 'number', label: 'Número' },
+      { value: 'currency', label: 'Moeda (R$)' },
+      { value: 'percent', label: 'Percentual (%)' },
+      { value: 'date', label: 'Data' },
+      { value: 'url', label: 'Link (URL)' },
+      { value: 'rating', label: 'Avaliação (estrelas)' },
+    ],
+  },
+  {
+    group: 'Lista de opções',
+    options: [
+      { value: 'select', label: 'Seleção (uma opção)' },
+      { value: 'status', label: 'Status' },
+      { value: 'multiselect', label: 'Multi-seleção (várias)' },
+      { value: 'person', label: 'Pessoa' },
+    ],
+  },
+  {
+    group: 'Ligação com outra tabela',
+    options: [
+      { value: 'relation', label: 'Relação (ligar a outra tabela)' },
+      { value: 'lookup', label: 'Buscar dado de uma relação' },
+    ],
+  },
 ]
 const CHOICE_TYPES: FieldType[] = ['select', 'status', 'multiselect']
 
-// Popover ancorado (perto do cabeçalho) p/ editar um campo ou criar um novo:
-// nome + tipo + (p/ select/status/multiselect) editor simples de opções.
+// Explicação curta do tipo selecionado (aparece abaixo do seletor). Ajuda o leigo
+// e deixa claro, em especial, a diferença entre Relação e "Buscar dado".
+const TYPE_HELP: Partial<Record<FieldType, string>> = {
+  relation: 'Liga cada registro a um registro de OUTRA tabela (você escolhe qual). Guarda o vínculo.',
+  lookup: 'Mostra (só leitura) um campo do registro já ligado por uma Relação. Não cria vínculo novo.',
+  select: 'Escolher UMA opção de uma lista que você define.',
+  status: 'Como Seleção, para etapas/estados (ex: Aberto, Concluído).',
+  multiselect: 'Escolher VÁRIAS opções de uma lista.',
+  rating: 'Nota em estrelas.',
+  currency: 'Valor em dinheiro, formatado (ex: R$ 1.234,56).',
+  percent: 'Número exibido como porcentagem.',
+}
+
+// Saída do popover: nome + tipo + config type-específica (mapeada pelo host p/ o backend).
+type FieldSchemaOut = { name: string; type: FieldType } & FieldConfigInput
+
+// Popover ancorado (perto do cabeçalho) p/ editar um campo ou criar um novo. Além
+// de nome + tipo, mostra a config ESPECÍFICA do tipo escolhido:
+//  - relation: tabela de destino + campo a exibir (rótulo) + permitir vários;
+//  - lookup: via relação (campo relation desta entidade) + campo a puxar do alvo;
+//  - select/status/multiselect: editor de opções (add/remover/reordenar);
+//  - rating: máximo de estrelas; currency: código da moeda.
 function FieldSchemaPopover({
   x,
   y,
@@ -607,6 +648,16 @@ function FieldSchemaPopover({
   initialName = '',
   initialType = 'text',
   initialOptions = [],
+  initialRelEntityId = '',
+  initialLabelFieldId = '',
+  initialMultiple = false,
+  initialViaFieldId = '',
+  initialLookupFieldId = '',
+  initialMaxRating = 5,
+  initialCurrencyCode = 'BRL',
+  entities = [],
+  thisFields = [],
+  loadEntityFields,
   onSave,
   onClose,
 }: {
@@ -616,36 +667,99 @@ function FieldSchemaPopover({
   initialName?: string
   initialType?: FieldType
   initialOptions?: FieldOption[]
-  onSave: (out: { name: string; type: FieldType; options?: FieldOption[] }) => void
+  initialRelEntityId?: string
+  initialLabelFieldId?: string
+  initialMultiple?: boolean
+  initialViaFieldId?: string
+  initialLookupFieldId?: string
+  initialMaxRating?: number
+  initialCurrencyCode?: string
+  entities?: { id: string; name: string }[]
+  thisFields?: Field[]
+  loadEntityFields?: (entityId: string) => Promise<EntityFieldLite[]>
+  onSave: (out: FieldSchemaOut) => void
   onClose: () => void
 }) {
   const [name, setName] = useState(initialName)
   const [type, setType] = useState<FieldType>(initialType)
   const [options, setOptions] = useState<FieldOption[]>(initialOptions)
+  const [relEntityId, setRelEntityId] = useState(initialRelEntityId)
+  const [labelFieldId, setLabelFieldId] = useState(initialLabelFieldId)
+  const [multiple, setMultiple] = useState(initialMultiple)
+  const [viaFieldId, setViaFieldId] = useState(initialViaFieldId)
+  const [lookupFieldId, setLookupFieldId] = useState(initialLookupFieldId)
+  const [maxRating, setMaxRating] = useState(initialMaxRating)
+  const [currencyCode, setCurrencyCode] = useState(initialCurrencyCode)
+  // Campos da entidade-alvo (relation) e da entidade apontada pela "via" (lookup),
+  // carregados sob demanda via o host (utils.entities.getById).
+  const [targetFields, setTargetFields] = useState<EntityFieldLite[]>([])
+  const [lookupTargetFields, setLookupTargetFields] = useState<EntityFieldLite[]>([])
+
   const isChoice = CHOICE_TYPES.includes(type)
-  const left = Math.max(8, Math.min(x, window.innerWidth - 300))
-  const top = Math.max(8, Math.min(y, window.innerHeight - (isChoice ? 380 : 220)))
+  // campos relation DESTA entidade, p/ o select "via relação" do lookup
+  const relationFieldsHere = useMemo(() => thisFields.filter((f) => f.type === 'relation'), [thisFields])
+  // entidade apontada pela relação escolhida no lookup (p/ "campo a puxar")
+  const viaTargetEntityId = relationFieldsHere.find((f) => f.id === viaFieldId)?.relationEntityId
+
+  // relation: carrega os campos da entidade-alvo (rótulo)
+  useEffect(() => {
+    if (type !== 'relation' || !relEntityId || !loadEntityFields) { setTargetFields([]); return }
+    let alive = true
+    loadEntityFields(relEntityId).then((fs) => { if (alive) setTargetFields(fs) }).catch(() => { if (alive) setTargetFields([]) })
+    return () => { alive = false }
+  }, [type, relEntityId, loadEntityFields])
+
+  // lookup: carrega os campos da entidade apontada pela relação "via" (campo a puxar)
+  useEffect(() => {
+    if (type !== 'lookup' || !viaTargetEntityId || !loadEntityFields) { setLookupTargetFields([]); return }
+    let alive = true
+    loadEntityFields(viaTargetEntityId).then((fs) => { if (alive) setLookupTargetFields(fs) }).catch(() => { if (alive) setLookupTargetFields([]) })
+    return () => { alive = false }
+  }, [type, viaTargetEntityId, loadEntityFields])
+
+  const left = Math.max(8, Math.min(x, window.innerWidth - 320))
+  const top = Math.max(8, Math.min(y, window.innerHeight - 120))
 
   function save() {
     const n = name.trim()
     if (!n) return
-    const opts = isChoice
-      ? options
-          .filter((o) => o.label.trim())
-          .map((o) => ({ value: (o.value || o.label).trim(), label: o.label.trim(), ...(o.color ? { color: o.color } : {}) }))
-      : undefined
-    onSave({ name: n, type, options: opts })
+    const out: FieldSchemaOut = { name: n, type }
+    if (isChoice) {
+      out.options = options
+        .filter((o) => o.label.trim())
+        .map((o) => ({ value: (o.value || o.label).trim(), label: o.label.trim(), ...(o.color ? { color: o.color } : {}) }))
+    }
+    if (type === 'relation') {
+      out.relationshipEntityId = relEntityId || undefined
+      out.labelFieldId = labelFieldId || undefined
+      out.multiple = multiple || undefined
+    }
+    if (type === 'lookup') {
+      out.viaFieldId = viaFieldId || undefined
+      out.lookupFieldId = lookupFieldId || undefined
+    }
+    if (type === 'rating') out.maxRating = maxRating
+    if (type === 'currency') out.currencyCode = (currencyCode || 'BRL').trim().toUpperCase()
+    onSave(out)
     onClose()
+  }
+
+  // trocar o tipo limpa a config do tipo anterior (evita enviar lixo cruzado)
+  function changeType(next: FieldType) {
+    setType(next)
+    if (next !== 'relation') { setRelEntityId(''); setLabelFieldId(''); setMultiple(false) }
+    if (next !== 'lookup') { setViaFieldId(''); setLookupFieldId('') }
   }
 
   const inputCls =
     'w-full rounded-md border border-[#E2E8F0] px-2 py-1.5 text-sm text-[#0F172A] outline-none focus:border-[#2563EB]'
+  const labelCls = 'mb-1 mt-3 block text-[11px] font-medium text-[#94A3B8]'
 
   return (
     <>
       <div className="fixed inset-0 z-[60]" onMouseDown={onClose} />
       <div
-        className="fixed z-[61] w-[280px] rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-xl"
+        className="fixed z-[61] flex max-h-[82vh] w-[300px] flex-col overflow-y-auto rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-xl"
         style={{ top, left }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -664,19 +778,27 @@ function FieldSchemaPopover({
           placeholder="Nome do campo"
           className={inputCls}
         />
-        <label className="mb-1 mt-3 block text-[11px] font-medium text-[#94A3B8]">Tipo</label>
-        <select value={type} onChange={(e) => setType(e.target.value as FieldType)} className={inputCls}>
-          {FIELD_TYPE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
+        <label className={labelCls}>Tipo</label>
+        <select value={type} onChange={(e) => changeType(e.target.value as FieldType)} className={inputCls}>
+          {FIELD_TYPE_GROUPS.map((g) => (
+            <optgroup key={g.group} label={g.group}>
+              {g.options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
+        {TYPE_HELP[type] && (
+          <p className="mt-1.5 text-[11px] leading-snug text-[#64748B]">{TYPE_HELP[type]}</p>
+        )}
 
+        {/* select / status / multiselect: editor de opções (add / remover / reordenar) */}
         {isChoice && (
           <div className="mt-3">
             <div className="mb-1 text-[11px] font-medium text-[#94A3B8]">Opções</div>
-            <div className="flex max-h-[140px] flex-col gap-1 overflow-auto">
+            <div className="flex max-h-[160px] flex-col gap-1 overflow-auto">
               {options.map((o, i) => (
                 <div key={i} className="flex items-center gap-1">
                   <input
@@ -687,6 +809,24 @@ function FieldSchemaPopover({
                     placeholder={`Opção ${i + 1}`}
                     className={`${inputCls} py-1`}
                   />
+                  <button
+                    type="button"
+                    disabled={i === 0}
+                    onClick={() => setOptions((prev) => (i === 0 ? prev : prev.map((p, j) => (j === i - 1 ? prev[i] : j === i ? prev[i - 1] : p))))}
+                    className="shrink-0 text-[#94A3B8] hover:text-[#2563EB] disabled:opacity-30"
+                    title="Mover para cima"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={i === options.length - 1}
+                    onClick={() => setOptions((prev) => (i === prev.length - 1 ? prev : prev.map((p, j) => (j === i + 1 ? prev[i] : j === i ? prev[i + 1] : p))))}
+                    className="shrink-0 text-[#94A3B8] hover:text-[#2563EB] disabled:opacity-30"
+                    title="Mover para baixo"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
                   <button
                     type="button"
                     onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}
@@ -708,7 +848,96 @@ function FieldSchemaPopover({
           </div>
         )}
 
-        <div className="mt-3 flex justify-end gap-2">
+        {/* relation: tabela de destino + campo a exibir (rótulo) + permitir vários */}
+        {type === 'relation' && (
+          <>
+            <label className={labelCls}>Tabela de destino</label>
+            <SearchSelect
+              value={relEntityId}
+              onChange={(v) => { setRelEntityId(v); setLabelFieldId('') }}
+              options={entities.map((e) => ({ value: e.id, label: e.name }))}
+              placeholder="Selecione uma tabela…"
+            />
+
+            <label className={labelCls}>Campo a exibir (rótulo)</label>
+            <SearchSelect
+              value={labelFieldId}
+              onChange={setLabelFieldId}
+              disabled={!relEntityId || targetFields.length === 0}
+              placeholder="Título padrão"
+              options={[
+                { value: '', label: 'Título padrão' },
+                ...targetFields.map((f) => ({ value: f.id, label: f.name || f.slug })),
+              ]}
+            />
+
+            <label className="mt-3 flex items-center gap-2 text-xs text-[#475569]">
+              <input
+                type="checkbox"
+                checked={multiple}
+                onChange={(e) => setMultiple(e.target.checked)}
+                className="size-3.5 cursor-pointer accent-[#2563EB]"
+              />
+              Permitir vários (multi)
+            </label>
+          </>
+        )}
+
+        {/* lookup: via relação (campo relation desta entidade) + campo a puxar do alvo */}
+        {type === 'lookup' && (
+          <>
+            <label className={labelCls}>Via relação</label>
+            <SearchSelect
+              value={viaFieldId}
+              onChange={(v) => { setViaFieldId(v); setLookupFieldId('') }}
+              options={relationFieldsHere.map((f) => ({ value: f.id, label: f.label }))}
+              placeholder="Selecione um campo de relação…"
+            />
+            {relationFieldsHere.length === 0 && (
+              <div className="mt-1 text-[11px] text-[#94A3B8]">Crie um campo de relação primeiro.</div>
+            )}
+
+            <label className={labelCls}>Campo a puxar</label>
+            <SearchSelect
+              value={lookupFieldId}
+              onChange={setLookupFieldId}
+              disabled={!viaFieldId || lookupTargetFields.length === 0}
+              placeholder="Selecione um campo…"
+              options={lookupTargetFields.map((f) => ({ value: f.id, label: f.name || f.slug }))}
+            />
+          </>
+        )}
+
+        {/* rating: máximo de estrelas */}
+        {type === 'rating' && (
+          <>
+            <label className={labelCls}>Máximo de estrelas</label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={maxRating}
+              onChange={(e) => setMaxRating(Math.max(1, Math.min(10, Number(e.target.value) || 5)))}
+              className={inputCls}
+            />
+          </>
+        )}
+
+        {/* currency: código ISO da moeda */}
+        {type === 'currency' && (
+          <>
+            <label className={labelCls}>Código da moeda</label>
+            <input
+              value={currencyCode}
+              onChange={(e) => setCurrencyCode(e.target.value)}
+              placeholder="BRL"
+              maxLength={3}
+              className={`${inputCls} uppercase`}
+            />
+          </>
+        )}
+
+        <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
@@ -754,6 +983,8 @@ export default function TableView({
   onFieldDuplicate,
   onFieldAdd,
   loadRelationOptions,
+  entities: entityList,
+  loadEntityFields,
 }: ViewProps) {
   // modo: servidor (host fornece fetchPage) ou cliente (usa `records` local)
   const serverMode = !!fetchPage
@@ -1169,20 +1400,43 @@ export default function TableView({
     ]
   }
 
-  // salva a edição de um campo: envia ao host só o que mudou (nome / tipo /
-  // opções). Enviar `type` força o backend a reconstruir o config — então opções
-  // só persistem junto do tipo; por isso, se as opções mudarem, reenvia o tipo.
+  // salva a edição de um campo: envia ao host só o que mudou (nome / tipo / config).
+  // Enviar `type` força o backend a reconstruir o config — então TODA config
+  // type-específica (opções / relação / lookup / rating / moeda) só persiste junto
+  // do tipo; por isso, se qualquer config mudar, reenvia o tipo com ela.
   const editingCol = fieldEdit ? fields.find((f) => f.id === fieldEdit.colId) : undefined
-  function saveFieldEdit(out: { name: string; type: FieldType; options?: FieldOption[] }) {
+  function saveFieldEdit(out: FieldSchemaOut) {
     if (!fieldEdit || !onFieldUpdate || !editingCol) { setFieldEdit(null); return }
-    const updates: { name?: string; type?: FieldType; options?: FieldOption[]; required?: boolean } = {}
+    const updates: { name?: string; type?: FieldType; required?: boolean } & FieldConfigInput = {}
     if (out.name !== editingCol.label) updates.name = out.name
     const isChoice = CHOICE_TYPES.includes(out.type)
     const typeChanged = out.type !== editingCol.type
     const optsChanged = isChoice && JSON.stringify(out.options ?? []) !== JSON.stringify(editingCol.options ?? [])
-    if (typeChanged || optsChanged) {
+    const relChanged =
+      out.type === 'relation' &&
+      ((out.relationshipEntityId ?? '') !== (editingCol.relationEntityId ?? '') ||
+        (out.labelFieldId ?? '') !== (editingCol.labelFieldId ?? '') ||
+        !!out.multiple !== !!editingCol.multiple)
+    const lookupChanged =
+      out.type === 'lookup' &&
+      ((out.viaFieldId ?? '') !== (editingCol.viaFieldId ?? '') ||
+        (out.lookupFieldId ?? '') !== (editingCol.lookupFieldId ?? ''))
+    const ratingChanged = out.type === 'rating' && (out.maxRating ?? 5) !== (editingCol.maxRating ?? 5)
+    const currencyChanged = out.type === 'currency' && (out.currencyCode ?? 'BRL') !== (editingCol.currency ?? 'BRL')
+    if (typeChanged || optsChanged || relChanged || lookupChanged || ratingChanged || currencyChanged) {
       updates.type = out.type
       if (isChoice) updates.options = out.options ?? []
+      if (out.type === 'relation') {
+        updates.relationshipEntityId = out.relationshipEntityId
+        updates.labelFieldId = out.labelFieldId
+        updates.multiple = out.multiple
+      }
+      if (out.type === 'lookup') {
+        updates.viaFieldId = out.viaFieldId
+        updates.lookupFieldId = out.lookupFieldId
+      }
+      if (out.type === 'rating') updates.maxRating = out.maxRating
+      if (out.type === 'currency') updates.currencyCode = out.currencyCode
     }
     if (Object.keys(updates).length) onFieldUpdate(editingCol.id, updates)
     setFieldEdit(null)
@@ -2158,7 +2412,7 @@ export default function TableView({
         />
       )}
 
-      {/* popover: editar campo (nome + tipo + opções) */}
+      {/* popover: editar campo (nome + tipo + config type-específica) */}
       {fieldEdit && editingCol && (
         <FieldSchemaPopover
           x={fieldEdit.x}
@@ -2167,18 +2421,45 @@ export default function TableView({
           initialName={editingCol.label}
           initialType={editingCol.type}
           initialOptions={editingCol.options ?? []}
+          initialRelEntityId={editingCol.relationEntityId ?? ''}
+          initialLabelFieldId={editingCol.labelFieldId ?? ''}
+          initialMultiple={!!editingCol.multiple}
+          initialViaFieldId={editingCol.viaFieldId ?? ''}
+          initialLookupFieldId={editingCol.lookupFieldId ?? ''}
+          initialMaxRating={editingCol.maxRating ?? 5}
+          initialCurrencyCode={editingCol.currency ?? 'BRL'}
+          entities={entityList}
+          thisFields={fields}
+          loadEntityFields={loadEntityFields}
           onSave={saveFieldEdit}
           onClose={() => setFieldEdit(null)}
         />
       )}
 
-      {/* popover: novo campo (nome + tipo + opções) */}
+      {/* popover: novo campo (nome + tipo + config type-específica) */}
       {newFieldAt && (
         <FieldSchemaPopover
           x={newFieldAt.x}
           y={newFieldAt.y}
           mode="add"
-          onSave={(out) => { onFieldAdd?.({ name: out.name, type: out.type, options: out.options }); setNewFieldAt(null) }}
+          entities={entityList}
+          thisFields={fields}
+          loadEntityFields={loadEntityFields}
+          onSave={(out) => {
+            onFieldAdd?.({
+              name: out.name,
+              type: out.type,
+              ...(out.options ? { options: out.options } : {}),
+              ...(out.relationshipEntityId ? { relationshipEntityId: out.relationshipEntityId } : {}),
+              ...(out.labelFieldId ? { labelFieldId: out.labelFieldId } : {}),
+              ...(out.multiple ? { multiple: out.multiple } : {}),
+              ...(out.viaFieldId ? { viaFieldId: out.viaFieldId } : {}),
+              ...(out.lookupFieldId ? { lookupFieldId: out.lookupFieldId } : {}),
+              ...(out.maxRating !== undefined ? { maxRating: out.maxRating } : {}),
+              ...(out.currencyCode ? { currencyCode: out.currencyCode } : {}),
+            })
+            setNewFieldAt(null)
+          }}
           onClose={() => setNewFieldAt(null)}
         />
       )}

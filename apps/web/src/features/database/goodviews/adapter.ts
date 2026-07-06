@@ -26,8 +26,13 @@ export interface RunHexField {
   // Campo relation (type 'relationship'): entidade-alvo apontada.
   relationshipEntityId?: string
   relationshipEntityName?: string
+  // Relation: campo do alvo exibido como rótulo (resolveLabels honra) + multi.
+  labelFieldId?: string
+  multiple?: boolean
   // Campo rating: nº máximo de estrelas.
   maxRating?: number
+  // Campo currency: código ISO da moeda (default BRL no toFields).
+  currencyCode?: string
   // Campos derivados (lookup/rollup): `viaFieldId` = id do campo relation por onde
   // navega; `lookupFieldId` = campo (id/slug) lido no registro-alvo. Vindos de
   // entities.getById (DescribeEntity).
@@ -205,10 +210,21 @@ export function toFields(fields: RunHexField[]): Field[] {
       field.options = f.options.map((o) => ({ value: o.value, label: o.label, color: o.color }))
       if (type === 'multiselect') field.creatable = false
     }
-    if (type === 'currency') field.currency = 'BRL'
+    if (type === 'currency') field.currency = f.currencyCode || 'BRL'
     if (type === 'rating') field.maxRating = f.maxRating ?? 5
-    // relation -> nome da entidade-alvo (usado por views de arvore/grafo).
-    if (type === 'relation' && f.relationshipEntityName) field.relationTo = f.relationshipEntityName
+    // relation -> nome da entidade-alvo (usado por views de arvore/grafo) + config
+    // type-específica p/ o editor de schema (entidade-alvo, rótulo, multi).
+    if (type === 'relation') {
+      if (f.relationshipEntityName) field.relationTo = f.relationshipEntityName
+      if (f.relationshipEntityId) field.relationEntityId = f.relationshipEntityId
+      if (f.labelFieldId) field.labelFieldId = f.labelFieldId
+      if (f.multiple) field.multiple = true
+    }
+    // lookup -> via/lookup ids p/ o editor de schema (via relação + campo a puxar).
+    if (type === 'lookup') {
+      if (f.viaFieldId) field.viaFieldId = f.viaFieldId
+      if (f.lookupFieldId) field.lookupFieldId = f.lookupFieldId
+    }
     if (READONLY_TYPES.has(f.type)) field.readonly = true
     return field
   })
@@ -328,26 +344,34 @@ async function computeAggregates(
 
 // ---------- rotulos de relacao: resolve id-alvo -> LABEL (titulo) do alvo ----------
 
-/** Busca em lote os rotulos (titulo) dos registros-alvo de uma entidade. */
+/**
+ * Busca em lote os rotulos dos registros-alvo de uma entidade. `labelFieldId`
+ * (opcional) escolhe qual campo do alvo vira o rótulo; sem ele o backend cai na
+ * heurística de título (TITLE_FIELD_BY_ENTITY / primeiro texto).
+ */
 export type ResolveLabelsFn = (input: {
   entityId: string
   ids: string[]
+  labelFieldId?: string
 }) => Promise<{ labels: { id: string; label: string }[] }>
 
-/** cache id-alvo -> label, chaveado por entidade-alvo. Memoiza entre paginas/ordenacao. */
+/** cache id-alvo -> label, chaveado por (entidade-alvo + labelFieldId). Memoiza. */
 export type LabelCache = Map<string, string>
-const labelKey = (targetEntityId: string, id: string): string => `${targetEntityId}:${id}`
+const labelKey = (targetEntityId: string, labelFieldId: string | undefined, id: string): string =>
+  `${targetEntityId}:${labelFieldId ?? ''}:${id}`
 
 interface RelField {
   slug: string
   targetEntityId: string
+  /** campo do alvo a exibir como rótulo (id/slug); vazio = heurística de título. */
+  labelFieldId?: string
 }
 
 /** campos relation da entidade (com entidade-alvo conhecida), p/ resolver rotulos. */
 function relationFieldsOf(fields: RunHexField[]): RelField[] {
   return fields
     .filter((f) => (f.type === 'relation' || f.type === 'relationship') && !!f.relationshipEntityId)
-    .map((f) => ({ slug: f.slug, targetEntityId: f.relationshipEntityId as string }))
+    .map((f) => ({ slug: f.slug, targetEntityId: f.relationshipEntityId as string, labelFieldId: f.labelFieldId }))
 }
 
 /**
@@ -363,24 +387,26 @@ async function injectRelationLabels(
   labelCache: LabelCache,
 ): Promise<void> {
   if (relFields.length === 0) return
-  // 1) ids faltantes (fora do cache) por entidade-alvo
-  const missing = new Map<string, Set<string>>()
+  // 1) ids faltantes (fora do cache) agrupados por (entidade-alvo + labelFieldId),
+  // pois dois campos relation p/ a mesma entidade podem exibir rótulos diferentes.
+  const missing = new Map<string, { targetEntityId: string; labelFieldId?: string; ids: Set<string> }>()
   for (const rf of relFields) {
     for (const row of rows) {
       const v = row[rf.slug]
       if (v == null || v === '') continue
       const id = String(v)
-      if (labelCache.has(labelKey(rf.targetEntityId, id))) continue
-      const set = missing.get(rf.targetEntityId) ?? new Set<string>()
-      set.add(id)
-      missing.set(rf.targetEntityId, set)
+      if (labelCache.has(labelKey(rf.targetEntityId, rf.labelFieldId, id))) continue
+      const gk = `${rf.targetEntityId}::${rf.labelFieldId ?? ''}`
+      const g = missing.get(gk) ?? { targetEntityId: rf.targetEntityId, labelFieldId: rf.labelFieldId, ids: new Set<string>() }
+      g.ids.add(id)
+      missing.set(gk, g)
     }
   }
-  // 2) busca em lote (uma chamada por entidade-alvo) e povoa o cache
+  // 2) busca em lote (uma chamada por grupo) e povoa o cache
   await Promise.all(
-    [...missing.entries()].map(async ([targetEntityId, ids]) => {
-      const res = await resolveLabels({ entityId: targetEntityId, ids: [...ids] })
-      for (const { id, label } of res.labels) labelCache.set(labelKey(targetEntityId, id), label)
+    [...missing.values()].map(async (g) => {
+      const res = await resolveLabels({ entityId: g.targetEntityId, ids: [...g.ids], labelFieldId: g.labelFieldId })
+      for (const { id, label } of res.labels) labelCache.set(labelKey(g.targetEntityId, g.labelFieldId, id), label)
     }),
   )
   // 3) injeta o rotulo resolvido (mantem o id cru quando nao ha rotulo)
@@ -388,7 +414,7 @@ async function injectRelationLabels(
     for (const row of rows) {
       const v = row[rf.slug]
       if (v == null || v === '') continue
-      const label = labelCache.get(labelKey(rf.targetEntityId, String(v)))
+      const label = labelCache.get(labelKey(rf.targetEntityId, rf.labelFieldId, String(v)))
       if (label !== undefined) row[rf.slug] = label
     }
   }

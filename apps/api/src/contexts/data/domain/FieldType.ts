@@ -57,6 +57,12 @@ export type FieldTypeConfig =
       kind: 'relation'
       targetEntityId: string
       targetEntityName?: string
+      // Which field of the TARGET entity to show as the relation's label (id or
+      // slug). Falls back to the title heuristic on the read side when absent.
+      labelFieldId?: string
+      // Whether the relation may hold several target ids (stored flag; the cell
+      // still single-selects today).
+      multiple?: boolean
     }
   | { kind: 'lookup'; viaFieldId?: string; lookupFieldId?: string }
   | { kind: 'rollup'; viaFieldId?: string; lookupFieldId?: string; rollupFunction?: string }
@@ -388,6 +394,10 @@ class RelationFieldType implements FieldType {
   constructor(
     public readonly targetEntityId: string,
     public readonly targetEntityName?: string,
+    public readonly config: {
+      labelFieldId?: string
+      multiple?: boolean
+    } = {},
   ) {}
   validate(value: Json): Result<TypedValue> {
     if (value === null) return ok(null)
@@ -404,6 +414,8 @@ class RelationFieldType implements FieldType {
       kind: 'relation',
       targetEntityId: this.targetEntityId,
       ...(this.targetEntityName ? { targetEntityName: this.targetEntityName } : {}),
+      ...(this.config.labelFieldId ? { labelFieldId: this.config.labelFieldId } : {}),
+      ...(this.config.multiple ? { multiple: true } : {}),
     }
   }
 }
@@ -533,7 +545,12 @@ export const FieldTypeFactory = {
       case 'multiselect':
         return ok(new MultiSelectFieldType(config.options ?? []))
       case 'relation':
-        return ok(new RelationFieldType(config.targetEntityId, config.targetEntityName))
+        return ok(
+          new RelationFieldType(config.targetEntityId, config.targetEntityName, {
+            labelFieldId: config.labelFieldId,
+            multiple: config.multiple,
+          }),
+        )
       case 'lookup':
         return ok(
           new DerivedFieldType('lookup', {

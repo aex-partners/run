@@ -189,6 +189,20 @@ export function DatabasePage() {
     [relationTargetBySlug, utils],
   );
 
+  // Field-editor loader: the fields of ANOTHER entity (id/slug/name/type) for the
+  // popover's "Campo a exibir" (relation label) and "Campo a puxar" (lookup) selects.
+  const loadEntityFields = useMemo<
+    (entityId: string) => Promise<{ id: string; slug: string; name: string; type: string }[]>
+  >(
+    () => (entityId) =>
+      utils.entities.getById
+        .fetch({ id: entityId })
+        .then((e) =>
+          (e?.fields ?? []).map((f) => ({ id: f.id, slug: f.slug, name: f.name, type: f.type })),
+        ),
+    [utils],
+  );
+
   const schema: SchemaCallbacks | undefined = activeEntityId
     ? {
         onFieldUpdate: (fieldId, updates) => {
@@ -203,6 +217,21 @@ export function DatabasePage() {
                 ...(updates.type !== undefined ? { type: toAexType(updates.type) } : {}),
                 ...(updates.required !== undefined ? { required: updates.required } : {}),
                 ...(updates.options !== undefined ? { options: updates.options } : {}),
+                // relation: target id (+ name resolved from the entity list) + label + multi
+                ...(updates.relationshipEntityId !== undefined
+                  ? {
+                      relationshipEntityId: updates.relationshipEntityId,
+                      relationshipEntityName: entities.find((e) => e.id === updates.relationshipEntityId)?.name,
+                    }
+                  : {}),
+                ...(updates.labelFieldId !== undefined ? { labelFieldId: updates.labelFieldId } : {}),
+                ...(updates.multiple !== undefined ? { multiple: updates.multiple } : {}),
+                // lookup: via relation + field to pull
+                ...(updates.viaFieldId !== undefined ? { viaFieldId: updates.viaFieldId } : {}),
+                ...(updates.lookupFieldId !== undefined ? { lookupFieldId: updates.lookupFieldId } : {}),
+                // rating / currency
+                ...(updates.maxRating !== undefined ? { maxRating: updates.maxRating } : {}),
+                ...(updates.currencyCode !== undefined ? { currencyCode: updates.currencyCode } : {}),
               },
             },
             { onSuccess: invalidateSchema },
@@ -232,19 +261,32 @@ export function DatabasePage() {
             { onSuccess: invalidateSchema },
           );
         },
-        onFieldAdd: ({ name, type, options }) => {
+        onFieldAdd: (spec) => {
           addField.mutate(
             {
               entityId: activeEntityId,
-              name,
-              type: toAexType(type),
+              name: spec.name,
+              type: toAexType(spec.type),
               required: false,
-              ...(options ? { options } : {}),
+              ...(spec.options ? { options: spec.options } : {}),
+              ...(spec.relationshipEntityId
+                ? {
+                    relationshipEntityId: spec.relationshipEntityId,
+                    relationshipEntityName: entities.find((e) => e.id === spec.relationshipEntityId)?.name,
+                  }
+                : {}),
+              ...(spec.labelFieldId ? { labelFieldId: spec.labelFieldId } : {}),
+              ...(spec.multiple ? { multiple: spec.multiple } : {}),
+              ...(spec.viaFieldId ? { viaFieldId: spec.viaFieldId } : {}),
+              ...(spec.lookupFieldId ? { lookupFieldId: spec.lookupFieldId } : {}),
+              ...(spec.maxRating !== undefined ? { maxRating: spec.maxRating } : {}),
+              ...(spec.currencyCode ? { currencyCode: spec.currencyCode } : {}),
             },
             { onSuccess: invalidateSchema },
           );
         },
         loadRelationOptions,
+        loadEntityFields,
       }
     : undefined;
 

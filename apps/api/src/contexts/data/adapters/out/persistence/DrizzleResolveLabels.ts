@@ -28,7 +28,16 @@ export class DrizzleResolveLabels implements ResolveLabels {
     if (!entityRow) return { labels: [] }
 
     const fields = DrizzleEntityMapper.toDomain(entityRow).fields()
-    const slug = titleSlugFor(entityRow.name, fields)
+    // Per-relation-field label: resolve the JSON key of `labelFieldId` (matched by
+    // field id or slug). Falls back to the title heuristic when absent/unmatched.
+    let slug: string | undefined
+    if (input.labelFieldId) {
+      const match = fields.find(
+        (f) => f.meta.id === input.labelFieldId || f.name.value === input.labelFieldId,
+      )
+      slug = match?.name.value
+    }
+    if (!slug) slug = titleSlugFor(entityRow.name, fields)
     if (!slug) return { labels: [] }
 
     const rows = await this.db

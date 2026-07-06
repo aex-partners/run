@@ -18,6 +18,9 @@ export interface AexField {
   formula?: string
   relationshipEntityId?: string
   relationshipEntityName?: string
+  // Relation display config (see FieldType's relation variant).
+  labelFieldId?: string
+  multiple?: boolean
   viaFieldId?: string
   lookupFieldId?: string
   rollupFunction?: string
@@ -75,6 +78,8 @@ const configOf = (f: AexField): FieldTypeConfig => {
         kind: 'relation',
         targetEntityId: f.relationshipEntityId ?? '',
         ...(f.relationshipEntityName ? { targetEntityName: f.relationshipEntityName } : {}),
+        ...(f.labelFieldId ? { labelFieldId: f.labelFieldId } : {}),
+        ...(f.multiple ? { multiple: true } : {}),
       }
     case 'lookup':
       return {
@@ -160,6 +165,8 @@ export const AexFieldCodec = {
       case 'relation':
         out.relationshipEntityId = config.targetEntityId
         if (config.targetEntityName) out.relationshipEntityName = config.targetEntityName
+        if (config.labelFieldId) out.labelFieldId = config.labelFieldId
+        if (config.multiple) out.multiple = true
         break
       case 'lookup':
         if (config.viaFieldId) out.viaFieldId = config.viaFieldId

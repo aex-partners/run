@@ -71,6 +71,14 @@ export interface Field {
   options?: FieldOption[]
   /** id do field que guarda o pai (relation), p/ arvore/grafo. */
   relationTo?: string
+  /** relation: id da entidade-alvo (p/ o editor de schema carregar seus campos). */
+  relationEntityId?: string
+  /** relation: campo do alvo exibido como rótulo (id/slug). resolveLabels honra. */
+  labelFieldId?: string
+  /** lookup: id/slug do campo relation por onde navega (viaFieldId). */
+  viaFieldId?: string
+  /** lookup: campo lido no registro-alvo (id/slug). */
+  lookupFieldId?: string
   /** regra de campo p/ array (multiselect / relacao multipla): minimo e maximo de itens. */
   min?: number
   max?: number
@@ -103,6 +111,36 @@ export interface Field {
 
 /** Um registro. Sempre tem `id`; demais chaves seguem os fields. */
 export type Row = { id: string } & Record<string, unknown>
+
+/** Campo (enxuto) de uma OUTRA entidade, p/ os selects do editor de schema. */
+export interface EntityFieldLite {
+  id: string
+  slug: string
+  name: string
+  type: string
+}
+
+/**
+ * Config type-específica de um campo, coletada pelo popover de editar/novo campo
+ * e mapeada pelo host p/ as mutations do backend (addField/updateField).
+ */
+export interface FieldConfigInput {
+  options?: FieldOption[]
+  /** relation: entidade-alvo. */
+  relationshipEntityId?: string
+  /** relation: campo do alvo exibido como rótulo. */
+  labelFieldId?: string
+  /** relation: permite vários alvos (persistido; célula ainda single-select). */
+  multiple?: boolean
+  /** lookup: campo relation por onde navega. */
+  viaFieldId?: string
+  /** lookup: campo lido no registro-alvo. */
+  lookupFieldId?: string
+  /** rating: nº máximo de estrelas. */
+  maxRating?: number
+  /** currency: código ISO da moeda. */
+  currencyCode?: string
+}
 
 /** Uma alteracao de valor (numa celula). Guarda antes/depois p/ reverter. */
 export interface AuditCell {
@@ -198,10 +236,20 @@ export interface ViewProps {
    * duplo-clique p/ renomear). `fieldId` é o id do campo no good-views (o host
    * mapeia p/ o id real do backend). `type` é o FieldType do good-views.
    */
-  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; options?: FieldOption[]; required?: boolean }) => void
+  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; required?: boolean } & FieldConfigInput) => void
   onFieldDelete?: (fieldId: string) => void
   onFieldDuplicate?: (fieldId: string) => void
-  onFieldAdd?: (spec: { name: string; type: FieldType; options?: FieldOption[] }) => void
+  onFieldAdd?: (spec: { name: string; type: FieldType } & FieldConfigInput) => void
+  /**
+   * Lista de entidades (id + nome) p/ o select "Tabela de destino" do editor de
+   * campo relation. Ligado pelo host quando a edição de schema está disponível.
+   */
+  entities?: { id: string; name: string }[]
+  /**
+   * Carrega os campos de OUTRA entidade (id/slug/nome/tipo) p/ os selects do editor
+   * de schema: "Campo a exibir" (relation) e "Campo a puxar" (lookup). Ligado pelo host.
+   */
+  loadEntityFields?: (entityId: string) => Promise<EntityFieldLite[]>
   /**
    * Picker de edição de relação: carregador assíncrono das opções da entidade-ALVO
    * de um campo relation (id + rótulo), com busca server-side. Quando fornecido, o

@@ -5,6 +5,9 @@
 export interface ResolveLabelsInput {
   entityId: string
   ids: string[]
+  // Optional: resolve the label from THIS field (id or slug of the entity) instead
+  // of the entity's title heuristic. Set per relation field via its `labelFieldId`.
+  labelFieldId?: string
 }
 
 export interface LabelPair {

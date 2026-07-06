@@ -14,8 +14,11 @@ export interface EntityFieldView {
   description?: string
   options?: EntityFieldOption[]
   maxRating?: number
+  currencyCode?: string
   relationshipEntityId?: string
   relationshipEntityName?: string
+  labelFieldId?: string
+  multiple?: boolean
   viaFieldId?: string
   lookupFieldId?: string
   aiPrompt?: string

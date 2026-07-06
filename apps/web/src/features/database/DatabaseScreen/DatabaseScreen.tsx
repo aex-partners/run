@@ -2,18 +2,20 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { PanelLeftOpen } from 'lucide-react'
 import { EntitySidebar } from './EntitySidebar'
 import { ViewKeyContext } from '../goodviews/viewKeyContext'
-import type { Field, FieldType, FieldOption, ViewConfig } from '../goodviews/types'
+import type { Field, FieldType, ViewConfig, FieldConfigInput, EntityFieldLite } from '../goodviews/types'
 import type { PageQuery, PageResult } from '../goodviews/server'
 import type { TableCallbacks } from '../goodviews/adapter'
 import { CreateEntityScreen, type CreateEntityPayload } from '../CreateEntityScreen/CreateEntityScreen'
 
-/** callbacks de edição de schema + loader de opções de relação (Part A/B). */
+/** callbacks de edição de schema + loaders de relação/campos (Part A/B). */
 export interface SchemaCallbacks {
-  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; options?: FieldOption[]; required?: boolean }) => void
+  onFieldUpdate?: (fieldId: string, updates: { name?: string; type?: FieldType; required?: boolean } & FieldConfigInput) => void
   onFieldDelete?: (fieldId: string) => void
   onFieldDuplicate?: (fieldId: string) => void
-  onFieldAdd?: (spec: { name: string; type: FieldType; options?: FieldOption[] }) => void
+  onFieldAdd?: (spec: { name: string; type: FieldType } & FieldConfigInput) => void
   loadRelationOptions?: (fieldId: string, search: string) => Promise<{ value: string; label: string }[]>
+  /** carrega os campos de OUTRA entidade p/ os selects do editor de schema. */
+  loadEntityFields?: (entityId: string) => Promise<EntityFieldLite[]>
 }
 
 // The Table View (good-views engine) is heavy (tanstack-table + dnd-kit); load it
@@ -152,6 +154,8 @@ export function DatabaseScreen({
                   onFieldDuplicate={schema?.onFieldDuplicate}
                   onFieldAdd={schema?.onFieldAdd}
                   loadRelationOptions={schema?.loadRelationOptions}
+                  entities={entities.map((e) => ({ id: e.id, name: e.name }))}
+                  loadEntityFields={schema?.loadEntityFields}
                 />
               </ViewKeyContext.Provider>
             </Suspense>

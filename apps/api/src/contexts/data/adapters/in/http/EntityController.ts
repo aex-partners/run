@@ -30,6 +30,8 @@ const fieldConfigShape = {
   formula: z.string().optional(),
   relationshipEntityId: z.string().optional(),
   relationshipEntityName: z.string().optional(),
+  labelFieldId: z.string().optional(),
+  multiple: z.boolean().optional(),
   viaFieldId: z.string().optional(),
   lookupFieldId: z.string().optional(),
   rollupFunction: z.string().optional(),
@@ -183,9 +185,16 @@ export const entityController = (deps: {
       }),
 
     // entities.resolveLabels — batch-resolve target record ids to their entity's
-    // TITLE-field value. Powers the Table View's relation columns (id -> label).
+    // TITLE-field value (or the relation field's `labelFieldId` when given). Powers
+    // the Table View's relation columns (id -> label).
     resolveLabels: protectedProcedure
-      .input(z.object({ entityId: z.string(), ids: z.array(z.string()) }))
+      .input(
+        z.object({
+          entityId: z.string(),
+          ids: z.array(z.string()),
+          labelFieldId: z.string().optional(),
+        }),
+      )
       .query(({ input }) => deps.resolveLabels.execute(input)),
 
     // entities.resolveFieldValues — batch-resolve target record ids to the value
