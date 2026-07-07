@@ -437,11 +437,17 @@ async function injectRelationLabels(
       }
     }
   }
-  // 2) busca em lote (uma chamada por grupo) e povoa o cache
+  // 2) busca em lote e povoa o cache. Chunk dos ids: resolveLabels é uma QUERY
+  // (GET), então mandar centenas de ids numa URL estoura o limite de header (431).
+  // No conjunto do rodapé (milhares de linhas) os ids distintos passam de 500.
+  const LABEL_CHUNK = 60
   await Promise.all(
     [...missing.values()].map(async (g) => {
-      const res = await resolveLabels({ entityId: g.targetEntityId, ids: [...g.ids], labelFieldId: g.labelFieldId })
-      for (const { id, label } of res.labels) labelCache.set(labelKey(g.targetEntityId, g.labelFieldId, id), label)
+      const allIds = [...g.ids]
+      for (let i = 0; i < allIds.length; i += LABEL_CHUNK) {
+        const res = await resolveLabels({ entityId: g.targetEntityId, ids: allIds.slice(i, i + LABEL_CHUNK), labelFieldId: g.labelFieldId })
+        for (const { id, label } of res.labels) labelCache.set(labelKey(g.targetEntityId, g.labelFieldId, id), label)
+      }
     }),
   )
   // 3) injeta o rotulo resolvido (mantem o id cru quando nao ha rotulo).
