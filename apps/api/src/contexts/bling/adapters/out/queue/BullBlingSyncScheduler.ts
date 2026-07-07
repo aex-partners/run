@@ -50,7 +50,7 @@ export class BullBlingSyncScheduler {
   }
 
   // Enqueue a one-off manual sync (the "Sincronizar Bling" button). Returns
-  // immediately — the existing BlingSyncWorker (Worker over this same queue)
+  // immediately: the existing BlingSyncWorker (Worker over this same queue)
   // picks the job up and runs the full mirror in the background, so an api
   // restart mid-sync no longer kills it: the worker re-processes on next boot
   // and the sync resumes safely because bling_sync_map's content-hash skips
@@ -66,5 +66,18 @@ export class BullBlingSyncScheduler {
         removeOnFail: 100,
       },
     )
+  }
+
+  // Tears the auto-sync down: drops the 6h repeatable and drains any queued
+  // sync jobs. The Bling connection (OAuth credential) stays live so the direct
+  // read-through API (bling.list / bling.get) keeps working, we just never
+  // mirror/sync into local tables again.
+  async removeSchedule(): Promise<void> {
+    const repeatables = await this.queue.getRepeatableJobs()
+    for (const r of repeatables) {
+      if (r.id === REPEAT_JOB_ID) await this.queue.removeRepeatableByKey(r.key)
+    }
+    // Clear waiting + delayed sync jobs so a pending tick can't fire post-deploy.
+    await this.queue.drain(true)
   }
 }

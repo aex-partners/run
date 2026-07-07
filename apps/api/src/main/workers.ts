@@ -16,8 +16,6 @@ import { REMINDER_QUEUE_NAME } from '@/contexts/reminders/adapters/out/queue/Bul
 import { makeCredentialsRefreshJobHandler } from '@/contexts/credentials/adapters/in/worker/CredentialsRefreshWorker'
 import { CREDENTIALS_REFRESH_QUEUE_NAME } from '@/contexts/credentials/adapters/out/queue/BullCredentialsRefreshScheduler'
 import { makeDigestJobHandler } from '@/contexts/notifications/adapters/in/worker/DigestWorker'
-import { makeBlingSyncJobHandler } from '@/contexts/bling/adapters/in/worker/BlingSyncWorker'
-import { BLING_SYNC_QUEUE_NAME } from '@/contexts/bling/adapters/out/queue/BullBlingSyncScheduler'
 
 // Queue names that have no in-context constant.
 const DIGEST_QUEUE_NAME = 'digest'
@@ -43,11 +41,10 @@ export async function startWorkers(container: Container, redis: Redis): Promise<
     new Worker(CREDENTIALS_REFRESH_QUEUE_NAME, makeCredentialsRefreshJobHandler({ refresh: ports.refreshCredential }), { connection }),
     // notifications digest
     new Worker(DIGEST_QUEUE_NAME, makeDigestJobHandler({ runDigest: ports.runDigest }), { connection }),
-    // bling full-mirror sync. concurrency: 1 so the manual (button) and 6h
-    // repeatable jobs never run two full syncs at once; combined with the manual
-    // job's fixed jobId, at most one sync is ever in-flight. Safe across restarts:
-    // the sync is idempotent (bling_sync_map skips already-synced records).
-    new Worker(BLING_SYNC_QUEUE_NAME, makeBlingSyncJobHandler({ sync: ports.syncBlingMirror }), { connection, concurrency: 1 }),
+    // bling full-mirror sync: DISABLED. The Bling connection is kept only for the
+    // direct read-through API (bling.list / bling.get); we never mirror into local
+    // tables. No worker consumes the sync queue, so no sync runs and no mirror
+    // schema is (re)created. See removeSchedule() below.
     // file indexing -> knowledge.IndexFile (extract text + store as file-content KB)
     new Worker(
       FILE_INDEXING_QUEUE_NAME,
@@ -61,7 +58,9 @@ export async function startWorkers(container: Container, redis: Redis): Promise<
 
   // Register repeatable schedules.
   await container.schedulers.credScheduler.ensureRefreshSchedule()
-  await container.schedulers.blingSyncScheduler.ensureSchedule()
+  // Bling auto-sync is intentionally OFF: drop the 6h repeatable + drain the queue
+  // so the mirror is never rebuilt. Direct Bling API calls still work.
+  await container.schedulers.blingSyncScheduler.removeSchedule()
 
   return workers
 }
