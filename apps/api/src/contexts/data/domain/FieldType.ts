@@ -451,9 +451,18 @@ class RelationFieldType implements FieldType {
   ) {}
   validate(value: Json): Result<TypedValue> {
     if (value === null) return ok(null)
+    // multiple relation: an array of target ids. A lone string is coerced to a
+    // single-element array for convenience. Non-string members are rejected.
+    if (this.config.multiple) {
+      if (typeof value === 'string') return value ? ok([value]) : ok(null)
+      if (Array.isArray(value) && value.every((v) => typeof v === 'string')) return ok(value)
+      return fail('relation (multiple): expected an array of record ids')
+    }
     return typeof value === 'string' ? ok(value) : fail('relation: expected record id (string)')
   }
   compare(a: TypedValue, b: TypedValue): number {
+    // arrays (multiple) don't order meaningfully; compare by their string form.
+    if (Array.isArray(a) || Array.isArray(b)) return cmpString(JSON.stringify(a ?? []), JSON.stringify(b ?? []))
     return cmpString(a, b)
   }
   castKind(): CastKind {
