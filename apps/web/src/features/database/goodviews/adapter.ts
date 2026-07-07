@@ -417,12 +417,16 @@ async function injectRelationLabels(
     for (const row of rows) {
       const v = row[rf.slug]
       if (v == null || v === '') continue
-      const id = String(v)
-      if (labelCache.has(labelKey(rf.targetEntityId, rf.labelFieldId, id))) continue
-      const gk = `${rf.targetEntityId}::${rf.labelFieldId ?? ''}`
-      const g = missing.get(gk) ?? { targetEntityId: rf.targetEntityId, labelFieldId: rf.labelFieldId, ids: new Set<string>() }
-      g.ids.add(id)
-      missing.set(gk, g)
+      // relação múltipla = array de ids; single = um id.
+      const ids = Array.isArray(v) ? v.map(String) : [String(v)]
+      for (const id of ids) {
+        if (!id) continue
+        if (labelCache.has(labelKey(rf.targetEntityId, rf.labelFieldId, id))) continue
+        const gk = `${rf.targetEntityId}::${rf.labelFieldId ?? ''}`
+        const g = missing.get(gk) ?? { targetEntityId: rf.targetEntityId, labelFieldId: rf.labelFieldId, ids: new Set<string>() }
+        g.ids.add(id)
+        missing.set(gk, g)
+      }
     }
   }
   // 2) busca em lote (uma chamada por grupo) e povoa o cache
@@ -432,13 +436,18 @@ async function injectRelationLabels(
       for (const { id, label } of res.labels) labelCache.set(labelKey(g.targetEntityId, g.labelFieldId, id), label)
     }),
   )
-  // 3) injeta o rotulo resolvido (mantem o id cru quando nao ha rotulo)
+  // 3) injeta o rotulo resolvido (mantem o id cru quando nao ha rotulo).
+  // multi = array de ids -> array de rotulos; single = troca o id pelo rotulo.
   for (const rf of relFields) {
     for (const row of rows) {
       const v = row[rf.slug]
       if (v == null || v === '') continue
-      const label = labelCache.get(labelKey(rf.targetEntityId, rf.labelFieldId, String(v)))
-      if (label !== undefined) row[rf.slug] = label
+      if (Array.isArray(v)) {
+        row[rf.slug] = v.map((id) => labelCache.get(labelKey(rf.targetEntityId, rf.labelFieldId, String(id))) ?? String(id))
+      } else {
+        const label = labelCache.get(labelKey(rf.targetEntityId, rf.labelFieldId, String(v)))
+        if (label !== undefined) row[rf.slug] = label
+      }
     }
   }
 }
