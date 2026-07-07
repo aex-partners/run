@@ -219,7 +219,7 @@ export interface PersonOption {
 // campos do tipo `person` (inclusive created_by/updated_by) viram um seletor de
 // USUÁRIO: renderizam avatar + nome e guardam o id do usuário.
 export function toFields(fields: RunHexField[], personOptions: PersonOption[] = []): Field[] {
-  return fields.map((f) => {
+  const mapped = fields.map((f) => {
     const type = toGvType(f.type)
     const field: Field = { id: f.slug, label: f.name || f.slug, type }
     if (f.required) field.required = true
@@ -251,6 +251,14 @@ export function toFields(fields: RunHexField[], personOptions: PersonOption[] = 
     if (READONLY_TYPES.has(f.type)) field.readonly = true
     return field
   })
+  // Coluna sintética do UUID do registro (entity_records.id). A Row sempre carrega
+  // `id`, então a coluna lê row['id']. Readonly, tipo 'id' (não editável, fora do
+  // group-by). Fica OCULTA por padrão (DatabaseScreen a exclui do visível default)
+  // e ligável no painel "Campos". Guard: se a entidade já tem um campo de slug
+  // 'id', não injeta (evita colisão de chave na Row).
+  if (fields.some((f) => f.slug === 'id')) return mapped
+  const uuidCol: Field = { id: 'id', label: 'UUID', type: 'id', readonly: true }
+  return [uuidCol, ...mapped]
 }
 
 // ---------- filtro (arvore good-views) -> where plano (AND) ----------
@@ -590,6 +598,11 @@ export function makeFetchPage(
       // números: SQL sobre o filtro inteiro (sem teto). linhas: bounded + só se preciso.
       aggValues = aggregateFn ? await computeAggregates(entityId, aggregateFn, filter, numericSlugs, page.total) : {}
       aggRows = needsRowSet ? await fetchFiltered(entityId, queryFn, filter, cache) : []
+      // resolve rótulos de relação também no conjunto do rodapé, senão os breakdowns
+      // categóricos (agrupado) mostram o id cru em vez do nome do registro-alvo.
+      if (resolveLabels && labelCache && relFields.length && aggRows.length) {
+        await injectRelationLabels(aggRows, relFields, resolveLabels, labelCache)
+      }
       aggKey = key
     }
     return { rows, total: page.total, aggregateRows: aggRows, aggregates: aggValues }
