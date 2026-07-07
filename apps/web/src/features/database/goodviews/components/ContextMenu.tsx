@@ -8,6 +8,8 @@ export interface MenuItem {
   danger?: boolean
   disabled?: boolean
   hint?: string
+  /** mantém o menu aberto após selecionar (multi-seleção, ex: agrupar por vários campos). */
+  keepOpen?: boolean
 }
 /** separador: um `null` no array de itens vira divisoria. */
 export type MenuEntry = MenuItem | null
@@ -69,7 +71,7 @@ export function ContextMenu({
                 e.stopPropagation()
                 if (it.disabled) return
                 it.onSelect?.()
-                onClose()
+                if (!it.keepOpen) onClose()
               }}
               className={cn(
                 'flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm',

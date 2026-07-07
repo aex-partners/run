@@ -104,7 +104,8 @@ interface ViewPayload {
   frozenCount: number
   pageSize: number
   sorting: SortingState
-  groupBy: string | null
+  /** agrupamento multi-nível: lista ordenada de fieldIds (compat: string legada aceita na leitura). */
+  groupBy: string[]
   filter: FilterGroup
   /** função de agregação por coluna (rodapé). opcional p/ compat com payloads antigos. */
   aggs?: Record<string, AggFn>
@@ -149,6 +150,28 @@ const DEFAULT_VISIBLE = [
 // lookup, rollup, formula, autonumber, campos de sistema — marcados no adapter).
 function isEditableField(f?: Field): boolean {
   return !!f && f.type !== 'id' && !f.readonly
+}
+
+// Normaliza o groupBy vindo da config/view salva: array (multi-nível), string
+// legada (single -> [single]) ou vazio.
+function normGroupBy(g: unknown): string[] {
+  if (Array.isArray(g)) return g.filter((x): x is string => typeof x === 'string' && x.length > 0)
+  if (typeof g === 'string' && g) return [g]
+  return []
+}
+
+// Nó da árvore de agrupamento (um nível por campo do groupBy). `path` identifica o
+// nó de forma única na árvore (chave de colapso). Folha: `children === null` e
+// `rows` são as linhas do grupo; nó interno: `children` recursa e `rows` é o
+// subconjunto acumulado (usado só p/ contagem).
+interface GroupNode<R> {
+  path: string
+  key: string
+  field: Field
+  depth: number
+  count: number
+  rows: R[]
+  children: GroupNode<R>[] | null
 }
 
 // ---------- helpers de formatacao ----------
@@ -1143,7 +1166,9 @@ export default function TableView({
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [viewsMenu, setViewsMenu] = useState<{ x: number; y: number } | null>(null)
   const [savedFiltersMenu, setSavedFiltersMenu] = useState<{ x: number; y: number } | null>(null)
-  const [groupBy, setGroupBy] = useState<string | null>(() => (config.roles?.groupBy as string) ?? null)
+  // Agrupamento multi-nível: lista ordenada de fieldIds (nível 0 = mais externo).
+  // Compat: aceita string legada (single) ou array.
+  const [groupBy, setGroupBy] = useState<string[]>(() => normGroupBy(config.roles?.groupBy))
   const [groupDir, setGroupDir] = useState<'asc' | 'desc'>('asc')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [groupMenu, setGroupMenu] = useState<{ x: number; y: number } | null>(null)
@@ -1287,7 +1312,7 @@ export default function TableView({
         size: defaultSize(field),
         minSize: 60,
         enableResizing: true,
-        enableSorting: !['multiselect', 'image', 'relation', 'lookup'].includes(field.type),
+        enableSorting: !['id', 'multiselect', 'image', 'relation', 'lookup'].includes(field.type),
         cell: ({ row, getValue }) => renderDisplay(field, getValue(), recordsById, row.original),
       })),
     [visibleFields, recordsById],
@@ -1358,32 +1383,66 @@ export default function TableView({
   // affordance "+" (novo campo) no fim do cabecalho, so quando o host liga onFieldAdd
   const showAddField = !!onFieldAdd
 
-  // ---- agrupamento por campo (indisponivel no modo paginado server) ----
-  const groupField = groupBy ? fields.find((f) => f.id === groupBy) : undefined
-  const groupLabelOf = (k: string): string => {
+  // ---- agrupamento multi-nível (indisponivel no modo paginado server) ----
+  // groupBy é uma lista ordenada de fieldIds; cada nível vira uma faixa aninhada.
+  type GRow = (typeof rows)[number]
+  const groupFields = useMemo(
+    () => groupBy.map((id) => fields.find((f) => f.id === id)).filter((f): f is Field => !!f),
+    [groupBy, fields],
+  )
+  const groupLabelOf = (field: Field | undefined, k: string): string => {
     if (k === '∅') return '(vazio)'
-    const opt = groupField?.options?.find((o) => o.value === k)
+    const opt = field?.options?.find((o) => o.value === k)
     if (opt) return opt.label
     const rec = recordsById.get(k)
     if (rec) return String(rec.nome ?? k)
     return k
   }
+  const groupKeyOf = (row: GRow, field: Field): string => {
+    const raw = (row.original as Row)[field.id]
+    return Array.isArray(raw) ? (raw.length ? String(raw[0]) : '∅') : raw == null || raw === '' ? '∅' : String(raw)
+  }
   const groups = useMemo(() => {
-    if (!groupBy) return null
-    const map = new Map<string, typeof rows>()
-    for (const row of rows) {
-      const raw = (row.original as Row)[groupBy]
-      const key = Array.isArray(raw) ? (raw.length ? String(raw[0]) : '∅') : raw == null || raw === '' ? '∅' : String(raw)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(row)
+    if (!groupFields.length) return null
+    const build = (subset: GRow[], depth: number, parentPath: string): GroupNode<GRow>[] => {
+      const field = groupFields[depth]!
+      const map = new Map<string, GRow[]>()
+      for (const row of subset) {
+        const key = groupKeyOf(row, field)
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(row)
+      }
+      const keys = [...map.keys()].sort((a, b) => groupLabelOf(field, a).localeCompare(groupLabelOf(field, b), 'pt-BR'))
+      if (groupDir === 'desc') keys.reverse()
+      const isLast = depth === groupFields.length - 1
+      return keys.map((k) => {
+        const rowsHere = map.get(k)!
+        // path acumula as chaves dos níveis pais (separador ¦), garantindo colapso
+        // independente de grupos homônimos sob pais diferentes.
+        const path = parentPath ? `${parentPath}¦${k}` : k
+        return {
+          path, key: k, field, depth, count: rowsHere.length, rows: rowsHere,
+          children: isLast ? null : build(rowsHere, depth + 1, path),
+        }
+      })
     }
-    const keys = [...map.keys()].sort((a, b) => groupLabelOf(a).localeCompare(groupLabelOf(b), 'pt-BR'))
-    if (groupDir === 'desc') keys.reverse()
-    return keys.map((k) => ({ key: k, rows: map.get(k)! }))
+    return build(rows, 0, '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupBy, groupDir, rows, groupField, recordsById])
+  }, [groupFields, groupDir, rows, recordsById])
 
-  const orderedRows = groups ? groups.flatMap((g) => g.rows) : rows
+  // linhas na ordem de exibição = folhas em DFS (nós internos só rotulam).
+  const orderedRows = useMemo(() => {
+    if (!groups) return rows
+    const out: GRow[] = []
+    const walk = (nodes: GroupNode<GRow>[]) => {
+      for (const n of nodes) {
+        if (n.children) walk(n.children)
+        else out.push(...n.rows)
+      }
+    }
+    walk(groups)
+    return out
+  }, [groups, rows])
   const numRows = orderedRows.length
   const rowIndex = useMemo(() => {
     const m = new Map<string, number>()
@@ -1863,7 +1922,9 @@ export default function TableView({
     }
   }
 
-  const toggleableFields = fields.filter((f) => f.type !== 'id')
+  // Todos os campos entram no painel "Campos" (inclui a coluna sintética UUID,
+  // type 'id', que nasce oculta e pode ser ligada aqui).
+  const toggleableFields = fields
   function toggleField(fieldId: string) {
     const next = fields
       .filter((f) => (f.id === fieldId ? !visibleIds.includes(f.id) : visibleIds.includes(f.id)))
@@ -2013,25 +2074,42 @@ export default function TableView({
     )
   }
 
-  // cabecalho de um grupo (linha colapsavel, label fixo a esquerda)
-  function renderGroupHeader(key: string, count: number) {
-    const isCollapsed = collapsed.has(key)
+  // cabecalho de um grupo (linha colapsavel). Indenta por profundidade e mostra o
+  // rótulo do campo daquele nível + o valor + a contagem.
+  function renderGroupHeader(n: GroupNode<GRow>) {
+    const isCollapsed = collapsed.has(n.path)
+    // realce sutil por nível: níveis mais externos com fundo um pouco mais forte.
+    const bg = n.depth === 0 ? 'bg-[#F1F5F9]' : 'bg-[#F8FAFC]'
     return (
-      <tr key={`g-${key}`} className="border-b border-[#E2E8F0] bg-[#F1F5F9]">
+      <tr key={`g-${n.path}`} className={cn('border-b border-[#E2E8F0]', bg)}>
         <td colSpan={bodyColSpan} className="p-0">
-          <div className="sticky left-0 flex w-max items-center gap-2 px-3 py-1.5">
+          <div className="sticky left-0 flex w-max items-center gap-2 py-1.5" style={{ paddingLeft: 12 + n.depth * 20, paddingRight: 12 }}>
             <button
-              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleCollapse(key) }}
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleCollapse(n.path) }}
               className="flex items-center gap-1.5 text-sm font-medium text-[#0F172A]"
             >
               <ChevronRight size={15} className={cn('text-[#64748B] transition-transform', !isCollapsed && 'rotate-90')} />
-              {groupField ? renderDisplay(groupField, key === '∅' ? null : key, recordsById) : <span>{groupLabelOf(key)}</span>}
-              <span className="rounded-full bg-[#E2E8F0] px-1.5 text-xs font-semibold text-[#475569]">{count}</span>
+              <span className="text-xs font-normal text-[#94A3B8]">{n.field.label}:</span>
+              {renderDisplay(n.field, n.key === '∅' ? null : n.key, recordsById)}
+              <span className="rounded-full bg-[#E2E8F0] px-1.5 text-xs font-semibold text-[#475569]">{n.count}</span>
             </button>
           </div>
         </td>
       </tr>
     )
+  }
+
+  // renderiza a árvore de grupos em DFS: cabeçalho de cada nó e, se não colapsado,
+  // seus subgrupos (nível seguinte) ou, na folha, as linhas.
+  function renderGroupNodes(nodes: GroupNode<GRow>[]): ReactNode[] {
+    const out: ReactNode[] = []
+    for (const n of nodes) {
+      out.push(renderGroupHeader(n))
+      if (collapsed.has(n.path)) continue
+      if (n.children) out.push(...renderGroupNodes(n.children))
+      else out.push(...n.rows.map((row) => renderBodyRow(row, rowIndex.get(row.id) ?? 0)))
+    }
+    return out
   }
 
   // ---- exportar CSV / copiar / acoes de linha ----
@@ -2118,7 +2196,7 @@ export default function TableView({
       { icon: <ListFilter size={15} />, label: 'Filtrar por este valor', onSelect: () => colId && addFilterLeaf({ fieldId: colId, op: field && ['multiselect', 'relation'].includes(field.type) ? 'tem' : '=', value: filterVal }) },
       { icon: <ArrowUpAZ size={15} />, label: 'Ordenar crescente', onSelect: () => colId && setSorting([{ id: colId, desc: false }]) },
       { icon: <ArrowDownAZ size={15} />, label: 'Ordenar decrescente', onSelect: () => colId && setSorting([{ id: colId, desc: true }]) },
-      { icon: <Layers size={15} />, label: 'Agrupar por este campo', onSelect: () => { if (colId) { setGroupBy(colId); setCollapsed(new Set()) } } },
+      { icon: <Layers size={15} />, label: 'Agrupar por este campo', onSelect: () => { if (colId) { setGroupBy((prev) => (prev.includes(colId) ? prev : [...prev, colId])); setCollapsed(new Set()) } } },
       { icon: <EyeOff size={15} />, label: 'Ocultar coluna', onSelect: () => colId && toggleField(colId) },
     ]
     if (field?.type === 'url' && value) items.push(null, { icon: <ExternalLink size={15} />, label: 'Abrir link', onSelect: () => window.open(String(value), '_blank') }, { icon: <Copy size={15} />, label: 'Copiar URL', onSelect: () => copyText(String(value)) })
@@ -2180,7 +2258,8 @@ export default function TableView({
     setFrozenCount(p.frozenCount ?? 0)
     setPageSize(p.pageSize ?? 25)
     setSorting(p.sorting ?? [])
-    setGroupBy(p.groupBy ?? null)
+    setGroupBy(normGroupBy(p.groupBy))
+    setCollapsed(new Set())
     setFilterRoot(p.filter ?? { conj: 'and', items: [] })
     setAggs(p.aggs ?? {})
     setPageIndex(0)
@@ -2191,7 +2270,7 @@ export default function TableView({
       frozenCount: p.frozenCount ?? 0,
       pageSize: p.pageSize ?? 25,
       sorting: p.sorting ?? [],
-      groupBy: p.groupBy ?? null,
+      groupBy: normGroupBy(p.groupBy),
       filter: p.filter ?? { conj: 'and', items: [] },
       aggs: p.aggs ?? {},
     }
@@ -2266,8 +2345,8 @@ export default function TableView({
         {!minimal && (
           <HeaderBtn
             icon={<Layers size={15} />}
-            label={groupBy ? `Agrupar: ${groupField?.label ?? groupBy}` : 'Agrupar'}
-            active={!!groupBy}
+            label={groupFields.length ? `Agrupar: ${groupFields.map((f) => f.label).join(' › ')}` : 'Agrupar'}
+            active={groupBy.length > 0}
             onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setGroupMenu({ x: r.left, y: r.bottom + 2 }) }}
           />
         )}
@@ -2283,16 +2362,16 @@ export default function TableView({
           />
         )}
 
-        {groupBy && (
+        {groupBy.length > 0 && (
           <>
             <button
               onClick={() => setGroupDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
               className="flex h-7 items-center rounded-md border border-[#E2E8F0] px-2 text-xs font-medium text-[#475569] hover:border-[#2563EB] hover:text-[#2563EB]"
-              title="Direção do agrupamento"
+              title="Direção do agrupamento (todos os níveis)"
             >
               {groupDir === 'asc' ? 'A → Z' : 'Z → A'}
             </button>
-            <button onClick={() => setGroupBy(null)} className="flex size-7 items-center justify-center rounded-md text-[#94A3B8] hover:text-[#EF4444]" title="Remover agrupamento">
+            <button onClick={() => { setGroupBy([]); setCollapsed(new Set()) }} className="flex size-7 items-center justify-center rounded-md text-[#94A3B8] hover:text-[#EF4444]" title="Remover agrupamento">
               <X size={14} />
             </button>
           </>
@@ -2469,10 +2548,7 @@ export default function TableView({
                 </TableRow>
               ) : (
                 groups ? (
-                  groups.map((g) => [
-                    renderGroupHeader(g.key, g.rows.length),
-                    ...(collapsed.has(g.key) ? [] : g.rows.map((row) => renderBodyRow(row, rowIndex.get(row.id) ?? 0))),
-                  ])
+                  renderGroupNodes(groups)
                 ) : (
                   orderedRows.map((row, r) => renderBodyRow(row, r))
                 )
@@ -2640,22 +2716,35 @@ export default function TableView({
         />
       )}
 
-      {/* menu: escolher campo p/ agrupar */}
+      {/* menu: escolher campo(s) p/ agrupar (multi-nível). Clicar adiciona/remove um
+          nível; a ordem de clique define o aninhamento. O menu fica aberto (keepOpen)
+          p/ escolher vários; o badge numerado mostra a ordem dos níveis. */}
       {groupMenu && (
         <ContextMenu
           x={groupMenu.x}
           y={groupMenu.y}
           onClose={() => setGroupMenu(null)}
           items={[
-            { icon: <Layers size={15} />, label: 'Não agrupar', disabled: !groupBy, onSelect: () => setGroupBy(null) },
+            { icon: <Layers size={15} />, label: 'Não agrupar', disabled: !groupBy.length, onSelect: () => { setGroupBy([]); setCollapsed(new Set()) } },
             null,
             ...fields
               .filter((f) => !['id', 'image', 'file'].includes(f.type))
-              .map((f) => ({
-                label: f.label,
-                icon: groupBy === f.id ? <Check size={15} className="text-[#2563EB]" /> : <span className="size-[15px]" />,
-                onSelect: () => { setGroupBy(f.id); setCollapsed(new Set()) },
-              })),
+              .map((f) => {
+                const idx = groupBy.indexOf(f.id)
+                return {
+                  label: f.label,
+                  keepOpen: true,
+                  icon: idx >= 0 ? (
+                    <span className="flex size-[15px] items-center justify-center rounded bg-[#2563EB] text-[10px] font-bold text-white">{idx + 1}</span>
+                  ) : (
+                    <span className="size-[15px]" />
+                  ),
+                  onSelect: () => {
+                    setGroupBy((prev) => (idx >= 0 ? prev.filter((x) => x !== f.id) : [...prev, f.id]))
+                    setCollapsed(new Set())
+                  },
+                }
+              }),
           ]}
         />
       )}

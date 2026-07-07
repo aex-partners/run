@@ -78,10 +78,13 @@ export function DatabaseScreen({
   const [collapsed, setCollapsed] = useState(false)
   const [config, setConfig] = useState<ViewConfig>({})
 
-  // Reset the view config (all columns visible) whenever the active entity or its
-  // schema changes, so each entity starts with every field shown.
+  // Reset the view config whenever the active entity or its schema changes, so each
+  // entity starts with every field shown — EXCETO a coluna sintética de UUID
+  // (type 'id'), que nasce oculta e o usuário liga pelo painel "Campos".
   useEffect(() => {
-    setConfig({ visibleFieldIds: (tableFields ?? []).map((f) => f.id) })
+    setConfig({
+      visibleFieldIds: (tableFields ?? []).filter((f) => f.type !== 'id').map((f) => f.id),
+    })
   }, [activeEntityId, tableFields])
 
   const showTable = !!activeEntityId && !!fetchPage && !!tableFields?.length
