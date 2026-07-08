@@ -77,15 +77,25 @@ async function main() {
     userId: ericUser!.id, createdBy: admin.id,
   }).onConflictDoNothing()
 
-  const ericConvId = randomUUID()
-  await db.insert(schema.conversations).values({ id: ericConvId, name: 'Eric', type: 'ai', agentId: ericAgentId })
-  await db.insert(schema.conversationMembers).values({ conversationId: ericConvId, userId: admin.id })
-  await db.insert(schema.messages).values({
-    id: randomUUID(), conversationId: ericConvId, authorId: null, agentId: ericAgentId, role: 'ai',
-    content: 'Olá! Sou o Eric, seu assistente da Buenaça. Posso criar entidades, rodar tarefas e responder sobre seus dados. Em que posso ajudar?',
-    createdAt: now,
-  })
-  console.log('[seed-team] Eric agent + bot user + AI conversation created')
+  const ERIC_WELCOME =
+    'Olá! Sou o Eric, seu assistente da Buenaça. Posso criar entidades, rodar tarefas e responder sobre seus dados. Em que posso ajudar?'
+
+  // Each human gets their OWN private Eric conversation (Eric convs are 1:1,
+  // scoped by (agentId, userId) — see EnsureEricService.findEricConversation).
+  // Admin's is created here directly; employees get theirs further below once
+  // their user rows exist.
+  const createEricConversation = async (userId: string) => {
+    const convId = randomUUID()
+    await db.insert(schema.conversations).values({ id: convId, name: 'Eric', type: 'ai', agentId: ericAgentId })
+    await db.insert(schema.conversationMembers).values({ conversationId: convId, userId })
+    await db.insert(schema.messages).values({
+      id: randomUUID(), conversationId: convId, authorId: null, agentId: ericAgentId, role: 'ai',
+      content: ERIC_WELCOME, createdAt: now,
+    })
+  }
+
+  await createEricConversation(admin.id)
+  console.log('[seed-team] Eric agent + bot user + AI conversation created (admin)')
 
   // --- Employees + DM conversations ---
   for (const emp of EMPLOYEES) {
@@ -100,6 +110,8 @@ async function main() {
     }
     if (!u) continue
     if (emp.role !== 'user') await db.update(schema.users).set({ role: emp.role }).where(eq(schema.users.id, u.id))
+
+    await createEricConversation(u.id)
 
     // DM conversation admin <-> employee
     const convId = randomUUID()
@@ -121,7 +133,7 @@ async function main() {
       })
       t += 60_000
     }
-    console.log(`[seed-team] ${emp.first}: user + DM (${script.length} messages)`)
+    console.log(`[seed-team] ${emp.first}: user + Eric + DM (${script.length} messages)`)
   }
 
   // --- Team channel with everyone ---
