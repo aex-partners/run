@@ -476,6 +476,20 @@ function defaultSize(field: Field): number {
   }
 }
 
+// Largura mínima p/ o header do campo não truncar o próprio título. Calibrado
+// medindo o header renderizado: chrome fixo (px-3 = 24 + pin + ícone de ordenação
+// + gaps) ≈ 71px e o texto UPPERCASE em text-xs semibold ≈ 8.5px/char. Uso 76 de
+// chrome + 8.5/char p/ margem. É só o PADRÃO: minSize continua 60, então o usuário
+// pode arrastar p/ estreitar e salvar (o columnSizing salvo sobrepõe este valor).
+function headerMinWidth(label: string): number {
+  return Math.ceil((label?.length ?? 0) * 8.5) + 76
+}
+
+// Largura inicial da coluna: nunca menor que o título do header cabe.
+function initialSize(field: Field): number {
+  return Math.max(defaultSize(field), headerMinWidth(field.label))
+}
+
 // ---------- header arrastavel (reordenar) + divisor (redimensionar) ----------
 
 // paleta p/ distinguir cada ordenacao no multi-sort
@@ -1316,7 +1330,7 @@ export default function TableView({
         id: field.id,
         accessorFn: (row: Row) => row[field.id],
         header: field.label,
-        size: defaultSize(field),
+        size: initialSize(field),
         minSize: 60,
         enableResizing: true,
         enableSorting: !['id', 'multiselect', 'image', 'relation', 'lookup'].includes(field.type),
