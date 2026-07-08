@@ -13,6 +13,34 @@ const FIELDS: { key: string; label: string; w: number }[] = [
   { key: 'pais', label: 'País', w: 5 },
 ]
 
+// Siglas dos 27 estados (UF vira um select fixo em vez de texto livre).
+const UF_OPTIONS = [
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB',
+  'PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO',
+]
+
+// Consulta ViaCEP (público, com CORS) e devolve os campos do endereço, ou null
+// se o CEP não tiver 8 dígitos / não existir. Fetch client-side direto do browser.
+async function lookupCep(cepRaw: string): Promise<Partial<Record<string, string>> | null> {
+  const cep = (cepRaw || '').replace(/\D/g, '')
+  if (cep.length !== 8) return null
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return null
+    const d = await res.json()
+    if (d?.erro) return null
+    return {
+      logradouro: d.logradouro || '',
+      bairro: d.bairro || '',
+      municipio: d.localidade || '',
+      uf: d.uf || '',
+      pais: 'Brasil',
+    }
+  } catch {
+    return null
+  }
+}
+
 /**
  * Editor do campo `address`: mini-formulário flutuante ancorado à célula. Comita
  * um objeto { cep, logradouro, numero, ... } (ou null se tudo vazio). Aceita valor
@@ -36,6 +64,22 @@ export function AddressEditor({
         ? { logradouro: value }
         : {}
   const [parts, setParts] = useState<Record<string, string>>(init)
+  const [cepStatus, setCepStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
+  const aliveRef = useRef(true)
+  useEffect(() => () => { aliveRef.current = false }, [])
+
+  // Consulta o CEP e preenche logradouro/bairro/município/UF/país. Mantém número
+  // e complemento (não vêm do ViaCEP).
+  async function onCepLookup(raw: string) {
+    const cep = (raw || '').replace(/\D/g, '')
+    if (cep.length !== 8) { setCepStatus('idle'); return }
+    setCepStatus('loading')
+    const found = await lookupCep(cep)
+    if (!aliveRef.current) return
+    if (!found) { setCepStatus('notfound'); return }
+    setCepStatus('idle')
+    setParts((p) => ({ ...p, ...found }))
+  }
 
   useEffect(() => {
     const r = anchorRef.current?.getBoundingClientRect()
@@ -73,13 +117,37 @@ export function AddressEditor({
           <div className="grid grid-cols-6 gap-1.5">
             {FIELDS.map((f) => (
               <label key={f.key} className="flex flex-col gap-0.5" style={{ gridColumn: `span ${f.w}` }}>
-                <span className="text-[10px] font-medium text-[#94A3B8]">{f.label}</span>
-                <input
-                  autoFocus={f.key === 'cep'}
-                  value={parts[f.key] ?? ''}
-                  onChange={(e) => setParts((p) => ({ ...p, [f.key]: e.target.value }))}
-                  className={inputCls}
-                />
+                <span className="text-[10px] font-medium text-[#94A3B8]">
+                  {f.label}
+                  {f.key === 'cep' && cepStatus === 'loading' && <span className="ml-1 text-[#2563EB]">buscando…</span>}
+                  {f.key === 'cep' && cepStatus === 'notfound' && <span className="ml-1 text-[#EF4444]">não encontrado</span>}
+                </span>
+                {f.key === 'uf' ? (
+                  <select
+                    value={parts.uf ?? ''}
+                    onChange={(e) => setParts((p) => ({ ...p, uf: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="" />
+                    {UF_OPTIONS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+                  </select>
+                ) : f.key === 'cep' ? (
+                  <input
+                    autoFocus
+                    value={parts.cep ?? ''}
+                    onChange={(e) => { setParts((p) => ({ ...p, cep: e.target.value })); setCepStatus('idle') }}
+                    onBlur={(e) => onCepLookup(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onCepLookup((e.target as HTMLInputElement).value) } }}
+                    placeholder="00000-000"
+                    className={inputCls}
+                  />
+                ) : (
+                  <input
+                    value={parts[f.key] ?? ''}
+                    onChange={(e) => setParts((p) => ({ ...p, [f.key]: e.target.value }))}
+                    className={inputCls}
+                  />
+                )}
               </label>
             ))}
           </div>
