@@ -123,6 +123,11 @@ export interface Field {
   formatByField?: string
   /** value do campo-irmão -> tipo de máscara ('phone'|'cep'|'cpfcnpj'|'email'). */
   formatMap?: Record<string, string>
+  /**
+   * Máscara FIXA do campo (independe de campo-irmão). Ex: `cpf_cnpj` -> 'cpfcnpj'
+   * (auto-detecta CPF/CNPJ pelo tamanho). Ver mask.ts. Tem prioridade sobre formatByField.
+   */
+  mask?: 'phone' | 'cep' | 'cpfcnpj' | 'email'
 }
 
 /** Um registro. Sempre tem `id`; demais chaves seguem os fields. */

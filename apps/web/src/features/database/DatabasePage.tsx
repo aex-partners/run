@@ -128,6 +128,11 @@ export function DatabasePage() {
         valor.formatMap = { Telefone: "phone", Celular: "phone", WhatsApp: "phone", Email: "email" };
       }
     }
+    // Pessoas: cpf_cnpj com máscara fixa (auto CPF/CNPJ pelo tamanho).
+    if (entityDetail.data?.slug === "pessoas") {
+      const doc = fields.find((f) => f.id === "cpf_cnpj");
+      if (doc) doc.mask = "cpfcnpj";
+    }
     return fields;
   }, [runHexFields, personOptions, entityDetail.data?.slug]);
 

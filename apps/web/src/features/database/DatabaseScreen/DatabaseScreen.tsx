@@ -144,6 +144,10 @@ export function DatabaseScreen({
             <Suspense fallback={<div style={{ height: '100%', background: '#ffffff' }} />}>
               <ViewKeyContext.Provider value="database-table">
                 <TableView
+                  // Remonta a grade ao trocar de entidade: zera o estado server
+                  // (linhas/total) e mostra o skeleton na hora, em vez de exibir os
+                  // dados da entidade anterior enquanto a nova carrega.
+                  key={activeEntityId}
                   records={[]}
                   fields={tableFields!}
                   config={config}

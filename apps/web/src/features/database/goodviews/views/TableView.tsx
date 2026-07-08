@@ -298,9 +298,10 @@ function RevealChips({ children }: { children: ReactNode }) {
 }
 
 function renderDisplay(field: Field, value: unknown, recordsById: Map<string, Row>, row?: Row): ReactNode {
-  // Máscara dirigida por campo-irmão (ex: Meios -> `valor` conforme `tipo`).
-  if (field.formatByField && row && value != null && value !== '') {
-    const kind = field.formatMap?.[String(row[field.formatByField] ?? '')]
+  // Máscara fixa do campo (ex: cpf_cnpj) ou dirigida por campo-irmão (ex: Meios ->
+  // `valor` conforme `tipo`). A fixa tem prioridade.
+  if (value != null && value !== '') {
+    const kind = field.mask ?? (field.formatByField && row ? field.formatMap?.[String(row[field.formatByField] ?? '')] : undefined)
     if (kind) return <span className="block truncate text-sm text-[#0F172A]">{applyMask(kind as MaskKind, value)}</span>
   }
   // avatar (img + nome) p/ person single, quando a coluna pede avatar
@@ -2023,7 +2024,7 @@ export default function TableView({
                   recordOptions={recordOptions}
                   relationOptions={field.type === 'relation' && loadRelationOptions ? relEditOpts : undefined}
                   onRelationSearch={field.type === 'relation' && loadRelationOptions ? setRelEditSearch : undefined}
-                  mask={field.formatByField ? (field.formatMap?.[String((cell.row.original as Row)[field.formatByField] ?? '')] as MaskKind | undefined) : undefined}
+                  mask={(field.mask as MaskKind | undefined) ?? (field.formatByField ? (field.formatMap?.[String((cell.row.original as Row)[field.formatByField] ?? '')] as MaskKind | undefined) : undefined)}
                   onCommit={(val) => commit({ r, c }, val)}
                   onTab={moveRight}
                   onShiftTab={moveLeft}
