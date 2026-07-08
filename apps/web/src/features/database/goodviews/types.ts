@@ -114,6 +114,15 @@ export interface Field {
   required?: boolean
   /** valor padrao aplicado a novos registros (choice = value da opcao; relacao = id do alvo). */
   defaultValue?: string
+  /**
+   * Máscara dependente de um campo-irmão: o id do campo cujo VALOR na linha
+   * escolhe qual máscara aplicar (via `formatMap`). Ex: em Meios de Contato,
+   * `valor` mascara conforme `tipo` (Telefone/Celular -> phone, Email -> email).
+   * Só faz sentido em campos de texto. Ver mask.ts.
+   */
+  formatByField?: string
+  /** value do campo-irmão -> tipo de máscara ('phone'|'cep'|'cpfcnpj'|'email'). */
+  formatMap?: Record<string, string>
 }
 
 /** Um registro. Sempre tem `id`; demais chaves seguem os fields. */

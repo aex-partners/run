@@ -80,6 +80,7 @@ import { toast } from 'sonner'
 import { cn } from '@/shared/lib/utils'
 import { FileChips } from '../components/FileField'
 import { EditCell } from '../components/CellEditor'
+import { applyMask, type MaskKind } from '../mask'
 import { AggFooterCell, defaultAgg, type AggFn } from '../components/AggFooterCell'
 import { ContextMenu, type MenuEntry } from '../components/ContextMenu'
 import { filterRows, isGroup, sortRows, type FilterCond, type FilterGroup, type FieldAggregate } from '../server'
@@ -297,6 +298,11 @@ function RevealChips({ children }: { children: ReactNode }) {
 }
 
 function renderDisplay(field: Field, value: unknown, recordsById: Map<string, Row>, row?: Row): ReactNode {
+  // Máscara dirigida por campo-irmão (ex: Meios -> `valor` conforme `tipo`).
+  if (field.formatByField && row && value != null && value !== '') {
+    const kind = field.formatMap?.[String(row[field.formatByField] ?? '')]
+    if (kind) return <span className="block truncate text-sm text-[#0F172A]">{applyMask(kind as MaskKind, value)}</span>
+  }
   // avatar (img + nome) p/ person single, quando a coluna pede avatar
   if (field.avatar && field.type === 'person' && field.options) {
     if (value == null || value === '') return <span className="text-[#94A3B8] text-xs">-</span>
@@ -2017,6 +2023,7 @@ export default function TableView({
                   recordOptions={recordOptions}
                   relationOptions={field.type === 'relation' && loadRelationOptions ? relEditOpts : undefined}
                   onRelationSearch={field.type === 'relation' && loadRelationOptions ? setRelEditSearch : undefined}
+                  mask={field.formatByField ? (field.formatMap?.[String((cell.row.original as Row)[field.formatByField] ?? '')] as MaskKind | undefined) : undefined}
                   onCommit={(val) => commit({ r, c }, val)}
                   onTab={moveRight}
                   onShiftTab={moveLeft}

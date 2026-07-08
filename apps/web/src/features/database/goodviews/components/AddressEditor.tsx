@@ -41,6 +41,30 @@ async function lookupCep(cepRaw: string): Promise<Partial<Record<string, string>
   }
 }
 
+// Municípios por UF (IBGE), cacheados por UF entre aberturas do editor. Alimentam
+// um <datalist> (combo com busca nativa) no campo Município.
+const ibgeCache = new Map<string, string[]>()
+async function fetchMunicipios(uf: string): Promise<string[]> {
+  const key = (uf || '').toUpperCase()
+  if (!key) return []
+  if (ibgeCache.has(key)) return ibgeCache.get(key) as string[]
+  try {
+    const res = await fetch(
+      `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${key}/municipios`,
+      { signal: AbortSignal.timeout(8000) },
+    )
+    if (!res.ok) return []
+    const arr = await res.json()
+    const names: string[] = Array.isArray(arr)
+      ? arr.map((m: { nome?: string }) => m?.nome).filter((n): n is string => !!n).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      : []
+    ibgeCache.set(key, names)
+    return names
+  } catch {
+    return []
+  }
+}
+
 /**
  * Editor do campo `address`: mini-formulário flutuante ancorado à célula. Comita
  * um objeto { cep, logradouro, numero, ... } (ou null se tudo vazio). Aceita valor
@@ -65,8 +89,17 @@ export function AddressEditor({
         : {}
   const [parts, setParts] = useState<Record<string, string>>(init)
   const [cepStatus, setCepStatus] = useState<'idle' | 'loading' | 'notfound'>('idle')
+  const [municipios, setMunicipios] = useState<string[]>([])
   const aliveRef = useRef(true)
   useEffect(() => () => { aliveRef.current = false }, [])
+
+  // Carrega municípios do IBGE quando a UF muda (combo com busca no campo Município).
+  useEffect(() => {
+    let alive = true
+    if (!parts.uf) { setMunicipios([]); return }
+    fetchMunicipios(parts.uf).then((list) => { if (alive) setMunicipios(list) })
+    return () => { alive = false }
+  }, [parts.uf])
 
   // Consulta o CEP e preenche logradouro/bairro/município/UF/país. Mantém número
   // e complemento (não vêm do ViaCEP).
@@ -141,6 +174,14 @@ export function AddressEditor({
                     placeholder="00000-000"
                     className={inputCls}
                   />
+                ) : f.key === 'municipio' ? (
+                  <input
+                    list="gv-municipios"
+                    value={parts.municipio ?? ''}
+                    onChange={(e) => setParts((p) => ({ ...p, municipio: e.target.value }))}
+                    placeholder={parts.uf ? 'Buscar…' : 'Selecione a UF'}
+                    className={inputCls}
+                  />
                 ) : (
                   <input
                     value={parts[f.key] ?? ''}
@@ -151,6 +192,9 @@ export function AddressEditor({
               </label>
             ))}
           </div>
+          <datalist id="gv-municipios">
+            {municipios.map((m) => <option key={m} value={m} />)}
+          </datalist>
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"

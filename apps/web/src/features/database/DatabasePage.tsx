@@ -117,10 +117,19 @@ export function DatabasePage() {
     [assignableUsers.data],
   );
 
-  const tableFields = useMemo(
-    () => toFields(runHexFields, personOptions),
-    [runHexFields, personOptions],
-  );
+  const tableFields = useMemo(() => {
+    const fields = toFields(runHexFields, personOptions);
+    // Máscara por campo-irmão (config web-only por entidade): em Meios de Contato,
+    // `valor` mascara conforme `tipo` (Telefone/Celular/WhatsApp -> phone, Email -> email).
+    if (entityDetail.data?.slug === "meios_de_contato") {
+      const valor = fields.find((f) => f.id === "valor");
+      if (valor) {
+        valor.formatByField = "tipo";
+        valor.formatMap = { Telefone: "phone", Celular: "phone", WhatsApp: "phone", Email: "email" };
+      }
+    }
+    return fields;
+  }, [runHexFields, personOptions, entityDetail.data?.slug]);
 
   const fetchPage = useMemo(
     () =>

@@ -1,8 +1,9 @@
-import { type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Star } from 'lucide-react'
 import { Combobox } from './Combobox'
 import { FileFieldEditor } from './FileField'
 import { AddressEditor } from './AddressEditor'
+import { applyMask, type MaskKind } from '../mask'
 import type { Field } from '../types'
 
 /**
@@ -29,13 +30,15 @@ export interface EditCellProps extends Nav {
   relationOptions?: { value: string; label: string }[]
   /** notifica a busca digitada no editor de relação (refetch server-side no host). */
   onRelationSearch?: (q: string) => void
+  /** máscara a aplicar no input de texto (resolvida pelo host via Field.formatByField). */
+  mask?: MaskKind
   onCommit: (val: unknown) => void
 }
 
 // Editor SEM caixa: transparente, sem borda/fundo/padding (estilo Excel).
 const EDIT_BASE = 'w-full bg-transparent border-0 outline-none p-0 m-0'
 
-export function EditCell({ field, value, recordOptions, relationOptions, onRelationSearch, onCommit, onTab, onShiftTab, onEnter, onEsc }: EditCellProps) {
+export function EditCell({ field, value, recordOptions, relationOptions, onRelationSearch, mask, onCommit, onTab, onShiftTab, onEnter, onEsc }: EditCellProps) {
   function handleKey(e: ReactKeyboardEvent, commit: () => void) {
     if (e.key === 'Enter') { e.preventDefault(); commit(); onEnter() }
     else if (e.key === 'Tab') { e.preventDefault(); commit(); if (e.shiftKey) onShiftTab(); else onTab() }
@@ -192,6 +195,23 @@ export function EditCell({ field, value, recordOptions, relationOptions, onRelat
     )
   }
 
+  // Texto com máscara (telefone/cep/cpf-cnpj) dirigida pelo campo-irmão. Controlado
+  // p/ reformatar a cada tecla. Componente à parte p/ não quebrar a ordem de hooks.
+  if (mask) {
+    return (
+      <MaskedTextInput
+        mask={mask}
+        initial={typeof value === 'string' ? value : ''}
+        cls={`${EDIT_BASE} text-sm text-[#0F172A]`}
+        onCommit={onCommit}
+        onEnter={onEnter}
+        onTab={onTab}
+        onShiftTab={onShiftTab}
+        onEsc={onEsc}
+      />
+    )
+  }
+
   // Texto livre (nome, text, image url, etc)
   return (
     <input
@@ -203,6 +223,41 @@ export function EditCell({ field, value, recordOptions, relationOptions, onRelat
       onFocus={(e) => e.currentTarget.select()}
       onBlur={(e) => onCommit(e.currentTarget.value)}
       onKeyDown={(e) => handleKey(e, () => onCommit((e.target as HTMLInputElement).value))}
+    />
+  )
+}
+
+// Input de texto controlado que reaplica a máscara a cada tecla e comita o valor
+// mascarado. Isolado num componente p/ usar useState sem violar a ordem de hooks
+// do EditCell (que tem returns condicionais antes).
+function MaskedTextInput({
+  mask, initial, cls, onCommit, onEnter, onTab, onShiftTab, onEsc,
+}: {
+  mask: MaskKind
+  initial: string
+  cls: string
+  onCommit: (v: unknown) => void
+  onEnter: () => void
+  onTab: () => void
+  onShiftTab: () => void
+  onEsc: () => void
+}) {
+  const [v, setV] = useState(() => applyMask(mask, initial))
+  return (
+    <input
+      type="text"
+      autoFocus
+      className={cls}
+      value={v}
+      onMouseDown={(e) => e.stopPropagation()}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => setV(applyMask(mask, e.target.value))}
+      onBlur={() => onCommit(v)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') { e.preventDefault(); onCommit(v); onEnter() }
+        else if (e.key === 'Tab') { e.preventDefault(); onCommit(v); if (e.shiftKey) onShiftTab(); else onTab() }
+        else if (e.key === 'Escape') { e.preventDefault(); onEsc() }
+      }}
     />
   )
 }
