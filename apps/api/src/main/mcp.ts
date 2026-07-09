@@ -45,6 +45,15 @@ import { listProdutosTool } from '@/contexts/bling/adapters/in/mcp/ListProdutosT
 import { listPedidosTool } from '@/contexts/bling/adapters/in/mcp/ListPedidosTool'
 import { buscarContatoTool } from '@/contexts/bling/adapters/in/mcp/BuscarContatoTool'
 
+import { ExplodirFicha } from '@/contexts/costing/application/ports/in/ExplodirFicha'
+import { RecalcularCusto } from '@/contexts/costing/application/ports/in/RecalcularCusto'
+import { PublicarRevisao } from '@/contexts/costing/application/ports/in/PublicarRevisao'
+import { HistoricoCusto } from '@/contexts/costing/application/ports/in/HistoricoCusto'
+import { explodirFichaTool } from '@/contexts/costing/adapters/in/mcp/ExplodirFichaTool'
+import { recalcularCustoTool } from '@/contexts/costing/adapters/in/mcp/RecalcularCustoTool'
+import { publicarRevisaoTool } from '@/contexts/costing/adapters/in/mcp/PublicarRevisaoTool'
+import { historicoCustoTool } from '@/contexts/costing/adapters/in/mcp/HistoricoCustoTool'
+
 export interface McpToolDeps {
   // data in-ports
   createEntity: CreateEntity
@@ -70,6 +79,11 @@ export interface McpToolDeps {
   // bling in-ports (read-only ERP: produtos / pedidos / contatos, via Bling v3)
   listBlingResource: ListBlingResource
   getBlingRecord: GetBlingRecord
+  // costing in-ports (ficha técnica explosion + cost snapshots)
+  explodirFicha: ExplodirFicha
+  recalcularCusto: RecalcularCusto
+  publicarRevisao: PublicarRevisao
+  historicoCusto: HistoricoCusto
 }
 
 export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
@@ -98,5 +112,10 @@ export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
     listProdutosTool(deps.listBlingResource),
     listPedidosTool(deps.listBlingResource),
     buscarContatoTool(deps.listBlingResource, deps.getBlingRecord),
+    // costing
+    explodirFichaTool(deps.explodirFicha),
+    recalcularCustoTool(deps.recalcularCusto),
+    publicarRevisaoTool(deps.publicarRevisao),
+    historicoCustoTool(deps.historicoCusto),
   ]
 }

@@ -81,6 +81,7 @@ export function appRouter(container: Container) {
     payments: p.payments,
     fiscal: p.fiscal,
     bling: p.bling,
+    costing: p.costing,
     // PublicFormController stays a plain public handler map.
     publicForms: wrapPlain(pub.publicForms, 'public'),
   })

@@ -12,7 +12,7 @@ interface QueryRecordsLike {
   execute(spec: {
     entity: string
     where?: { field: string; op: string; value?: unknown; values?: unknown[] }[]
-  }): Promise<{ rows?: RecordRow[] }>
+  }): Promise<{ entity: string; rows?: RecordRow[] }>
 }
 interface GetRecordLike { execute(q: { recordId: string }): Promise<RecordRow | null> }
 interface InsertRecordLike {

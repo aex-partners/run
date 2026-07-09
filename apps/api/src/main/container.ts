@@ -35,6 +35,7 @@ import { wireForms } from '@/main/wiring/forms'
 import { wirePayments } from '@/main/wiring/payments'
 import { wireFiscal } from '@/main/wiring/fiscal'
 import { wireBling } from '@/main/wiring/bling'
+import { wireCosting } from '@/main/wiring/costing'
 
 export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth) {
   // Infra primitives (clock, events, queue connection) + raw platform handles.
@@ -95,6 +96,11 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
     getRecord: dataWiring.ports.getRecord,
   })
 
+  // costing (ficha técnica explosion + cost snapshots) has no cross-context infra
+  // deps: it bridges straight to the data in-ports (the SAME ones the AI ToolBox
+  // and other contexts use) via its EntityRegistry + RecordStore ACL bridges.
+  const costingWiring = wireCosting(infra, { data: dataWiring.ports })
+
   // ----- cross-context contexts, in dependency order. Each wireX takes the sibling
   // in-ports its ACL bridges resolve through (built above); container threads them.
   const conversationsWiring = wireConversations(infra, { getUsers, lookupAgents, grantFileAccess })
@@ -142,6 +148,7 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
     payments: paymentsWiring.ports,
     fiscal: fiscalWiring.ports,
     bling: blingWiring.ports,
+    costing: costingWiring.ports,
     conversations: { appendMessage, postSystemMessage, listMessages },
     resolveAgent: agentsWiring.ports.resolveAgent,
     resolveSkill: skillsWiring.ports.resolveSkill,
@@ -188,6 +195,7 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
       payments: paymentsWiring.controller,
       fiscal: fiscalWiring.controller,
       bling: blingWiring.controller,
+      costing: costingWiring.controller,
     },
     publicControllers: {
       publicForms: formsWiring.controllers.publicForms,
