@@ -64,7 +64,7 @@ export const COSTING_ENTITIES: EntitySpec[] = [
   },
   {
     slug: 'snapshots_custo',
-    displayName: 'Snapshots de Custo',
+    displayName: 'Snapshots Custo',
     fields: [
       { slug: 'sku', displayName: 'SKU', kind: 'relation', targetSlug: 'produtos' },
       { slug: 'data', displayName: 'Data', kind: 'date' },

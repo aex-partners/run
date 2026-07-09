@@ -1,11 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { COSTING_ENTITIES, PRODUTOS_NEW_FIELDS, fieldConfig } from '@/scripts/costingSchema'
+import { Slug } from '@/contexts/data/domain/Slug'
 
 describe('costingSchema', () => {
   it('defines the four costing entities by slug', () => {
     expect(COSTING_ENTITIES.map((e) => e.slug).sort()).toEqual(
       ['fichas_explodidas', 'fichas_tecnicas', 'snapshots_custo', 'substituicoes'],
     )
+  })
+
+  it('every entity displayName derives to its declared slug', () => {
+    for (const e of COSTING_ENTITIES) expect(Slug.from(e.displayName).value).toBe(e.slug)
   })
 
   it('adds fantasma (boolean) and resolve_por (relation) to Produtos', () => {

@@ -47,21 +47,19 @@ async function main() {
   //    relation targets among them (if any are added later) can resolve, then
   //    add fields below.
   //
-  //    `name` is passed as the raw slug rather than the pretty `displayName`:
-  //    EntityDefinition derives its slug from `name` via Slug.from, and
-  //    CreateEntityCommand exposes no separate slug param. Passing the slug
-  //    guarantees the created entity's slug is exactly `spec.slug` -- which the
-  //    idempotent skip-by-slug check below (and every future re-run) depends
-  //    on. (One spec's displayName, "Snapshots de Custo", would slugify to
-  //    "snapshots_de_custo" -- not the intended "snapshots_custo" -- so
-  //    deriving the slug from displayName is not an option here.) The pretty
-  //    name is kept as the entity's description so it isn't lost entirely.
+  //    `name` is passed as the pretty `displayName` so the entity shows a proper
+  //    Portuguese label in the Database sidebar (the frontend renders
+  //    entity.name). CreateEntityCommand exposes no separate slug param:
+  //    EntityDefinition derives the slug from `name` via Slug.from. Each
+  //    displayName is chosen so it derives to exactly `spec.slug` -- an
+  //    invariant locked by costingSchema.test.ts -- so the idempotent
+  //    skip-by-slug check below (and every future re-run) keeps working.
   for (const spec of COSTING_ENTITIES) {
     if (await idBySlug(spec.slug)) {
       console.log(`skip entity ${spec.slug}`)
       continue
     }
-    const r = await createEntity.execute({ name: spec.slug, description: spec.displayName, fields: [] })
+    const r = await createEntity.execute({ name: spec.displayName, fields: [] })
     if (!r.ok) throw new Error(`createEntity ${spec.slug}: ${r.error}`)
     console.log(`created entity ${spec.slug}`)
   }
