@@ -1,0 +1,98 @@
+// Idempotent: create the 4 costing entities + add fields to Produtos/Variações
+// through the data in-ports. Safe to re-run. Run against a DATABASE_URL, e.g.:
+//   DATABASE_URL='postgres://aex:aex@localhost:55432/aex' npx tsx src/scripts/provision-costing.ts
+//
+// Deviates from the original sketch of calling `wireData(infra)`: wireData needs
+// a full Infra (db + redis + better-auth + bullConnection), none of which the
+// four ports used here (createEntity/addField/listEntities/describeEntity)
+// touch. Every other script in this directory (seed-buenaca.ts,
+// migrate-bling-types.ts) bypasses wireData the same way, instantiating only the
+// Drizzle adapters + application services it actually needs. This mirrors that
+// convention instead of pulling in Redis/better-auth for no reason.
+import { makeDb } from '@/platform/db/client'
+import { loadEnv } from '@/platform/config/env'
+import { Clock } from '@/shared/kernel/Clock'
+import { EventPublisher } from '@/shared/kernel/EventPublisher'
+import { DrizzleEntityRepository } from '@/contexts/data/adapters/out/persistence/DrizzleEntityRepository'
+import { DrizzleListEntities } from '@/contexts/data/adapters/out/persistence/DrizzleListEntities'
+import { CreateEntityService } from '@/contexts/data/application/use-cases/CreateEntityService'
+import { AddFieldService } from '@/contexts/data/application/use-cases/AddFieldService'
+import { DescribeEntityService } from '@/contexts/data/application/use-cases/DescribeEntityService'
+import { FieldTypeConfig } from '@/contexts/data/domain/FieldType'
+import {
+  COSTING_ENTITIES,
+  PRODUTOS_NEW_FIELDS,
+  VARIACOES_NEW_FIELDS,
+  fieldConfig,
+  FieldSpec,
+} from '@/scripts/costingSchema'
+
+const noopEvents: EventPublisher = { publish: async () => {} }
+const clock: Clock = { now: () => new Date() }
+
+async function main() {
+  const env = loadEnv()
+  const db = makeDb(env.DATABASE_URL)
+
+  const entityRepo = new DrizzleEntityRepository(db)
+  const listEntities = new DrizzleListEntities(db)
+  const createEntity = new CreateEntityService(entityRepo, noopEvents, clock)
+  const addField = new AddFieldService(entityRepo, noopEvents, clock)
+  const describeEntity = new DescribeEntityService(entityRepo)
+
+  const idBySlug = async (slug: string): Promise<string | null> =>
+    (await listEntities.execute()).find((e) => e.slug === slug)?.id ?? null
+
+  // 1) create the 4 costing entities (idempotent by slug), fieldless first so
+  //    relation targets among them (if any are added later) can resolve, then
+  //    add fields below.
+  //
+  //    `name` is passed as the raw slug rather than the pretty `displayName`:
+  //    EntityDefinition derives its slug from `name` via Slug.from, and
+  //    CreateEntityCommand exposes no separate slug param. Passing the slug
+  //    guarantees the created entity's slug is exactly `spec.slug` -- which the
+  //    idempotent skip-by-slug check below (and every future re-run) depends
+  //    on. (One spec's displayName, "Snapshots de Custo", would slugify to
+  //    "snapshots_de_custo" -- not the intended "snapshots_custo" -- so
+  //    deriving the slug from displayName is not an option here.) The pretty
+  //    name is kept as the entity's description so it isn't lost entirely.
+  for (const spec of COSTING_ENTITIES) {
+    if (await idBySlug(spec.slug)) {
+      console.log(`skip entity ${spec.slug}`)
+      continue
+    }
+    const r = await createEntity.execute({ name: spec.slug, description: spec.displayName, fields: [] })
+    if (!r.ok) throw new Error(`createEntity ${spec.slug}: ${r.error}`)
+    console.log(`created entity ${spec.slug}`)
+  }
+
+  // 2) add fields to an entity (skip fields already present, by slug)
+  const addFieldsTo = async (entitySlug: string, fields: FieldSpec[]) => {
+    const entityId = await idBySlug(entitySlug)
+    if (!entityId) throw new Error(`entity missing: ${entitySlug}`)
+    const existing = new Set((await describeEntity.execute(entityId))?.fields.map((f) => f.slug) ?? [])
+    for (const f of fields) {
+      if (existing.has(f.slug)) {
+        console.log(`skip field ${entitySlug}.${f.slug}`)
+        continue
+      }
+      const targetId = f.targetSlug ? await idBySlug(f.targetSlug) : null
+      const type = fieldConfig(f, () => targetId) as FieldTypeConfig
+      const rr = await addField.execute({ entityId, name: f.slug, displayName: f.displayName, required: false, type })
+      if (!rr.ok) throw new Error(`addField ${entitySlug}.${f.slug}: ${rr.error}`)
+      console.log(`added field ${entitySlug}.${f.slug}`)
+    }
+  }
+
+  for (const spec of COSTING_ENTITIES) await addFieldsTo(spec.slug, spec.fields)
+  await addFieldsTo('produtos', PRODUTOS_NEW_FIELDS)
+  await addFieldsTo('variacoes', VARIACOES_NEW_FIELDS)
+
+  console.log('provision-costing done')
+  process.exit(0)
+}
+
+main().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})
