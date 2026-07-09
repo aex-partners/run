@@ -57,4 +57,29 @@ describe('ExplodirFichaService', () => {
     // fresh recompute only: SARJA 28 + BTN 0.6
     expect((await s.get('SKU'))?.data.preco_custo).toBeCloseTo(28.6, 6)
   })
+
+  it('reports a Produtos write failure without aborting (cost still snapshotted)', async () => {
+    const base = seedWorld()
+    // Wrapper store: delegate everything to `base`, but make the SKU's preco_custo update throw
+    // (simulates the data-layer full-record re-validation rejecting a stale/invalid Produtos field).
+    const store = {
+      query: base.query.bind(base),
+      get: base.get.bind(base),
+      insert: base.insert.bind(base),
+      delete: base.delete.bind(base),
+      entityIdBySlug: base.entityIdBySlug.bind(base),
+      update: async (id: string, data: Record<string, unknown>, ver: number) => {
+        if (id === 'SKU') throw new Error('unknown field "x"')
+        return base.update(id, data, ver)
+      },
+    }
+    const svc = new ExplodirFichaService(store as never, store as never)
+    const r = await svc.execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.erros.some((e) => e.includes('não salvo em Produtos'))).toBe(true)
+    // exploded lines + snapshot still persisted despite the Produtos write failing
+    expect((await base.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }])).length).toBeGreaterThan(0)
+    expect((await base.query('SNAPSHOTS_CUSTO', [{ field: 'sku', op: 'eq', value: 'SKU' }])).length).toBe(1)
+  })
 })
