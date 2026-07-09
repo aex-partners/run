@@ -30,26 +30,31 @@ describe('ExplodirFichaService', () => {
     expect(r.ok).toBe(false)
   })
 
-  it('preserves editado_manual lines on re-explosion, deletes the rest; forcar overrides', async () => {
+  it('preserves editado_manual lines on re-explosion (override, no double-count); forcar overrides', async () => {
     const s = seedWorld()
     const svc = new ExplodirFichaService(s, s)
-    await svc.execute({ skuId: 'SKU' })                       // first explosion -> 2 lines
-    // mark one exploded line as manual
+    await svc.execute({ skuId: 'SKU' })                       // first explosion -> 2 lines (SARJA 28, BTN 0.6)
+    // mark the first exploded line (SARJA) as manual with a DISTINCT cost of 50
     const [first] = await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }])
-    await s.update(first.id, { ...first.data, editado_manual: true, qty: 99 }, first.version)
+    await s.update(first.id, { ...first.data, editado_manual: true, qty: 99, custo_total: 50 }, first.version)
 
-    const r2 = await svc.execute({ skuId: 'SKU' })            // re-explode, preserve manual
+    const r2 = await svc.execute({ skuId: 'SKU' })            // re-explode, manual SARJA overrides fresh SARJA
     expect(r2.ok).toBe(true)
     if (!r2.ok) return
     expect(r2.value.manuaisPreservados).toBe(1)
     const kept = await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }])
-    expect(kept.some((l) => l.data.editado_manual === true && l.data.qty === 99)).toBe(true)
-    // total lines = 1 preserved manual + 2 fresh
-    expect(kept.length).toBe(3)
+    // manual SARJA survives untouched (distinct cost 50)
+    expect(kept.some((l) => l.data.editado_manual === true && l.data.qty === 99 && l.data.custo_total === 50)).toBe(true)
+    // fresh SARJA is NOT re-inserted: 1 manual SARJA (override) + 1 fresh BTN = 2 rows
+    expect(kept.length).toBe(2)
+    // total cost = 50 (manual SARJA) + 0.6 (fresh BTN), no double-count of SARJA
+    expect((await s.get('SKU'))?.data.preco_custo).toBeCloseTo(50.6, 6)
 
     const r3 = await svc.execute({ skuId: 'SKU', forcar: true })  // overwrite manual too
     if (!r3.ok) return
     expect(r3.value.manuaisPreservados).toBe(0)
     expect((await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }])).length).toBe(2)
+    // fresh recompute only: SARJA 28 + BTN 0.6
+    expect((await s.get('SKU'))?.data.preco_custo).toBeCloseTo(28.6, 6)
   })
 })

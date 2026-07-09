@@ -63,25 +63,33 @@ export class ExplodirFichaService implements ExplodirFicha {
     const toDelete = cmd.forcar ? existing : existing.filter((r) => r.data.editado_manual !== true)
     for (const r of toDelete) await this.store.delete(r.id)
 
-    // write fresh exploded lines
+    // a preserved manual line OVERRIDES the fresh recompute for that same item
+    const manualItemIds = new Set((cmd.forcar ? [] : manuais).map((r) => String(r.data.item)))
+
+    // write fresh exploded lines, skipping items already covered by a preserved manual row
+    let custoFreshInserted = 0
+    let linhasInseridas = 0
     for (const line of result.lines) {
+      if (!cmd.forcar && manualItemIds.has(line.itemIdResolvido)) continue
       await this.store.insert(ids.fichas_explodidas, {
         sku: cmd.skuId, item: line.itemIdResolvido, qty: line.qty,
         custo_unit: line.custoUnit, custo_total: line.custoTotal, origem_rev: maxRev, editado_manual: false,
       })
+      custoFreshInserted += line.custoTotal
+      linhasInseridas++
     }
     const manuaisPreservados = cmd.forcar ? 0 : manuais.length
 
-    // update the SKU cost (fresh + preserved manual costs) + write a snapshot
+    // update the SKU cost (fresh inserted + preserved manual costs) + write a snapshot
     const custoManuais = (cmd.forcar ? [] : manuais).reduce((s, r) => s + num(r.data.custo_total), 0)
-    const custoTotalFinal = result.custoTotal + custoManuais
+    const custoTotalFinal = custoFreshInserted + custoManuais
     await this.store.update(cmd.skuId, { ...sku.data, preco_custo: custoTotalFinal }, sku.version)
     await this.store.insert(ids.snapshots_custo, {
       sku: cmd.skuId, data: new Date().toISOString(), custo_total: custoTotalFinal, origem_rev: maxRev,
       detalhe: JSON.stringify(result.lines),
     })
 
-    return ok({ skuId: cmd.skuId, custoTotal: custoTotalFinal, linhas: result.lines.length, erros: result.erros, manuaisPreservados })
+    return ok({ skuId: cmd.skuId, custoTotal: custoTotalFinal, linhas: linhasInseridas + manuaisPreservados, erros: result.erros, manuaisPreservados })
   }
 
   private async resolveEntities() {
