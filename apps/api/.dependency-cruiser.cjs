@@ -57,6 +57,9 @@ module.exports = {
     tsConfig: { fileName: 'tsconfig.json' },
     tsPreCompilationDeps: true,
     doNotFollow: { path: 'node_modules' },
-    exclude: { path: '(^|/)__[^/]*$|\\.(test|spec)\\.[jt]sx?$' },
+    // testWorld.ts fixtures are shared test-only wiring (seed an in-memory fake for use-case
+    // specs); they live beside the use-cases they exercise but, like *.test.ts, are excluded
+    // from the hexagon rules since they intentionally reach into adapters/out/fake.
+    exclude: { path: '(^|/)__[^/]*$|\\.(test|spec)\\.[jt]sx?$|(^|/)testWorld\\.[jt]sx?$' },
   },
 }

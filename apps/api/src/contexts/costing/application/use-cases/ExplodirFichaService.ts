@@ -1,0 +1,102 @@
+import { Result, ok, fail } from '@/shared/kernel/Result'
+import { EntityRegistry } from '@/contexts/costing/application/ports/out/EntityRegistry'
+import { RecordStore, RecordRow } from '@/contexts/costing/application/ports/out/RecordStore'
+import { ExplodirFicha, ExplodirFichaCommand, ExplosaoResumo } from '@/contexts/costing/application/ports/in/ExplodirFicha'
+import { explodeFicha, FichaLineInput, SkuVariacao, Substituicao } from '@/contexts/costing/domain/Explosion'
+import { CostingError } from '@/contexts/costing/domain/CostingError'
+
+const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0)) || 0
+const parseMap = (v: unknown): Record<string, number> => {
+  if (v == null || v === '') return {}
+  try { const o = typeof v === 'string' ? JSON.parse(v) : v; return o && typeof o === 'object' ? (o as Record<string, number>) : {} }
+  catch { return {} }
+}
+
+export class ExplodirFichaService implements ExplodirFicha {
+  constructor(private readonly store: RecordStore, private readonly registry: EntityRegistry) {}
+
+  async execute(cmd: ExplodirFichaCommand): Promise<Result<ExplosaoResumo>> {
+    const ids = await this.resolveEntities()
+    if (!ids) return fail(CostingError.entidadeFaltando)
+
+    const sku = await this.store.get(cmd.skuId)
+    if (!sku) return fail(CostingError.skuNotFound)
+    const modeloId = String(sku.data.modelo ?? '')
+    if (!modeloId) return fail(CostingError.skuSemModelo)
+    const variacaoIds = (Array.isArray(sku.data.variacoes) ? sku.data.variacoes : []).map(String)
+
+    // ficha lines of the modelo, latest published rev
+    const fichaRows = await this.store.query(ids.fichas_tecnicas, [
+      { field: 'modelo', op: 'eq', value: modeloId },
+      { field: 'status', op: 'eq', value: 'publicada' },
+    ])
+    if (fichaRows.length === 0) return fail(CostingError.semFichaPublicada)
+    const maxRev = Math.max(...fichaRows.map((r) => num(r.data.rev)))
+    const lines: FichaLineInput[] = []
+
+    // load the item Produtos referenced by the ficha (for fantasma flag + cost)
+    const fichaItemIds = fichaRows.filter((r) => num(r.data.rev) === maxRev).map((r) => String(r.data.item))
+    const subs = await this.loadSubs(ids.substituicoes, variacaoIds)
+    const paraIds = subs.map((s) => s.paraItemId)
+    const produtos = await this.byId(ids.produtos, [...new Set([...fichaItemIds, ...paraIds])])
+
+    for (const r of fichaRows.filter((r) => num(r.data.rev) === maxRev)) {
+      const itemId = String(r.data.item)
+      lines.push({
+        itemId,
+        isFantasma: produtos.get(itemId)?.data.fantasma === true,
+        unidade: String(r.data.unidade ?? ''),
+        qtyBase: num(r.data.qty_base),
+        qtyPorTamanho: parseMap(r.data.qty_por_tamanho),
+      })
+    }
+
+    const skuVariacoes = await this.loadVariacoes(ids.variacoes, variacaoIds)
+    const custos: Record<string, number | null> = {}
+    for (const [id, p] of produtos) custos[id] = p.data.preco_custo == null ? null : num(p.data.preco_custo)
+
+    const result = explodeFicha({ lines, skuVariacoes, substituicoes: subs, custos })
+
+    // write exploded lines
+    for (const line of result.lines) {
+      await this.store.insert(ids.fichas_explodidas, {
+        sku: cmd.skuId, item: line.itemIdResolvido, qty: line.qty,
+        custo_unit: line.custoUnit, custo_total: line.custoTotal, origem_rev: maxRev, editado_manual: false,
+      })
+    }
+
+    // update the SKU cost + write a snapshot
+    await this.store.update(cmd.skuId, { ...sku.data, preco_custo: result.custoTotal }, sku.version)
+    await this.store.insert(ids.snapshots_custo, {
+      sku: cmd.skuId, data: new Date().toISOString(), custo_total: result.custoTotal, origem_rev: maxRev,
+      detalhe: JSON.stringify(result.lines),
+    })
+
+    return ok({ skuId: cmd.skuId, custoTotal: result.custoTotal, linhas: result.lines.length, erros: result.erros })
+  }
+
+  private async resolveEntities() {
+    const slugs = ['produtos', 'modelos', 'variacoes', 'fichas_tecnicas', 'substituicoes', 'fichas_explodidas', 'snapshots_custo'] as const
+    const out = {} as Record<(typeof slugs)[number], string>
+    for (const s of slugs) {
+      const id = await this.registry.entityIdBySlug(s)
+      if (!id) return null
+      out[s] = id
+    }
+    return out
+  }
+  private async loadSubs(entityId: string, variacaoIds: string[]): Promise<Substituicao[]> {
+    if (variacaoIds.length === 0) return []
+    const rows = await this.store.query(entityId, [{ field: 'variacao', op: 'in', values: variacaoIds }])
+    return rows.map((r) => ({ variacaoId: String(r.data.variacao), deItemId: String(r.data.de_item), paraItemId: String(r.data.para_item) }))
+  }
+  private async loadVariacoes(entityId: string, ids: string[]): Promise<SkuVariacao[]> {
+    if (ids.length === 0) return []
+    const rows = await this.store.query(entityId, [{ field: 'id', op: 'in', values: ids }])
+    return rows.map((r) => ({ id: r.id, fatorQtd: r.data.fator_qtd == null ? null : num(r.data.fator_qtd) }))
+  }
+  private async byId(entityId: string, ids: string[]): Promise<Map<string, RecordRow>> {
+    const rows = ids.length ? await this.store.query(entityId, [{ field: 'id', op: 'in', values: ids }]) : []
+    return new Map(rows.map((r) => [r.id, r]))
+  }
+}
