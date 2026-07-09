@@ -38,7 +38,7 @@ export class ExplodirFichaService implements ExplodirFicha {
     const fichaItemIds = fichaRows.filter((r) => num(r.data.rev) === maxRev).map((r) => String(r.data.item))
     const subs = await this.loadSubs(ids.substituicoes, variacaoIds)
     const paraIds = subs.map((s) => s.paraItemId)
-    const produtos = await this.byId(ids.produtos, [...new Set([...fichaItemIds, ...paraIds])])
+    const produtos = await this.byId([...new Set([...fichaItemIds, ...paraIds])])
 
     for (const r of fichaRows.filter((r) => num(r.data.rev) === maxRev)) {
       const itemId = String(r.data.item)
@@ -51,7 +51,7 @@ export class ExplodirFichaService implements ExplodirFicha {
       })
     }
 
-    const skuVariacoes = await this.loadVariacoes(ids.variacoes, variacaoIds)
+    const skuVariacoes = await this.loadVariacoes(variacaoIds)
     const custos: Record<string, number | null> = {}
     for (const [id, p] of produtos) custos[id] = p.data.preco_custo == null ? null : num(p.data.preco_custo)
 
@@ -83,13 +83,18 @@ export class ExplodirFichaService implements ExplodirFicha {
     // update the SKU cost (fresh inserted + preserved manual costs) + write a snapshot
     const custoManuais = (cmd.forcar ? [] : manuais).reduce((s, r) => s + num(r.data.custo_total), 0)
     const custoTotalFinal = custoFreshInserted + custoManuais
-    await this.store.update(cmd.skuId, { ...sku.data, preco_custo: custoTotalFinal }, sku.version)
+    const erros = [...result.erros]
+    try {
+      await this.store.update(cmd.skuId, { ...sku.data, preco_custo: custoTotalFinal }, sku.version)
+    } catch (e) {
+      erros.push(`custo calculado mas não salvo em Produtos: ${(e as Error).message}`)
+    }
     await this.store.insert(ids.snapshots_custo, {
       sku: cmd.skuId, data: new Date().toISOString(), custo_total: custoTotalFinal, origem_rev: maxRev,
       detalhe: JSON.stringify(result.lines),
     })
 
-    return ok({ skuId: cmd.skuId, custoTotal: custoTotalFinal, linhas: linhasInseridas + manuaisPreservados, erros: result.erros, manuaisPreservados })
+    return ok({ skuId: cmd.skuId, custoTotal: custoTotalFinal, linhas: linhasInseridas + manuaisPreservados, erros, manuaisPreservados })
   }
 
   private async resolveEntities() {
@@ -107,13 +112,20 @@ export class ExplodirFichaService implements ExplodirFicha {
     const rows = await this.store.query(entityId, [{ field: 'variacao', op: 'in', values: variacaoIds }])
     return rows.map((r) => ({ variacaoId: String(r.data.variacao), deItemId: String(r.data.de_item), paraItemId: String(r.data.para_item) }))
   }
-  private async loadVariacoes(entityId: string, ids: string[]): Promise<SkuVariacao[]> {
-    if (ids.length === 0) return []
-    const rows = await this.store.query(entityId, [{ field: 'id', op: 'in', values: ids }])
-    return rows.map((r) => ({ id: r.id, fatorQtd: r.data.fator_qtd == null ? null : num(r.data.fator_qtd) }))
+  private async loadVariacoes(ids: string[]): Promise<SkuVariacao[]> {
+    const rows: SkuVariacao[] = []
+    for (const id of ids) {
+      const r = await this.store.get(id)
+      if (r) rows.push({ id: r.id, fatorQtd: r.data.fator_qtd == null ? null : num(r.data.fator_qtd) })
+    }
+    return rows
   }
-  private async byId(entityId: string, ids: string[]): Promise<Map<string, RecordRow>> {
-    const rows = ids.length ? await this.store.query(entityId, [{ field: 'id', op: 'in', values: ids }]) : []
-    return new Map(rows.map((r) => [r.id, r]))
+  private async byId(ids: string[]): Promise<Map<string, RecordRow>> {
+    const map = new Map<string, RecordRow>()
+    for (const id of ids) {
+      const r = await this.store.get(id)
+      if (r) map.set(r.id, r)
+    }
+    return map
   }
 }

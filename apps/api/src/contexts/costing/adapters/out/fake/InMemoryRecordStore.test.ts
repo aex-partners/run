@@ -8,7 +8,9 @@ describe('InMemoryRecordStore', () => {
     const id = await s.insert('P', { nome: 'A', preco_custo: 5 })
     expect((await s.get(id))?.data.nome).toBe('A')
     expect((await s.query('P', [{ field: 'nome', op: 'eq', value: 'A' }])).length).toBe(1)
-    expect((await s.query('P', [{ field: 'id', op: 'in', values: [id] }])).length).toBe(1)
+    expect((await s.query('P', [{ field: 'nome', op: 'in', values: ['A'] }])).length).toBe(1)
+    // querying by 'id' is unsupported here too, mirroring the real query engine (resolveFieldRef has no record-id field)
+    await expect(s.query('P', [{ field: 'id', op: 'in', values: [id] }])).rejects.toThrow()
     expect(await s.entityIdBySlug('produtos')).toBe('P')
   })
   it('update bumps version and rejects stale expectedVersion', async () => {

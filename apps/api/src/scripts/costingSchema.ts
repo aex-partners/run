@@ -67,7 +67,7 @@ export const COSTING_ENTITIES: EntitySpec[] = [
     displayName: 'Snapshots Custo',
     fields: [
       { slug: 'sku', displayName: 'SKU', kind: 'relation', targetSlug: 'produtos' },
-      { slug: 'data', displayName: 'Data', kind: 'date' },
+      { slug: 'data', displayName: 'Data', kind: 'datetime' },
       { slug: 'custo_total', displayName: 'Custo total', kind: 'currency' },
       { slug: 'origem_rev', displayName: 'Revisão de origem', kind: 'number' },
       { slug: 'detalhe', displayName: 'Detalhe', kind: 'long_text' },
@@ -87,6 +87,7 @@ export function fieldConfig(
     case 'text': return { kind: 'text' }
     case 'long_text': return { kind: 'long_text' }
     case 'date': return { kind: 'date' }
+    case 'datetime': return { kind: 'datetime' }
     case 'currency': return { kind: 'currency', currencyCode: 'BRL' }
     case 'select': return { kind: 'select', options: (spec.options ?? []).map((o) => ({ value: o, label: o })) }
     case 'relation': {

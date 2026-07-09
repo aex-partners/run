@@ -25,6 +25,12 @@ describe('costingSchema', () => {
       .toEqual({ kind: 'relation', targetEntityId: 'TDV' })
   })
 
+  it('snapshot data field is a datetime (the service writes a full ISO datetime)', () => {
+    const snapshot = COSTING_ENTITIES.find((e) => e.slug === 'snapshots_custo')!
+    const data = snapshot.fields.find((f) => f.slug === 'data')!
+    expect(fieldConfig(data, () => 'X')).toEqual({ kind: 'datetime' })
+  })
+
   it('ficha line has item (relation to produtos) and qty_por_tamanho (long_text json)', () => {
     const ficha = COSTING_ENTITIES.find((e) => e.slug === 'fichas_tecnicas')!
     expect(ficha.fields.map((f) => f.slug)).toEqual(

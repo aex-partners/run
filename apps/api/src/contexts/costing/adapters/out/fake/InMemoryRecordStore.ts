@@ -18,7 +18,8 @@ export class InMemoryRecordStore implements RecordStore, EntityRegistry {
       .map(({ entityId: _e, ...row }) => row)
   }
   private match(r: RecordRow & { entityId: string }, c: Cond): boolean {
-    const v = c.field === 'id' ? r.id : r.data[c.field]
+    if (c.field === 'id') throw new Error('InMemoryRecordStore: query by field "id" is unsupported (the real query engine has no record-id data field); use get(recordId)')
+    const v = r.data[c.field]
     if (c.op === 'eq') return v === c.value
     return (c.values ?? []).includes(v)
   }
