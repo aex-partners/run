@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ExplodirFichaService } from '@/contexts/costing/application/use-cases/ExplodirFichaService'
-import { seedWorld } from './testWorld'
+import { seedWorld } from '../../adapters/out/fake/testWorld'
 
 describe('ExplodirFichaService', () => {
   it('explodes the SKU, writes exploded lines + snapshot, updates preco_custo', async () => {

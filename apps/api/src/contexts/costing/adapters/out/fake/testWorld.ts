@@ -1,4 +1,4 @@
-import { InMemoryRecordStore } from '@/contexts/costing/adapters/out/fake/InMemoryRecordStore'
+import { InMemoryRecordStore } from './InMemoryRecordStore'
 
 export function seedWorld() {
   const s = new InMemoryRecordStore()
