@@ -37,4 +37,7 @@ export class InMemoryRecordStore implements RecordStore, EntityRegistry {
     if (r.version !== expectedVersion) throw new Error('version conflict')
     this.rows.set(recordId, { ...r, data, version: r.version + 1 })
   }
+  async delete(recordId: string) {
+    this.rows.delete(recordId)
+  }
 }

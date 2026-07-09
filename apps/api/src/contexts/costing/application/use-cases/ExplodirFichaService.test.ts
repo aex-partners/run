@@ -29,4 +29,27 @@ describe('ExplodirFichaService', () => {
     const r = await svc.execute({ skuId: 'SKU' })
     expect(r.ok).toBe(false)
   })
+
+  it('preserves editado_manual lines on re-explosion, deletes the rest; forcar overrides', async () => {
+    const s = seedWorld()
+    const svc = new ExplodirFichaService(s, s)
+    await svc.execute({ skuId: 'SKU' })                       // first explosion -> 2 lines
+    // mark one exploded line as manual
+    const [first] = await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }])
+    await s.update(first.id, { ...first.data, editado_manual: true, qty: 99 }, first.version)
+
+    const r2 = await svc.execute({ skuId: 'SKU' })            // re-explode, preserve manual
+    expect(r2.ok).toBe(true)
+    if (!r2.ok) return
+    expect(r2.value.manuaisPreservados).toBe(1)
+    const kept = await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }])
+    expect(kept.some((l) => l.data.editado_manual === true && l.data.qty === 99)).toBe(true)
+    // total lines = 1 preserved manual + 2 fresh
+    expect(kept.length).toBe(3)
+
+    const r3 = await svc.execute({ skuId: 'SKU', forcar: true })  // overwrite manual too
+    if (!r3.ok) return
+    expect(r3.value.manuaisPreservados).toBe(0)
+    expect((await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }])).length).toBe(2)
+  })
 })

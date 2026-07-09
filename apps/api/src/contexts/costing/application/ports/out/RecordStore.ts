@@ -5,4 +5,5 @@ export interface RecordStore {
   get(recordId: string): Promise<RecordRow | null>
   insert(entityId: string, data: Record<string, unknown>): Promise<string>
   update(recordId: string, data: Record<string, unknown>, expectedVersion: number): Promise<void>
+  delete(recordId: string): Promise<void>
 }

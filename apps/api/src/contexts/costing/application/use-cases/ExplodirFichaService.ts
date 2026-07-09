@@ -57,22 +57,31 @@ export class ExplodirFichaService implements ExplodirFicha {
 
     const result = explodeFicha({ lines, skuVariacoes, substituicoes: subs, custos })
 
-    // write exploded lines
+    // delete stale exploded lines, preserving editado_manual ones (unless forcar)
+    const existing = await this.store.query(ids.fichas_explodidas, [{ field: 'sku', op: 'eq', value: cmd.skuId }])
+    const manuais = existing.filter((r) => r.data.editado_manual === true)
+    const toDelete = cmd.forcar ? existing : existing.filter((r) => r.data.editado_manual !== true)
+    for (const r of toDelete) await this.store.delete(r.id)
+
+    // write fresh exploded lines
     for (const line of result.lines) {
       await this.store.insert(ids.fichas_explodidas, {
         sku: cmd.skuId, item: line.itemIdResolvido, qty: line.qty,
         custo_unit: line.custoUnit, custo_total: line.custoTotal, origem_rev: maxRev, editado_manual: false,
       })
     }
+    const manuaisPreservados = cmd.forcar ? 0 : manuais.length
 
-    // update the SKU cost + write a snapshot
-    await this.store.update(cmd.skuId, { ...sku.data, preco_custo: result.custoTotal }, sku.version)
+    // update the SKU cost (fresh + preserved manual costs) + write a snapshot
+    const custoManuais = (cmd.forcar ? [] : manuais).reduce((s, r) => s + num(r.data.custo_total), 0)
+    const custoTotalFinal = result.custoTotal + custoManuais
+    await this.store.update(cmd.skuId, { ...sku.data, preco_custo: custoTotalFinal }, sku.version)
     await this.store.insert(ids.snapshots_custo, {
-      sku: cmd.skuId, data: new Date().toISOString(), custo_total: result.custoTotal, origem_rev: maxRev,
+      sku: cmd.skuId, data: new Date().toISOString(), custo_total: custoTotalFinal, origem_rev: maxRev,
       detalhe: JSON.stringify(result.lines),
     })
 
-    return ok({ skuId: cmd.skuId, custoTotal: result.custoTotal, linhas: result.lines.length, erros: result.erros })
+    return ok({ skuId: cmd.skuId, custoTotal: custoTotalFinal, linhas: result.lines.length, erros: result.erros, manuaisPreservados })
   }
 
   private async resolveEntities() {
