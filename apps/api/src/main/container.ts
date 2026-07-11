@@ -35,6 +35,7 @@ import { wireForms } from '@/main/wiring/forms'
 import { wirePayments } from '@/main/wiring/payments'
 import { wireFiscal } from '@/main/wiring/fiscal'
 import { wireBling } from '@/main/wiring/bling'
+import { wireManufacturing } from '@/main/wiring/manufacturing'
 import { wireCosting } from '@/main/wiring/costing'
 
 export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth) {
@@ -96,10 +97,22 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
     getRecord: dataWiring.ports.getRecord,
   })
 
+  // manufacturing (centros de trabalho + roteiro de produção) has no cross-context
+  // infra deps: it bridges straight to the data in-ports via its EntityRegistry +
+  // RecordStore ACL bridges. Built BEFORE costing: costing's RoteiroProvider bridge
+  // resolves through manufacturing's ObterRoteiro in-port (see below).
+  const manufacturingWiring = wireManufacturing(infra, { data: dataWiring.ports })
+
   // costing (ficha técnica explosion + cost snapshots) has no cross-context infra
   // deps: it bridges straight to the data in-ports (the SAME ones the AI ToolBox
-  // and other contexts use) via its EntityRegistry + RecordStore ACL bridges.
-  const costingWiring = wireCosting(infra, { data: dataWiring.ports })
+  // and other contexts use) via its EntityRegistry + RecordStore ACL bridges, plus
+  // a RoteiroProvider bridge to manufacturing's ObterRoteiro — that published
+  // roteiro is what turns the materials-only cost into the FULL unit cost
+  // (materiais + MOD + indireto).
+  const costingWiring = wireCosting(infra, {
+    data: dataWiring.ports,
+    manufacturing: manufacturingWiring.ports,
+  })
 
   // ----- cross-context contexts, in dependency order. Each wireX takes the sibling
   // in-ports its ACL bridges resolve through (built above); container threads them.
@@ -149,6 +162,7 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
     fiscal: fiscalWiring.ports,
     bling: blingWiring.ports,
     costing: costingWiring.ports,
+    manufacturing: manufacturingWiring.ports,
     conversations: { appendMessage, postSystemMessage, listMessages },
     resolveAgent: agentsWiring.ports.resolveAgent,
     resolveSkill: skillsWiring.ports.resolveSkill,
@@ -196,6 +210,7 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
       fiscal: fiscalWiring.controller,
       bling: blingWiring.controller,
       costing: costingWiring.controller,
+      manufacturing: manufacturingWiring.controller,
     },
     publicControllers: {
       publicForms: formsWiring.controllers.publicForms,

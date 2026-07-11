@@ -49,10 +49,23 @@ import { ExplodirFicha } from '@/contexts/costing/application/ports/in/ExplodirF
 import { RecalcularCusto } from '@/contexts/costing/application/ports/in/RecalcularCusto'
 import { PublicarRevisao } from '@/contexts/costing/application/ports/in/PublicarRevisao'
 import { HistoricoCusto } from '@/contexts/costing/application/ports/in/HistoricoCusto'
+import { DefinirTaxaCusto } from '@/contexts/costing/application/ports/in/DefinirTaxaCusto'
+import { CustoUnitario } from '@/contexts/costing/application/ports/in/CustoUnitario'
 import { explodirFichaTool } from '@/contexts/costing/adapters/in/mcp/ExplodirFichaTool'
 import { recalcularCustoTool } from '@/contexts/costing/adapters/in/mcp/RecalcularCustoTool'
 import { publicarRevisaoTool } from '@/contexts/costing/adapters/in/mcp/PublicarRevisaoTool'
 import { historicoCustoTool } from '@/contexts/costing/adapters/in/mcp/HistoricoCustoTool'
+import { definirTaxaCustoTool } from '@/contexts/costing/adapters/in/mcp/DefinirTaxaCustoTool'
+import { custoUnitarioTool } from '@/contexts/costing/adapters/in/mcp/CustoUnitarioTool'
+
+import { ObterRoteiro } from '@/contexts/manufacturing/application/ports/in/ObterRoteiro'
+import { DefinirCentro } from '@/contexts/manufacturing/application/ports/in/DefinirCentro'
+import { DefinirOperacao } from '@/contexts/manufacturing/application/ports/in/DefinirOperacao'
+import { PublicarRoteiro } from '@/contexts/manufacturing/application/ports/in/PublicarRoteiro'
+import { obterRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/ObterRoteiroTool'
+import { definirCentroTool } from '@/contexts/manufacturing/adapters/in/mcp/DefinirCentroTool'
+import { definirOperacaoTool } from '@/contexts/manufacturing/adapters/in/mcp/DefinirOperacaoTool'
+import { publicarRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/PublicarRoteiroTool'
 
 export interface McpToolDeps {
   // data in-ports
@@ -79,11 +92,18 @@ export interface McpToolDeps {
   // bling in-ports (read-only ERP: produtos / pedidos / contatos, via Bling v3)
   listBlingResource: ListBlingResource
   getBlingRecord: GetBlingRecord
-  // costing in-ports (ficha técnica explosion + cost snapshots)
+  // costing in-ports (ficha técnica explosion + cost snapshots + taxas/custo unitário)
   explodirFicha: ExplodirFicha
   recalcularCusto: RecalcularCusto
   publicarRevisao: PublicarRevisao
   historicoCusto: HistoricoCusto
+  definirTaxaCusto: DefinirTaxaCusto
+  custoUnitario: CustoUnitario
+  // manufacturing in-ports (centros de trabalho + roteiro de produção)
+  obterRoteiro: ObterRoteiro
+  definirCentro: DefinirCentro
+  definirOperacao: DefinirOperacao
+  publicarRoteiro: PublicarRoteiro
 }
 
 export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
@@ -117,5 +137,13 @@ export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
     recalcularCustoTool(deps.recalcularCusto),
     publicarRevisaoTool(deps.publicarRevisao),
     historicoCustoTool(deps.historicoCusto),
+    // costing (processo): taxas de custo + leitura do custo unitário aberto
+    definirTaxaCustoTool(deps.definirTaxaCusto),
+    custoUnitarioTool(deps.custoUnitario),
+    // manufacturing (centros de trabalho + roteiro de produção)
+    obterRoteiroTool(deps.obterRoteiro),
+    definirCentroTool(deps.definirCentro),
+    definirOperacaoTool(deps.definirOperacao),
+    publicarRoteiroTool(deps.publicarRoteiro),
   ]
 }
