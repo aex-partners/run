@@ -13,6 +13,7 @@ import { DataWiring } from '@/main/wiring/data'
 
 import { DataEntityRegistry } from '@/contexts/costing/adapters/out/bridge/DataEntityRegistry'
 import { DataRecordStore } from '@/contexts/costing/adapters/out/bridge/DataRecordStore'
+import { RoteiroProvider } from '@/contexts/costing/application/ports/out/RoteiroProvider'
 import { ExplodirFichaService } from '@/contexts/costing/application/use-cases/ExplodirFichaService'
 import { RecalcularCustoService } from '@/contexts/costing/application/use-cases/RecalcularCustoService'
 import { PublicarRevisaoService } from '@/contexts/costing/application/use-cases/PublicarRevisaoService'
@@ -44,7 +45,13 @@ export function wireCosting(_infra: Infra, deps: CostingDeps) {
     delete: data.deleteRecord,
   })
 
-  const explodirFicha = new ExplodirFichaService(store, registry)
+  // TODO(Task 10): trocar por `new ManufacturingRoteiroProvider({ obterRoteiro })` assim que o
+  // manufacturing tiver wiring. Até lá o costing roda sem roteiro: a conversão fica vazia e a
+  // explosão reporta 'sem roteiro publicado' em `erros` (soft failure — o custo de MATERIAIS
+  // continua sendo calculado e gravado, exatamente como antes desta task).
+  const roteiro: RoteiroProvider = { async roteiroPublicado() { return null } }
+
+  const explodirFicha = new ExplodirFichaService(store, registry, roteiro)
   const recalcularCusto = new RecalcularCustoService(explodirFicha, store, registry)
   const publicarRevisao = new PublicarRevisaoService(store, registry)
   const historicoCusto = new HistoricoCustoService(store, registry)

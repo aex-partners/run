@@ -4,6 +4,11 @@ export function seedWorld() {
   const s = new InMemoryRecordStore()
   for (const slug of ['produtos', 'modelos', 'variacoes', 'fichas_tecnicas', 'substituicoes', 'fichas_explodidas', 'snapshots_custo'])
     s.seedEntity(slug, slug.toUpperCase())
+  s.seedEntity('parametros_de_custo', 'PARAMETROS')
+  s.seedEntity('custos_de_operacao', 'CUSTOS_OP')
+  // taxa fixa 0,5/min (global, vigência aberta) e nenhuma MOI -> rateio indireto = 0,5/min
+  s.seedRecord('PARAMETROS', { id: 'tx1', version: 1, data: {
+    chave: 'taxa_fixa_min', escopo_centro: null, valor: 0.5, vigencia_inicio: '2020-01-01', vigencia_fim: null } })
   // variações: tamanho T38 (fator 100) + cor CAQUI
   s.seedRecord('VARIACOES', { id: 'T38', version: 1, data: { variacao: 'T38', fator_qtd: 100 } })
   s.seedRecord('VARIACOES', { id: 'CAQUI', version: 1, data: { variacao: 'Caqui' } })
