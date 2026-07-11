@@ -1,6 +1,12 @@
-// Idempotent: create the 4 costing entities + add fields to Produtos/Variações
-// through the data in-ports. Safe to re-run. Run against a DATABASE_URL, e.g.:
+// Idempotent: create the 6 costing entities + add fields to Produtos/Variações/
+// Fichas/Snapshots through the data in-ports. Safe to re-run. Run against a
+// DATABASE_URL, e.g.:
 //   DATABASE_URL='postgres://aex:aex@localhost:55432/aex' npx tsx src/scripts/provision-costing.ts
+//
+// Two of the six entities (parametros_de_custo, custos_de_operacao) and two of
+// the new field batches (fichas_tecnicas.operacao, fichas_explodidas.operacao)
+// relate to centros_de_trabalho / operacoes, so provision-manufacturing.ts MUST
+// run first -- enforced by the guard near the top of main().
 //
 // Deviates from the original sketch of calling `wireData(infra)`: wireData needs
 // a full Infra (db + redis + better-auth + bullConnection), none of which the
@@ -23,6 +29,10 @@ import {
   COSTING_ENTITIES,
   PRODUTOS_NEW_FIELDS,
   VARIACOES_NEW_FIELDS,
+  FICHAS_TECNICAS_NEW_FIELDS,
+  FICHAS_EXPLODIDAS_NEW_FIELDS,
+  SNAPSHOTS_NEW_FIELDS,
+  PRODUTOS_CUSTO_FIELDS,
   fieldConfig,
   FieldSpec,
 } from '@/scripts/costingSchema'
@@ -43,7 +53,14 @@ async function main() {
   const idBySlug = async (slug: string): Promise<string | null> =>
     (await listEntities.execute()).find((e) => e.slug === slug)?.id ?? null
 
-  // 1) create the 4 costing entities (idempotent by slug), fieldless first so
+  // Guard: parametros_de_custo / custos_de_operacao / fichas_tecnicas.operacao /
+  // fichas_explodidas.operacao all relate to manufacturing entities. Fail loudly
+  // instead of throwing an opaque "relation target not found" deep in fieldConfig.
+  for (const dep of ['centros_de_trabalho', 'operacoes']) {
+    if (!(await idBySlug(dep))) throw new Error(`rode provision-manufacturing.ts antes: entidade ${dep} não existe`)
+  }
+
+  // 1) create the 6 costing entities (idempotent by slug), fieldless first so
   //    relation targets among them (if any are added later) can resolve, then
   //    add fields below.
   //
@@ -85,6 +102,10 @@ async function main() {
   for (const spec of COSTING_ENTITIES) await addFieldsTo(spec.slug, spec.fields)
   await addFieldsTo('produtos', PRODUTOS_NEW_FIELDS)
   await addFieldsTo('variacoes', VARIACOES_NEW_FIELDS)
+  await addFieldsTo('fichas_tecnicas', FICHAS_TECNICAS_NEW_FIELDS)
+  await addFieldsTo('fichas_explodidas', FICHAS_EXPLODIDAS_NEW_FIELDS)
+  await addFieldsTo('snapshots_custo', SNAPSHOTS_NEW_FIELDS)
+  await addFieldsTo('produtos', PRODUTOS_CUSTO_FIELDS)
 
   console.log('provision-costing done')
   process.exit(0)

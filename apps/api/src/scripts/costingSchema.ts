@@ -61,4 +61,54 @@ export const COSTING_ENTITIES: EntitySpec[] = [
       { slug: 'detalhe', displayName: 'Detalhe', kind: 'long_text' },
     ],
   },
+  {
+    slug: 'parametros_de_custo',
+    displayName: 'Parâmetros de Custo',
+    fields: [
+      { slug: 'chave', displayName: 'Chave', kind: 'select',
+        options: ['taxa_fixa_min', 'taxa_moi_min', 'taxa_depreciacao_min'] },
+      // nulo = taxa global; preenchido = taxa específica daquele centro (sobrepõe a global)
+      { slug: 'escopo_centro', displayName: 'Escopo centro', kind: 'relation', targetSlug: 'centros_de_trabalho' },
+      { slug: 'valor', displayName: 'Valor', kind: 'currency', decimalPlaces: 4 },
+      { slug: 'vigencia_inicio', displayName: 'Vigencia inicio', kind: 'date' },
+      { slug: 'vigencia_fim', displayName: 'Vigencia fim', kind: 'date' },  // nulo = aberta
+    ],
+  },
+  {
+    slug: 'custos_de_operacao',
+    displayName: 'Custos de Operação',
+    fields: [
+      { slug: 'sku', displayName: 'SKU', kind: 'relation', targetSlug: 'produtos' },
+      { slug: 'operacao', displayName: 'Operacao', kind: 'relation', targetSlug: 'operacoes' },
+      { slug: 'centro', displayName: 'Centro', kind: 'relation', targetSlug: 'centros_de_trabalho' },
+      { slug: 'tempo_min', displayName: 'Tempo min', kind: 'duration' },
+      { slug: 'custo_mod', displayName: 'Custo MOD', kind: 'currency' },
+      { slug: 'custo_indireto', displayName: 'Custo indireto', kind: 'currency' },
+      { slug: 'custo_total', displayName: 'Custo total', kind: 'currency' },
+      { slug: 'origem_rev', displayName: 'Origem rev', kind: 'number' },
+    ],
+  },
+]
+
+// A linha da ficha aponta para a operação que CONSOME aquele insumo. Nulo = ainda não atribuído.
+export const FICHAS_TECNICAS_NEW_FIELDS: FieldSpec[] = [
+  { slug: 'operacao', displayName: 'Operacao', kind: 'relation', targetSlug: 'operacoes' },
+]
+export const FICHAS_EXPLODIDAS_NEW_FIELDS: FieldSpec[] = [
+  { slug: 'operacao', displayName: 'Operacao', kind: 'relation', targetSlug: 'operacoes' },
+]
+// snapshots_custo.custo_total passa a ser o custo CHEIO. Seguro: prod tem 0 snapshots.
+export const SNAPSHOTS_NEW_FIELDS: FieldSpec[] = [
+  { slug: 'custo_materiais', displayName: 'Custo materiais', kind: 'currency' },
+  { slug: 'custo_mod', displayName: 'Custo MOD', kind: 'currency' },
+  { slug: 'custo_indireto', displayName: 'Custo indireto', kind: 'currency' },
+  { slug: 'tempo_total_min', displayName: 'Tempo total min', kind: 'duration' },
+  { slug: 'origem_rev_roteiro', displayName: 'Origem rev roteiro', kind: 'number' },
+  { slug: 'detalhe_conversao', displayName: 'Detalhe conversao', kind: 'long_text' },
+]
+// preco_custo continua = MATERIAIS (semântica Bling). O custo cheio é custo_unitario_total.
+export const PRODUTOS_CUSTO_FIELDS: FieldSpec[] = [
+  { slug: 'custo_conversao', displayName: 'Custo conversao', kind: 'currency' },
+  { slug: 'custo_unitario_total', displayName: 'Custo unitario total', kind: 'currency' },
+  { slug: 'tempo_total_min', displayName: 'Tempo total min', kind: 'duration' },
 ]
