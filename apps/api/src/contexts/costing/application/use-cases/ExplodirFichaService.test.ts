@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ExplodirFichaService } from '@/contexts/costing/application/use-cases/ExplodirFichaService'
+import { RoteiroPublicadoView } from '@/contexts/costing/application/ports/out/RoteiroProvider'
 import { seedWorld } from '../../adapters/out/fake/testWorld'
 import { FakeRoteiroProvider, ROTEIRO_M1 } from '../../adapters/out/fake/FakeRoteiroProvider'
 
@@ -136,6 +137,63 @@ describe('ExplodirFichaService', () => {
     const svc = new ExplodirFichaService(s, s, roteiroM1())
     await svc.execute({ skuId: 'SKU' })
     await svc.execute({ skuId: 'SKU' })
-    expect((await s.query('CUSTOS_OP', [{ field: 'sku', op: 'eq', value: 'SKU' }])).length).toBe(1)
+    expect((await s.query('CUSTOS_OP', [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)).length).toBe(1)
+  })
+
+  // REGRESSÃO (dinheiro errado em silêncio): o query engine devolve no máximo
+  // `Math.min(limit ?? 50, 500)` linhas, ORDER BY created_at DESC. parametros_de_custo é uma
+  // entidade HISTÓRICA por design (cada mudança de taxa vira uma linha nova), e a taxa global de
+  // vigência ABERTA é justamente a MAIS ANTIGA. Sem limite explícito, passar de 50 linhas descarta
+  // as mais velhas, `taxasVigentes` não acha a taxa, `pickTaxa` cai para 0 e o CUSTO INDIRETO
+  // VIRA ZERO sem erro nenhum.
+  it('acha a taxa antiga de vigência aberta com >50 parâmetros de custo (senão o indireto zera em silêncio)', async () => {
+    const s = seedWorld()
+    // seedWorld já semeou tx1 (taxa_fixa_min 0,5/min, global, 2020-01-01 -> aberta) como a linha
+    // MAIS ANTIGA de PARAMETROS. Agora 59 linhas expiradas/irrelevantes DEPOIS dela (60 no total).
+    for (let i = 0; i < 59; i++) {
+      s.seedRecord('PARAMETROS', { id: `px${i}`, version: 1, data: {
+        chave: 'taxa_moi_min', escopo_centro: `C_OUTRO_${i}`, valor: 99,
+        vigencia_inicio: '2019-01-01', vigencia_fim: '2019-12-31',    // expirada: nunca vigente hoje
+      } })
+    }
+
+    const svc = new ExplodirFichaService(s, s, roteiroM1())
+    const r = await svc.execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.custoIndireto).toBeCloseTo(5, 6)      // 10 min × 0,5: a taxa VELHA foi encontrada
+    expect(r.value.custoTotal).toBeCloseTo(43.6, 6)      // 28,6 materiais + 10 MOD + 5 indireto
+    expect(r.value.erros).toEqual([])
+
+    const snaps = await s.query('SNAPSHOTS_CUSTO', [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    const detalhe = JSON.parse(String(snaps[0]?.data.detalhe_conversao))
+    expect(detalhe.taxas).toEqual([{ chave: 'taxa_fixa_min', centroId: null, valor: 0.5 }])
+  })
+
+  // Regra NÃO NEGOCIÁVEL de soft failure, fixada na camada de integração: operação sem centro
+  // não derruba a explosão, mas o erro TEM de chegar ao chamador.
+  it('operação sem centro: ok, tempo ainda conta, MOD 0 e o erro CHEGA em ExplosaoResumo.erros', async () => {
+    const s = seedWorld()
+    const semCentro: RoteiroPublicadoView = {
+      modeloId: 'M1',
+      rev: 1,
+      operacoes: [
+        { id: 'OP1', seq: 10, centroId: null, tempoPadraoMin: 10, tempoPorTamanho: {}, tempoSetupMin: 0, loteSetup: 1 },
+      ],
+      centros: [],
+    }
+    const svc = new ExplodirFichaService(s, s, new FakeRoteiroProvider({ M1: semCentro }))
+    const r = await svc.execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.custoMod).toBe(0)                          // sem centro: nenhum custo de MOD
+    expect(r.value.tempoTotalMin).toBeCloseTo(10, 6)          // o tempo AINDA é contabilizado
+    expect(r.value.custoIndireto).toBeCloseTo(5, 6)           // taxa global incide sobre o tempo
+    expect(r.value.custoTotal).toBeCloseTo(33.6, 6)           // 28,6 + 0 + 5
+    expect(r.value.erros.some((e) => e.includes('sem centro de trabalho'))).toBe(true)
+
+    const ops = await s.query('CUSTOS_OP', [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    expect(ops[0]?.data.custo_mod).toBe(0)
+    expect(ops[0]?.data.tempo_min).toBeCloseTo(10, 6)
   })
 })

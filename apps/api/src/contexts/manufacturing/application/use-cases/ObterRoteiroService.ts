@@ -3,6 +3,11 @@ import { RecordStore } from '@/contexts/manufacturing/application/ports/out/Reco
 import { ObterRoteiro, RoteiroView } from '@/contexts/manufacturing/application/ports/in/ObterRoteiro'
 import { selecionarRoteiroPublicado, OperacaoRow } from '@/contexts/manufacturing/domain/Roteiro'
 
+// Teto do query engine do data (`Math.min(limit ?? 50, 500)`). `operacoes` guarda TODAS as
+// revisões do modelo: sem limite explícito o engine devolveria só as 50 linhas mais recentes e
+// as ops da revisão PUBLICADA (as mais antigas) sumiriam, gerando roteiro curto ou vazio.
+const LIMITE = 500
+
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0)) || 0
 const parseMap = (v: unknown): Record<string, number> => {
   if (v == null || v === '') return {}
@@ -22,7 +27,7 @@ export class ObterRoteiroService implements ObterRoteiro {
     const centrosId = await this.registry.entityIdBySlug('centros_de_trabalho')
     if (!opsId || !centrosId) return null
 
-    const rows = await this.store.query(opsId, [{ field: 'modelo', op: 'eq', value: q.modeloId }])
+    const rows = await this.store.query(opsId, [{ field: 'modelo', op: 'eq', value: q.modeloId }], LIMITE)
     const ops: OperacaoRow[] = rows.map((r) => ({
       id: r.id,
       seq: num(r.data.seq),

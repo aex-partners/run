@@ -11,11 +11,18 @@ export class InMemoryRecordStore implements RecordStore, EntityRegistry {
 
   async entityIdBySlug(slug: string) { return this.slugs.get(slug) ?? null }
 
-  async query(entityId: string, where: Cond[]): Promise<RecordRow[]> {
-    return [...this.rows.values()]
+  // MIRRORS the real query engine (data/adapters/out/persistence/DrizzleQueryRecords):
+  // rows are capped at `Math.min(limit ?? 50, 500)` and ordered `created_at DESC`, so when
+  // the cap bites it is the OLDEST rows that silently vanish. Insertion order approximates
+  // created_at here, so we keep the LAST N inserted. A fake WITHOUT this cap makes every
+  // truncation bug invisible to the whole test suite. Do not remove it.
+  async query(entityId: string, where: Cond[], limit?: number): Promise<RecordRow[]> {
+    const matched = [...this.rows.values()]
       .filter((r) => r.entityId === entityId)
       .filter((r) => where.every((c) => this.match(r, c)))
-      .map(({ entityId: _e, ...row }) => row)
+    const cap = Math.min(limit ?? 50, 500)
+    const kept = cap > 0 ? matched.slice(-cap) : []
+    return kept.map(({ entityId: _e, ...row }) => row)
   }
   private match(r: RecordRow & { entityId: string }, c: Cond): boolean {
     if (c.field === 'id') throw new Error('InMemoryRecordStore: query by field "id" is unsupported (the real query engine has no record-id data field); use get(recordId)')

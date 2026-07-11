@@ -5,10 +5,14 @@ import { ExplodirFicha, ExplodirFichaCommand, ExplosaoResumo } from '@/contexts/
 import { RoteiroProvider } from '@/contexts/costing/application/ports/out/RoteiroProvider'
 import { explodeFicha, FichaLineInput, SkuVariacao, Substituicao } from '@/contexts/costing/domain/Explosion'
 import {
-  computeConversao, taxasVigentes, totalizarCusto, CONVERSAO_VAZIA,
+  computeConversao, taxasVigentes, totalizarCusto, conversaoVazia,
   CentroInput, ConversaoResult, TaxaRow, TaxaVigente,
 } from '@/contexts/costing/domain/Conversao'
 import { CostingError } from '@/contexts/costing/domain/CostingError'
+
+// Teto do query engine do data (`Math.min(limit ?? 50, 500)`). Toda leitura que precisa do
+// conjunto COMPLETO passa este limite: sem ele o engine corta em 50 linhas, silenciosamente.
+const LIMITE = 500
 
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0)) || 0
 const parseMap = (v: unknown): Record<string, number> => {
@@ -38,7 +42,7 @@ export class ExplodirFichaService implements ExplodirFicha {
     const fichaRows = await this.store.query(ids.fichas_tecnicas, [
       { field: 'modelo', op: 'eq', value: modeloId },
       { field: 'status', op: 'eq', value: 'publicada' },
-    ])
+    ], LIMITE)
     if (fichaRows.length === 0) return fail(CostingError.semFichaPublicada)
     const maxRev = Math.max(...fichaRows.map((r) => num(r.data.rev)))
     const lines: FichaLineInput[] = []
@@ -71,7 +75,7 @@ export class ExplodirFichaService implements ExplodirFicha {
     const result = explodeFicha({ lines, skuVariacoes, substituicoes: subs, custos })
 
     // delete stale exploded lines, preserving editado_manual ones (unless forcar)
-    const existing = await this.store.query(ids.fichas_explodidas, [{ field: 'sku', op: 'eq', value: cmd.skuId }])
+    const existing = await this.store.query(ids.fichas_explodidas, [{ field: 'sku', op: 'eq', value: cmd.skuId }], LIMITE)
     const manuais = existing.filter((r) => r.data.editado_manual === true)
     const toDelete = cmd.forcar ? existing : existing.filter((r) => r.data.editado_manual !== true)
     for (const r of toDelete) await this.store.delete(r.id)
@@ -101,14 +105,19 @@ export class ExplodirFichaService implements ExplodirFicha {
 
     // CONVERSÃO: MOD + indireto do roteiro publicado do modelo (soft failure se não houver).
     const rp = await this.roteiro.roteiroPublicado(modeloId)
-    let conv: ConversaoResult = CONVERSAO_VAZIA
+    let conv: ConversaoResult = conversaoVazia()
     // As taxas EFETIVAMENTE usadas no cálculo. Calculadas UMA vez e reaproveitadas no
     // payload do snapshot: o histórico se explica por si e NUNCA é recalculado.
     let taxasUsadas: TaxaVigente[] = []
     if (!rp) {
       erros.push('modelo sem roteiro publicado: custo de conversão não calculado')
     } else {
-      const taxaRows: TaxaRow[] = (await this.store.query(ids.parametros_de_custo, [])).map((r) => ({
+      // TODAS as taxas: parametros_de_custo é HISTÓRICO por design (cada mudança de taxa vira uma
+      // linha, com janela de vigência) e a taxa global de vigência ABERTA costuma ser a MAIS ANTIGA.
+      // Sem limite explícito o engine devolveria só as 50 mais recentes, a taxa velha sumiria e o
+      // CUSTO INDIRETO ZERARIA em silêncio. LIMITE 500 é o teto HARD do engine: acima disso a
+      // truncagem volta a acontecer (limitação conhecida; paginar aqui está fora de escopo).
+      const taxaRows: TaxaRow[] = (await this.store.query(ids.parametros_de_custo, [], LIMITE)).map((r) => ({
         chave: String(r.data.chave ?? ''),
         centroId: r.data.escopo_centro == null || r.data.escopo_centro === '' ? null : String(r.data.escopo_centro),
         valor: num(r.data.valor),
@@ -125,7 +134,7 @@ export class ExplodirFichaService implements ExplodirFicha {
     const tot = totalizarCusto(custoMateriais, conv)
 
     // custos_de_operacao: substitui as linhas deste SKU (não acumula entre re-explosões).
-    const antigos = await this.store.query(ids.custos_de_operacao, [{ field: 'sku', op: 'eq', value: cmd.skuId }])
+    const antigos = await this.store.query(ids.custos_de_operacao, [{ field: 'sku', op: 'eq', value: cmd.skuId }], LIMITE)
     for (const a of antigos) await this.store.delete(a.id)
     for (const o of conv.operacoes) {
       await this.store.insert(ids.custos_de_operacao, {
@@ -188,7 +197,7 @@ export class ExplodirFichaService implements ExplodirFicha {
   }
   private async loadSubs(entityId: string, variacaoIds: string[]): Promise<Substituicao[]> {
     if (variacaoIds.length === 0) return []
-    const rows = await this.store.query(entityId, [{ field: 'variacao', op: 'in', values: variacaoIds }])
+    const rows = await this.store.query(entityId, [{ field: 'variacao', op: 'in', values: variacaoIds }], LIMITE)
     return rows.map((r) => ({ variacaoId: String(r.data.variacao), deItemId: String(r.data.de_item), paraItemId: String(r.data.para_item) }))
   }
   private async loadVariacoes(ids: string[]): Promise<SkuVariacao[]> {

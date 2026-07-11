@@ -12,6 +12,7 @@ interface QueryRecordsLike {
   execute(spec: {
     entity: string
     where?: { field: string; op: string; value?: unknown; values?: unknown[] }[]
+    limit?: number
   }): Promise<{ entity: string; rows?: RecordRow[] }>
 }
 interface GetRecordLike { execute(q: { recordId: string }): Promise<RecordRow | null> }
@@ -47,11 +48,14 @@ export class DataRecordStore implements RecordStore {
     return e.slug
   }
 
-  async query(entityId: string, where: Cond[]): Promise<RecordRow[]> {
+  // `limit` repassado ao QueryRecords do data: sem ele o engine trunca em 50 (teto 500),
+  // ORDER BY created_at DESC, descartando as linhas MAIS ANTIGAS sem erro nenhum.
+  async query(entityId: string, where: Cond[], limit?: number): Promise<RecordRow[]> {
     const entity = await this.slugOf(entityId)
     const res = await this.deps.query.execute({
       entity,
       where: where.map((c) => ({ field: c.field, op: c.op, value: c.value, values: c.values })),
+      limit,
     })
     return res.rows ?? []
   }

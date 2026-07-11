@@ -5,12 +5,16 @@ import { PublicarRevisao } from '@/contexts/costing/application/ports/in/Publica
 import { CostingError } from '@/contexts/costing/domain/CostingError'
 const n = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0)) || 0
 
+// Teto do query engine do data (`Math.min(limit ?? 50, 500)`): a rev publicada é apurada sobre
+// TODAS as linhas da ficha. Truncar em 50 esconderia as linhas mais antigas e a rev sairia errada.
+const LIMITE = 500
+
 export class PublicarRevisaoService implements PublicarRevisao {
   constructor(private readonly store: RecordStore, private readonly registry: EntityRegistry) {}
   async execute(cmd: { modeloId: string }): Promise<Result<{ rev: number }>> {
     const fichaId = await this.registry.entityIdBySlug('fichas_tecnicas')
     if (!fichaId) return fail(CostingError.entidadeFaltando)
-    const rows = await this.store.query(fichaId, [{ field: 'modelo', op: 'eq', value: cmd.modeloId }])
+    const rows = await this.store.query(fichaId, [{ field: 'modelo', op: 'eq', value: cmd.modeloId }], LIMITE)
     const rascunhos = rows.filter((r) => r.data.status === 'rascunho')
     if (rascunhos.length === 0) return fail('nenhum rascunho para publicar')
     const maxPub = Math.max(0, ...rows.filter((r) => r.data.status === 'publicada').map((r) => n(r.data.rev)))

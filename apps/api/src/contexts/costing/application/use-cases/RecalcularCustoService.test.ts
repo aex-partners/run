@@ -9,7 +9,11 @@ function stubExplodir() {
   const explodir: ExplodirFicha = {
     async execute(cmd: ExplodirFichaCommand) {
       calls.push(cmd.skuId)
-      const resumo: ExplosaoResumo = { skuId: cmd.skuId, custoTotal: 0, linhas: 0, erros: [], manuaisPreservados: 0 }
+      const resumo: ExplosaoResumo = {
+        skuId: cmd.skuId,
+        custoMateriais: 0, custoMod: 0, custoIndireto: 0, custoTotal: 0, tempoTotalMin: 0,
+        linhas: 0, erros: [], manuaisPreservados: 0,
+      }
       return ok(resumo)
     },
   }

@@ -26,8 +26,11 @@ export interface ConversaoResult {
 }
 export interface CustoTotalizado { materiais: number; mod: number; indireto: number; total: number }
 
-export const CONVERSAO_VAZIA: ConversaoResult = {
-  operacoes: [], tempoTotalMin: 0, custoMod: 0, custoIndireto: 0, custoConversao: 0, erros: [],
+// FACTORY, não constante compartilhada: `erros` é um array mutável e um único objeto
+// module-level viraria um singleton do processo. Um `conv.erros.push(...)` de qualquer caller
+// contaminaria TODA explosão seguinte. Cada chamada devolve uma instância nova.
+export function conversaoVazia(): ConversaoResult {
+  return { operacoes: [], tempoTotalMin: 0, custoMod: 0, custoIndireto: 0, custoConversao: 0, erros: [] }
 }
 
 const CHAVES_INDIRETAS = ['taxa_fixa_min', 'taxa_moi_min', 'taxa_depreciacao_min'] as const

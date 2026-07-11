@@ -4,6 +4,10 @@ import { RecordStore } from '@/contexts/costing/application/ports/out/RecordStor
 import { ExplodirFicha } from '@/contexts/costing/application/ports/in/ExplodirFicha'
 import { RecalcularCusto } from '@/contexts/costing/application/ports/in/RecalcularCusto'
 
+// Teto do query engine do data (`Math.min(limit ?? 50, 500)`): sem limite explícito um modelo com
+// mais de 50 SKUs teria os mais antigos ignorados no recálculo, sem erro nenhum.
+const LIMITE = 500
+
 export class RecalcularCustoService implements RecalcularCusto {
   constructor(private readonly explodir: ExplodirFicha, private readonly store: RecordStore, private readonly registry: EntityRegistry) {}
   async execute(cmd: { skuId?: string; modeloId?: string }): Promise<Result<{ recalculados: number }>> {
@@ -12,7 +16,7 @@ export class RecalcularCustoService implements RecalcularCusto {
     else if (cmd.modeloId) {
       const produtosId = await this.registry.entityIdBySlug('produtos')
       if (!produtosId) return fail('entidade produtos ausente')
-      const rows = await this.store.query(produtosId, [{ field: 'modelo', op: 'eq', value: cmd.modeloId }])
+      const rows = await this.store.query(produtosId, [{ field: 'modelo', op: 'eq', value: cmd.modeloId }], LIMITE)
       skuIds.push(...rows.map((r) => r.id))
     } else return fail('informe skuId ou modeloId')
     let recalculados = 0
