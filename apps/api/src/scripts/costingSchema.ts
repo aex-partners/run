@@ -1,21 +1,9 @@
 // PURE declarative model of the costing data model. No IO. The provisioning
 // script maps these specs onto data-context CreateEntity/AddField in-ports.
 
-export interface FieldSpec {
-  slug: string
-  displayName: string
-  // one of: text | long_text | number | currency | boolean | relation | date | select
-  kind: string
-  targetSlug?: string   // for kind 'relation': the target entity slug
-  multiple?: boolean    // for kind 'relation'
-  options?: string[]    // for kind 'select'
-}
-
-export interface EntitySpec {
-  slug: string
-  displayName: string
-  fields: FieldSpec[]
-}
+import { EntitySpec, FieldSpec, fieldConfig } from '@/scripts/schemaSpec'
+export { fieldConfig }
+export type { EntitySpec, FieldSpec }
 
 export const PRODUTOS_NEW_FIELDS: FieldSpec[] = [
   { slug: 'fantasma', displayName: 'Produto fantasma', kind: 'boolean' },
@@ -74,29 +62,3 @@ export const COSTING_ENTITIES: EntitySpec[] = [
     ],
   },
 ]
-
-// Maps a FieldSpec to the data-context FieldTypeConfig. `resolveEntityId` turns a
-// target slug into its entity id (null if the entity does not exist yet).
-export function fieldConfig(
-  spec: FieldSpec,
-  resolveEntityId: (slug: string) => string | null,
-): Record<string, unknown> {
-  switch (spec.kind) {
-    case 'boolean': return { kind: 'boolean' }
-    case 'number': return { kind: 'number' }
-    case 'text': return { kind: 'text' }
-    case 'long_text': return { kind: 'long_text' }
-    case 'date': return { kind: 'date' }
-    case 'datetime': return { kind: 'datetime' }
-    case 'currency': return { kind: 'currency', currencyCode: 'BRL' }
-    case 'select': return { kind: 'select', options: (spec.options ?? []).map((o) => ({ value: o, label: o })) }
-    case 'relation': {
-      const targetEntityId = spec.targetSlug ? resolveEntityId(spec.targetSlug) : null
-      if (!targetEntityId) throw new Error(`relation target not found: ${spec.targetSlug}`)
-      return spec.multiple
-        ? { kind: 'relation', targetEntityId, multiple: true }
-        : { kind: 'relation', targetEntityId }
-    }
-    default: throw new Error(`unknown field kind: ${spec.kind}`)
-  }
-}
