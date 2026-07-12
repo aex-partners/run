@@ -38,9 +38,12 @@ describe('ExplodirFichaService', () => {
     const s = seedWorld()
     const svc = new ExplodirFichaService(s, s, roteiroM1())
     await svc.execute({ skuId: 'SKU' })                       // first explosion -> 2 lines (SARJA 28, BTN 0.6)
-    // mark the first exploded line (SARJA) as manual with a DISTINCT cost of 50
-    const [first] = await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }])
-    await s.update(first.id, { ...first.data, editado_manual: true, qty: 99, custo_total: 50 }, first.version)
+    // mark the SARJA line as manual with a DISTINCT cost of 50. Selecionada pelo ITEM, nunca pela
+    // posição: o store devolve as linhas em created_at DESC, então indexar por posição amarraria o
+    // teste à ordem de gravação (e a asserção de 50,6 abaixo só faz sentido se a manual for SARJA).
+    const exploded = await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    const sarja = exploded.find((l) => l.data.item === 'SARJA')!
+    await s.update(sarja.id, { ...sarja.data, editado_manual: true, qty: 99, custo_total: 50 }, sarja.version)
 
     const r2 = await svc.execute({ skuId: 'SKU' })            // re-explode, manual SARJA overrides fresh SARJA
     expect(r2.ok).toBe(true)
@@ -170,6 +173,63 @@ describe('ExplodirFichaService', () => {
     expect(detalhe.taxas).toEqual([{ chave: 'taxa_fixa_min', centroId: null, valor: 0.5 }])
   })
 
+  // O ELO HEADLINE DA FEATURE: "onde cada insumo é consumido". A linha da ficha aponta para o
+  // CÓDIGO ESTÁVEL da operação (operacao_codigo), não para a linha da revisão — que morreria na
+  // próxima revisão publicada do roteiro. O código tem de atravessar a explosão até a linha
+  // explodida, alinhado com o insumo CERTO (o alinhamento é POSICIONAL entre `lines` e
+  // `result.lines`: um índice trocado atribuiria o insumo à operação errada, calado).
+  it('carrega o operacao_codigo da linha da ficha para a linha explodida (e preserva o não-atribuído)', async () => {
+    const s = seedWorld()
+    // testWorld: f1 (PH -> SARJA por substituição) é atribuída a COSTURA; f2 (BTN) não tem atribuição.
+    const r = await new ExplodirFichaService(s, s, roteiroM1()).execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.erros).toEqual([])                    // COSTURA existe no roteiro: nada pendurado
+
+    const exploded = await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    expect(exploded).toHaveLength(2)
+
+    // o insumo resolvido (SARJA, que veio do fantasma PH da linha f1) leva o código de f1
+    const sarja = exploded.find((l) => l.data.item === 'SARJA')!
+    expect(sarja.data.operacao_codigo).toBe('COSTURA')
+    // e o botão, cuja linha não foi atribuída, continua sem operação
+    const btn = exploded.find((l) => l.data.item === 'BTN')!
+    expect(btn.data.operacao_codigo).toBeNull()
+
+    // a linha CUSTEADA guarda a relação com a linha da revisão E o código, para leitura humana
+    const ops = await s.query('CUSTOS_OP', [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    expect(ops).toHaveLength(1)
+    expect(ops[0]!.data.operacao).toBe('OP1')            // a linha DAQUELA revisão
+    expect(ops[0]!.data.codigo).toBe('COSTURA')          // a identidade estável
+  })
+
+  // ATRIBUIÇÃO PENDURADA: código digitado errado, ou operação que sumiu numa revisão nova do
+  // roteiro. O material é real e continua custeado — mas o "onde é consumido" está quebrado e o
+  // engenheiro precisa saber. SOFT: reporta em `erros`, NUNCA derruba a explosão.
+  it('reporta (soft) a linha de ficha atribuída a um código que não existe no roteiro publicado', async () => {
+    const s = seedWorld()
+    // f2 (BTN) aponta para uma operação que o roteiro do M1 não tem
+    await s.update('f2', {
+      modelo: 'M1', item: 'BTN', unidade: 'un', qty_base: 2, qty_por_tamanho: '{}',
+      rev: 1, status: 'publicada', operacao_codigo: 'BORDADO',
+    }, 1)
+
+    const r = await new ExplodirFichaService(s, s, roteiroM1()).execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)                              // SOFT: a explosão NÃO cai
+    if (!r.ok) return
+    expect(r.value.erros.some((e) => e.includes('BORDADO'))).toBe(true)
+    expect(r.value.erros.some((e) => e.includes('não existe no roteiro publicado'))).toBe(true)
+    // COSTURA (a atribuição boa de f1) NÃO é reportada
+    expect(r.value.erros.some((e) => e.includes('COSTURA'))).toBe(false)
+
+    // o custo segue completo e correto: materiais + conversão, nada perdido
+    expect(r.value.custoMateriais).toBeCloseTo(28.6, 6)
+    expect(r.value.custoTotal).toBeCloseTo(43.6, 6)
+    // e a atribuição pendurada é PRESERVADA na linha explodida (é o que o engenheiro vai corrigir)
+    const exploded = await s.query('FICHAS_EXPLODIDAS', [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    expect(exploded.find((l) => l.data.item === 'BTN')!.data.operacao_codigo).toBe('BORDADO')
+  })
+
   // Regra NÃO NEGOCIÁVEL de soft failure, fixada na camada de integração: operação sem centro
   // não derruba a explosão, mas o erro TEM de chegar ao chamador.
   it('operação sem centro: ok, tempo ainda conta, MOD 0 e o erro CHEGA em ExplosaoResumo.erros', async () => {
@@ -178,7 +238,7 @@ describe('ExplodirFichaService', () => {
       modeloId: 'M1',
       rev: 1,
       operacoes: [
-        { id: 'OP1', seq: 10, centroId: null, tempoPadraoMin: 10, tempoPorTamanho: {}, tempoSetupMin: 0, loteSetup: 1 },
+        { id: 'OP1', codigo: 'COSTURA', seq: 10, centroId: null, tempoPadraoMin: 10, tempoPorTamanho: {}, tempoSetupMin: 0, loteSetup: 1 },
       ],
       centros: [],
     }

@@ -22,6 +22,12 @@ export const MANUFACTURING_ENTITIES: EntitySpec[] = [
     displayName: 'Operações',
     fields: [
       { slug: 'modelo', displayName: 'Modelo', kind: 'relation', targetSlug: 'modelos' },
+      // IDENTIDADE ESTÁVEL da operação DENTRO do modelo (CORTE, COSTURA, ACABAMENTO...).
+      // Cada revisão cria LINHAS novas de `operacoes`, então o id da linha morre a cada
+      // revisão: é o `codigo` que sobrevive (preservado no clone de abrir_revisao_roteiro).
+      // É por ele que a linha da ficha técnica atribui o insumo à operação que o consome
+      // (fichas_tecnicas.operacao_codigo), e NÃO pelo id da linha da revisão.
+      { slug: 'codigo', displayName: 'Codigo', kind: 'text' },
       { slug: 'seq', displayName: 'Seq', kind: 'number' },
       { slug: 'nome', displayName: 'Nome', kind: 'text' },
       { slug: 'centro', displayName: 'Centro', kind: 'relation', targetSlug: 'centros_de_trabalho' },

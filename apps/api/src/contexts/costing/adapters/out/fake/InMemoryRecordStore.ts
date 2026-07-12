@@ -12,16 +12,24 @@ export class InMemoryRecordStore implements RecordStore, EntityRegistry {
   async entityIdBySlug(slug: string) { return this.slugs.get(slug) ?? null }
 
   // MIRRORS the real query engine (data/adapters/out/persistence/DrizzleQueryRecords):
-  // rows are capped at `Math.min(limit ?? 50, 500)` and ordered `created_at DESC`, so when
-  // the cap bites it is the OLDEST rows that silently vanish. Insertion order approximates
-  // created_at here, so we keep the LAST N inserted. A fake WITHOUT this cap makes every
-  // truncation bug invisible to the whole test suite. Do not remove it.
+  // `ORDER BY created_at DESC` + `LIMIT Math.min(limit ?? 50, 500)`. Insertion order
+  // approximates created_at here, so rows come back NEWEST-FIRST and the cap keeps the newest N.
+  //
+  // Two behaviours are mirrored, and BOTH matter:
+  //   * WHICH rows survive the cap — when it bites, the OLDEST vanish silently. A fake without
+  //     the cap makes every truncation bug invisible to the whole suite.
+  //   * The ORDER they come back in — NEWEST-FIRST. Callers that break ties positionally
+  //     (`taxasVigentes`: on an exact tie the FIRST row wins, i.e. the newest) would behave the
+  //     OPPOSITE way in tests vs production if this fake returned insertion order: the STALE
+  //     rate would win in tests and the corrected one in prod.
+  // Do not remove either half.
   async query(entityId: string, where: Cond[], limit?: number): Promise<RecordRow[]> {
     const matched = [...this.rows.values()]
       .filter((r) => r.entityId === entityId)
       .filter((r) => where.every((c) => this.match(r, c)))
+      .reverse()                                          // created_at DESC: newest first
     const cap = Math.min(limit ?? 50, 500)
-    const kept = cap > 0 ? matched.slice(-cap) : []
+    const kept = cap > 0 ? matched.slice(0, cap) : []
     return kept.map(({ entityId: _e, ...row }) => row)
   }
   private match(r: RecordRow & { entityId: string }, c: Cond): boolean {

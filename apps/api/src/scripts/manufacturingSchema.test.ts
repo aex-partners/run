@@ -24,10 +24,20 @@ describe('manufacturingSchema', () => {
   it('operacoes carries the routing fields with the revision model', () => {
     const op = MANUFACTURING_ENTITIES.find((e) => e.slug === 'operacoes')!
     expect(op.fields.map((f) => f.slug)).toEqual([
-      'modelo', 'seq', 'nome', 'centro', 'tempo_padrao_min', 'tempo_por_tamanho',
+      'modelo', 'codigo', 'seq', 'nome', 'centro', 'tempo_padrao_min', 'tempo_por_tamanho',
       'tempo_setup_min', 'lote_setup', 'agregada', 'rev', 'status',
     ])
     const tempo = op.fields.find((f) => f.slug === 'tempo_padrao_min')!
     expect(fieldConfig(tempo, () => null)).toEqual({ kind: 'duration' })
+  })
+
+  // A identidade ESTÁVEL da operação dentro do modelo. É TEXT, não relação: sobrevive a
+  // cada revisão (que cria linhas novas de `operacoes`) e é por ele que a ficha técnica
+  // atribui o insumo à operação que o consome.
+  it('operacoes carries a stable text codigo (survives every revision)', () => {
+    const op = MANUFACTURING_ENTITIES.find((e) => e.slug === 'operacoes')!
+    const codigo = op.fields.find((f) => f.slug === 'codigo')!
+    expect(fieldConfig(codigo, () => null)).toEqual({ kind: 'text' })
+    expect(codigo.targetSlug).toBeUndefined()
   })
 })

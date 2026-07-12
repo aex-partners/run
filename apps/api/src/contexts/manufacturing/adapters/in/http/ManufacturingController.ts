@@ -5,6 +5,7 @@ import { DefinirCentro } from '@/contexts/manufacturing/application/ports/in/Def
 import { ListarCentros } from '@/contexts/manufacturing/application/ports/in/ListarCentros'
 import { DefinirOperacao } from '@/contexts/manufacturing/application/ports/in/DefinirOperacao'
 import { PublicarRoteiro } from '@/contexts/manufacturing/application/ports/in/PublicarRoteiro'
+import { AbrirRevisaoRoteiro } from '@/contexts/manufacturing/application/ports/in/AbrirRevisaoRoteiro'
 
 // Driving adapter (tRPC). Thin shell over the manufacturing in-ports (the same ones
 // the AI tools call). Holds no logic: it validates the wire shape with zod and unwraps
@@ -16,6 +17,7 @@ export const manufacturingController = (deps: {
   listarCentros: ListarCentros
   definirOperacao: DefinirOperacao
   publicarRoteiro: PublicarRoteiro
+  abrirRevisaoRoteiro: AbrirRevisaoRoteiro
 }) =>
   router({
     definirCentro: protectedProcedure
@@ -39,6 +41,7 @@ export const manufacturingController = (deps: {
         z.object({
           id: z.string().min(1).optional(),
           modeloId: z.string().min(1),
+          codigo: z.string().min(1),
           seq: z.number(),
           nome: z.string().min(1),
           centroId: z.string().min(1).nullable(),
@@ -54,6 +57,12 @@ export const manufacturingController = (deps: {
     publicarRoteiro: protectedProcedure
       .input(z.object({ modeloId: z.string().min(1) }))
       .mutation(async ({ input }) => unwrap(await deps.publicarRoteiro.execute(input))),
+
+    // Clona a revisão publicada inteira para rascunho: passo obrigatório antes de editar um
+    // roteiro já publicado (definir_operacao recusa mexer numa operação publicada).
+    abrirRevisaoRoteiro: protectedProcedure
+      .input(z.object({ modeloId: z.string().min(1) }))
+      .mutation(async ({ input }) => unwrap(await deps.abrirRevisaoRoteiro.execute(input))),
 
     roteiro: protectedProcedure
       .input(z.object({ modeloId: z.string().min(1) }))

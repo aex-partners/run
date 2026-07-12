@@ -47,6 +47,17 @@ export function resolveTempo(op: OperacaoInput, skuVariacoes: SkuVariacao[]): nu
 }
 
 // Taxas em vigor na data `emISO`. Empate no mesmo (chave, centro) -> vence a de início mais recente.
+//
+// CONTRATO DE ORDEM (não é detalhe de implementação, é parte da assinatura):
+// `rows` chega ORDENADO DO MAIS NOVO PARA O MAIS VELHO (o query engine do data devolve
+// `ORDER BY created_at DESC`; o InMemoryRecordStore dos testes espelha isso). O desempate abaixo
+// usa `>` ESTRITO, então num empate EXATO (mesma chave, mesmo escopo_centro, mesma vigenciaInicio)
+// vence a PRIMEIRA linha do array — a MAIS NOVA.
+//
+// Por que isso importa: `DefinirTaxaCusto` só faz INSERT, nunca update. "Digitei a taxa errada,
+// vou definir de novo a partir da mesma data" é o fluxo NATURAL de correção e produz exatamente
+// esse empate. Com a ordem newest-first, a correção vence; se a lista chegasse oldest-first, a
+// linha ERRADA (a velha) venceria e o custo continuaria errado, em silêncio.
 export function taxasVigentes(rows: TaxaRow[], emISO: string): TaxaVigente[] {
   const vigentes = rows.filter(
     (r) => r.vigenciaInicio <= emISO && (r.vigenciaFim == null || emISO <= r.vigenciaFim),

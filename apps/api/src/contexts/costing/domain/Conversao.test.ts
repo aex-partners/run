@@ -49,6 +49,19 @@ describe('taxasVigentes / pickTaxa', () => {
     expect(pickTaxa(t, 'taxa_fixa_min', 'C2')).toBe(1)
     expect(pickTaxa(t, 'taxa_moi_min', 'C1')).toBe(0)   // inexistente -> 0
   })
+
+  // CONTRATO DE ORDEM: `rows` chega NEWEST-FIRST (o engine devolve ORDER BY created_at DESC).
+  // O desempate usa `>` estrito, então num empate EXATO (mesma chave, mesmo escopo, mesma
+  // vigenciaInicio) vence a PRIMEIRA linha — a mais nova. É o que faz "defini a taxa errada,
+  // defino de novo a partir da mesma data" (o único fluxo de correção, já que DefinirTaxaCusto
+  // só insere) corrigir de fato o custo em vez de manter a linha velha.
+  it('on an EXACT tie the FIRST row wins — and rows arrive newest-first, so the correction wins', () => {
+    const t = taxasVigentes([
+      row({ valor: 0.99, vigenciaInicio: '2026-01-01' }),   // inserida DEPOIS: chega primeiro
+      row({ valor: 0.10, vigenciaInicio: '2026-01-01' }),   // a linha velha, errada
+    ], '2026-07-10')
+    expect(t.map((x) => x.valor)).toEqual([0.99])
+  })
 })
 
 describe('computeConversao — GOLDEN: reproduz a FT 01 (Casimira) da planilha real', () => {

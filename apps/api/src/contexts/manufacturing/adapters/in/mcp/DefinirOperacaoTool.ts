@@ -10,11 +10,12 @@ import {
 // the transport differs. Mutating -> requires confirmation (readOnly: false).
 // Cria/atualiza uma operação do roteiro de um modelo. A operação nasce SEMPRE como
 // RASCUNHO: só entra no custo depois de `publicar_roteiro`. Tempos em MINUTOS.
+// Atualizar só vale para RASCUNHO: operação publicada é imutável (use abrir_revisao_roteiro).
 export const definirOperacaoTool = (uc: DefinirOperacao): ToolDefinition => ({
   name: 'definir_operacao',
   readOnly: false,
   description:
-    'Cria ou atualiza uma operação do roteiro de produção de um Modelo (rascunho). Input: { id?: string, modeloId: string, seq: number, nome: string, centroId: string | null, tempoPadraoMin: number, tempoPorTamanho?: { [tamanho: string]: number }, tempoSetupMin?: number, loteSetup?: number, agregada?: boolean }. Sem id cria; com id atualiza. Todos os tempos em MINUTOS. tempoPorTamanho sobrepõe tempoPadraoMin para os tamanhos informados. A operação fica em RASCUNHO e só passa a custear depois de publicar_roteiro. Retorna { id }.',
+    'Cria ou atualiza uma operação do roteiro de produção de um Modelo (rascunho). Input: { id?: string, modeloId: string, codigo: string, seq: number, nome: string, centroId: string | null, tempoPadraoMin: number, tempoPorTamanho?: { [tamanho: string]: number }, tempoSetupMin?: number, loteSetup?: number, agregada?: boolean }. Sem id cria; com id atualiza (SÓ rascunho: operação já publicada é imutável — chame abrir_revisao_roteiro antes e edite o rascunho clonado). codigo = identidade ESTÁVEL da operação no modelo (ex.: CORTE, COSTURA, ACABAMENTO), preservada em todas as revisões; é por ele que a linha da ficha técnica (operacao_codigo) diz qual operação consome cada insumo. Todos os tempos em MINUTOS. tempoPorTamanho sobrepõe tempoPadraoMin para os tamanhos informados. A operação fica em RASCUNHO e só passa a custear depois de publicar_roteiro. Retorna { id }.',
   async execute(input: Json) {
     const obj = asObject('definir_operacao', input)
     if (!obj.ok) return fail(obj.error)
@@ -22,6 +23,8 @@ export const definirOperacaoTool = (uc: DefinirOperacao): ToolDefinition => ({
     if (!id.ok) return fail(id.error)
     const modeloId = reqString('definir_operacao', obj.value, 'modeloId')
     if (!modeloId.ok) return fail(modeloId.error)
+    const codigo = reqString('definir_operacao', obj.value, 'codigo')
+    if (!codigo.ok) return fail(codigo.error)
     const seq = reqNumber('definir_operacao', obj.value, 'seq')
     if (!seq.ok) return fail(seq.error)
     const nome = reqString('definir_operacao', obj.value, 'nome')
@@ -42,6 +45,7 @@ export const definirOperacaoTool = (uc: DefinirOperacao): ToolDefinition => ({
     const r = await uc.execute({
       id: id.value,
       modeloId: modeloId.value,
+      codigo: codigo.value,
       seq: seq.value,
       nome: nome.value,
       centroId: centroId.value,

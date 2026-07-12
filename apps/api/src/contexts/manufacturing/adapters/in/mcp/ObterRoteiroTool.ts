@@ -12,7 +12,7 @@ export const obterRoteiroTool = (uc: ObterRoteiro): ToolDefinition => ({
   name: 'obter_roteiro',
   readOnly: true,
   description:
-    'Consulta o roteiro de produção PUBLICADO (última revisão) de um Modelo. Input: { modeloId: string }. Retorna { roteiro: { modeloId, rev, operacoes: [{ id, seq, centroId, tempoPadraoMin, tempoPorTamanho, tempoSetupMin, loteSetup }], centros: [{ id, custoMinMod }] } | null }. Tempos em MINUTOS; roteiro null = o modelo ainda não tem revisão publicada (rascunhos não aparecem aqui).',
+    'Consulta o roteiro de produção PUBLICADO (última revisão) de um Modelo. Input: { modeloId: string }. Retorna { roteiro: { modeloId, rev, operacoes: [{ id, codigo, seq, centroId, tempoPadraoMin, tempoPorTamanho, tempoSetupMin, loteSetup }], centros: [{ id, custoMinMod }] } | null }. `codigo` é a identidade ESTÁVEL da operação no modelo (é o valor que vai em fichas_tecnicas.operacao_codigo); `id` é a linha DESTA revisão e muda a cada revisão publicada. Tempos em MINUTOS; roteiro null = o modelo ainda não tem revisão publicada (rascunhos não aparecem aqui).',
   async execute(input: Json) {
     const obj = asObject('obter_roteiro', input)
     if (!obj.ok) return fail(obj.error)
@@ -26,6 +26,7 @@ export const obterRoteiroTool = (uc: ObterRoteiro): ToolDefinition => ({
         rev: view.rev,
         operacoes: view.operacoes.map((o) => ({
           id: o.id,
+          codigo: o.codigo,
           seq: o.seq,
           centroId: o.centroId,
           tempoPadraoMin: o.tempoPadraoMin,

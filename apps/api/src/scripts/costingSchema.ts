@@ -79,7 +79,11 @@ export const COSTING_ENTITIES: EntitySpec[] = [
     displayName: 'Custos de Operação',
     fields: [
       { slug: 'sku', displayName: 'SKU', kind: 'relation', targetSlug: 'produtos' },
+      // A linha CUSTEADA daquela revisão: aponta para a LINHA de `operacoes` que foi custeada
+      // (a instância da revisão). Correto justamente por ser presa à revisão — o custo é o
+      // retrato daquela rev. O `codigo` vem junto só para leitura humana.
       { slug: 'operacao', displayName: 'Operacao', kind: 'relation', targetSlug: 'operacoes' },
+      { slug: 'codigo', displayName: 'Codigo', kind: 'text' },
       { slug: 'centro', displayName: 'Centro', kind: 'relation', targetSlug: 'centros_de_trabalho' },
       { slug: 'tempo_min', displayName: 'Tempo min', kind: 'duration' },
       { slug: 'custo_mod', displayName: 'Custo MOD', kind: 'currency' },
@@ -91,11 +95,16 @@ export const COSTING_ENTITIES: EntitySpec[] = [
 ]
 
 // A linha da ficha aponta para a operação que CONSOME aquele insumo. Nulo = ainda não atribuído.
+//
+// Aponta para o CÓDIGO da operação (operacoes.codigo), NÃO para a linha da revisão. Uma relação
+// à linha penduraria no vazio assim que uma nova revisão do roteiro fosse publicada: cada revisão
+// cria linhas NOVAS de `operacoes` e as antigas deixam de ser a revisão vigente. O código é a
+// identidade estável da operação dentro do modelo e sobrevive a toda revisão.
 export const FICHAS_TECNICAS_NEW_FIELDS: FieldSpec[] = [
-  { slug: 'operacao', displayName: 'Operacao', kind: 'relation', targetSlug: 'operacoes' },
+  { slug: 'operacao_codigo', displayName: 'Operacao codigo', kind: 'text' },
 ]
 export const FICHAS_EXPLODIDAS_NEW_FIELDS: FieldSpec[] = [
-  { slug: 'operacao', displayName: 'Operacao', kind: 'relation', targetSlug: 'operacoes' },
+  { slug: 'operacao_codigo', displayName: 'Operacao codigo', kind: 'text' },
 ]
 // snapshots_custo.custo_total passa a ser o custo CHEIO. Seguro: prod tem 0 snapshots.
 export const SNAPSHOTS_NEW_FIELDS: FieldSpec[] = [

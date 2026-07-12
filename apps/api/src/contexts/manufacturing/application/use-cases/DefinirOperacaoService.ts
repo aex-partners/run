@@ -10,6 +10,7 @@ export class DefinirOperacaoService implements DefinirOperacao {
   async execute(cmd: {
     id?: string
     modeloId: string
+    codigo: string
     seq: number
     nome: string
     centroId: string | null
@@ -24,6 +25,7 @@ export class DefinirOperacaoService implements DefinirOperacao {
 
     const data = {
       modelo: cmd.modeloId,
+      codigo: cmd.codigo,
       seq: cmd.seq,
       nome: cmd.nome,
       centro: cmd.centroId,
@@ -43,6 +45,15 @@ export class DefinirOperacaoService implements DefinirOperacao {
 
     const existing = await this.store.get(cmd.id)
     if (!existing) return fail('operação não encontrada')
+
+    // A revisão PUBLICADA é IMUTÁVEL. Sobrescrever a linha aqui a devolveria para
+    // rascunho/rev 0, e como `selecionarRoteiroPublicado` só enxerga as linhas da MAIOR rev
+    // publicada, as OUTRAS operações da revisão sumiriam do custo na hora — e o publish
+    // seguinte (que promove só rascunhos) criaria uma revisão contendo APENAS esta linha,
+    // apagando as demais para sempre. Editar exige abrir uma revisão nova (que clona o
+    // conjunto COMPLETO para rascunho) e mexer no rascunho.
+    if (existing.data.status === 'publicada') return fail(ManufacturingError.operacaoPublicada)
+
     await this.store.update(existing.id, data, existing.version)
     return ok({ id: existing.id })
   }

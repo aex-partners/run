@@ -13,37 +13,43 @@ describe('PublicarRoteiro + ObterRoteiro', () => {
 
     expect(await obter.execute({ modeloId: 'M1' })).toBeNull()      // nada publicado ainda
 
-    await definir.execute({ modeloId: 'M1', seq: 10, nome: 'COSTURA', centroId: 'C1', tempoPadraoMin: 45.53, agregada: true })
+    await definir.execute({ modeloId: 'M1', codigo: 'COSTURA', seq: 10, nome: 'COSTURA', centroId: 'C1', tempoPadraoMin: 45.53, agregada: true })
     expect(await obter.execute({ modeloId: 'M1' })).toBeNull()      // rascunho não conta
 
     const p = await publicar.execute({ modeloId: 'M1' })
     expect(p.ok).toBe(true)
     if (!p.ok) return
     expect(p.value.rev).toBe(1)
+    expect(p.value.operacoes).toBe(1)      // o chamador vê QUANTAS operações entraram na revisão
 
     const r = await obter.execute({ modeloId: 'M1' })
     expect(r?.rev).toBe(1)
-    expect(r?.operacoes).toEqual([{ id: expect.any(String), seq: 10, centroId: 'C1',
+    expect(r?.operacoes).toEqual([{ id: expect.any(String), codigo: 'COSTURA', seq: 10, centroId: 'C1',
       tempoPadraoMin: 45.53, tempoPorTamanho: {}, tempoSetupMin: 0, loteSetup: 1 }])
     expect(r?.centros).toEqual([{ id: 'C1', custoMinMod: 1 }])
   })
 
+  // REFINO agregado -> detalhado: a rev 2 tem SÓ as linhas finas. As operações da rev 1 NÃO são
+  // arrastadas para a rev 2 — se fossem, a linha COSTURA agregada (45,53 min) sobreviveria ao lado
+  // das finas que a substituem e o tempo entraria DUAS VEZES no custo.
   it('a second publish bumps to rev 2 and ObterRoteiro serves only the new rev', async () => {
     const s = seedManufacturing()
     const definir = new DefinirOperacaoService(s, s)
     const publicar = new PublicarRoteiroService(s, s)
     const obter = new ObterRoteiroService(s, s)
-    await definir.execute({ modeloId: 'M1', seq: 10, nome: 'COSTURA', centroId: 'C1', tempoPadraoMin: 45.53 })
+    await definir.execute({ modeloId: 'M1', codigo: 'COSTURA', seq: 10, nome: 'COSTURA', centroId: 'C1', tempoPadraoMin: 45.53 })
     await publicar.execute({ modeloId: 'M1' })
-    // refina: duas operações finas
-    await definir.execute({ modeloId: 'M1', seq: 10, nome: 'PREPARA', centroId: 'C1', tempoPadraoMin: 15, agregada: false })
-    await definir.execute({ modeloId: 'M1', seq: 20, nome: 'FECHA', centroId: 'C1', tempoPadraoMin: 30, agregada: false })
+    // refina: duas operações finas (linhas NOVAS, sem id: não estamos editando a publicada)
+    await definir.execute({ modeloId: 'M1', codigo: 'PREPARA', seq: 10, nome: 'PREPARA', centroId: 'C1', tempoPadraoMin: 15, agregada: false })
+    await definir.execute({ modeloId: 'M1', codigo: 'FECHA', seq: 20, nome: 'FECHA', centroId: 'C1', tempoPadraoMin: 30, agregada: false })
     const p2 = await publicar.execute({ modeloId: 'M1' })
     if (!p2.ok) return
     expect(p2.value.rev).toBe(2)
+    expect(p2.value.operacoes).toBe(2)
     const r = await obter.execute({ modeloId: 'M1' })
     expect(r?.rev).toBe(2)
-    expect(r?.operacoes.map((o) => o.tempoPadraoMin)).toEqual([15, 30])
+    expect(r?.operacoes.map((o) => o.tempoPadraoMin)).toEqual([15, 30])   // 45, não 90,53
+    expect(r?.operacoes.map((o) => o.codigo)).toEqual(['PREPARA', 'FECHA'])
   })
 
   it('fails when there is no draft to publish', async () => {
@@ -64,7 +70,7 @@ describe('PublicarRoteiro + ObterRoteiro', () => {
 
     // rev 1 publicada: 8 operações de 5 min (as linhas MAIS ANTIGAS de `operacoes`)
     for (let i = 1; i <= 8; i++) {
-      await definir.execute({ modeloId: 'M1', seq: i * 10, nome: `OP${i}`, centroId: 'C1', tempoPadraoMin: 5 })
+      await definir.execute({ modeloId: 'M1', codigo: `OP${i}`, seq: i * 10, nome: `OP${i}`, centroId: 'C1', tempoPadraoMin: 5 })
     }
     const p = await publicar.execute({ modeloId: 'M1' })
     expect(p.ok).toBe(true)
@@ -72,7 +78,7 @@ describe('PublicarRoteiro + ObterRoteiro', () => {
     // rev 2 em RASCUNHO: 45 operações novas => 53 linhas para o modelo. Truncando em 50 e
     // mantendo as mais NOVAS, 3 das 8 ops publicadas caem fora: o roteiro voltaria com 5 de 8.
     for (let i = 1; i <= 45; i++) {
-      await definir.execute({ modeloId: 'M1', seq: 1000 + i, nome: `DRAFT${i}`, centroId: 'C1', tempoPadraoMin: 3 })
+      await definir.execute({ modeloId: 'M1', codigo: `DRAFT${i}`, seq: 1000 + i, nome: `DRAFT${i}`, centroId: 'C1', tempoPadraoMin: 3 })
     }
 
     const r = await obter.execute({ modeloId: 'M1' })

@@ -46,9 +46,11 @@ export class ExplodirFichaService implements ExplodirFicha {
     if (fichaRows.length === 0) return fail(CostingError.semFichaPublicada)
     const maxRev = Math.max(...fichaRows.map((r) => num(r.data.rev)))
     const lines: FichaLineInput[] = []
-    // operação que CONSOME cada insumo, alinhada por índice com `lines` (e com
-    // result.lines: explodeFicha faz map 1:1 e preserva a ordem).
-    const operacaoPorLinha: (string | null)[] = []
+    // CÓDIGO da operação que CONSOME cada insumo, alinhado por índice com `lines` (e com
+    // result.lines: explodeFicha faz map 1:1 e preserva a ordem). É o código ESTÁVEL da
+    // operação no modelo, não o id da linha da revisão — só assim a atribuição sobrevive à
+    // publicação de uma revisão nova do roteiro.
+    const codigoPorLinha: (string | null)[] = []
 
     // load the item Produtos referenced by the ficha (for fantasma flag + cost)
     const fichaItemIds = fichaRows.filter((r) => num(r.data.rev) === maxRev).map((r) => String(r.data.item))
@@ -65,7 +67,7 @@ export class ExplodirFichaService implements ExplodirFicha {
         qtyBase: num(r.data.qty_base),
         qtyPorTamanho: parseMap(r.data.qty_por_tamanho),
       })
-      operacaoPorLinha.push(String(r.data.operacao ?? '') || null)
+      codigoPorLinha.push(String(r.data.operacao_codigo ?? '') || null)
     }
 
     const skuVariacoes = await this.loadVariacoes(variacaoIds)
@@ -91,7 +93,7 @@ export class ExplodirFichaService implements ExplodirFicha {
       await this.store.insert(ids.fichas_explodidas, {
         sku: cmd.skuId, item: line.itemIdResolvido, qty: line.qty,
         custo_unit: line.custoUnit, custo_total: line.custoTotal, origem_rev: maxRev,
-        operacao: operacaoPorLinha[i] ?? null, editado_manual: false,
+        operacao_codigo: codigoPorLinha[i] ?? null, editado_manual: false,
       })
       custoFreshInserted += line.custoTotal
       linhasInseridas++
@@ -130,15 +132,31 @@ export class ExplodirFichaService implements ExplodirFicha {
       taxasUsadas = taxasVigentes(taxaRows, agora)
       conv = computeConversao({ operacoes: rp.operacoes, centros, taxas: taxasUsadas, skuVariacoes })
       erros.push(...conv.erros)
+
+      // ATRIBUIÇÃO PENDURADA: a linha da ficha aponta para um código de operação que NÃO existe
+      // no roteiro publicado (código digitado errado, ou operação removida numa revisão nova).
+      // O insumo continua custeado (o material é real), mas o "onde é consumido" está quebrado e
+      // o engenheiro precisa saber. SOFT: reporta em `erros`, NUNCA derruba a explosão.
+      const codigosDoRoteiro = new Set(rp.operacoes.map((o) => o.codigo).filter((c) => c !== ''))
+      const penduradas = [...new Set(codigoPorLinha.filter((c): c is string => c != null))]
+        .filter((c) => !codigosDoRoteiro.has(c))
+      for (const c of penduradas) {
+        erros.push(`linha da ficha atribuída à operação "${c}", que não existe no roteiro publicado (rev ${rp.rev}): corrija a atribuição ou o roteiro`)
+      }
     }
     const tot = totalizarCusto(custoMateriais, conv)
 
     // custos_de_operacao: substitui as linhas deste SKU (não acumula entre re-explosões).
     const antigos = await this.store.query(ids.custos_de_operacao, [{ field: 'sku', op: 'eq', value: cmd.skuId }], LIMITE)
     for (const a of antigos) await this.store.delete(a.id)
+    // `operacao` = a LINHA da revisão que foi custeada (correto: o custo é o retrato daquela
+    // rev). `codigo` vai junto só para leitura humana — a linha da rev some da vista assim que
+    // uma revisão nova é publicada, e sem o código a linha de custo vira um id órfão.
+    const codigoPorOperacaoId = new Map((rp?.operacoes ?? []).map((o) => [o.id, o.codigo]))
     for (const o of conv.operacoes) {
       await this.store.insert(ids.custos_de_operacao, {
-        sku: cmd.skuId, operacao: o.operacaoId, centro: o.centroId,
+        sku: cmd.skuId, operacao: o.operacaoId, codigo: codigoPorOperacaoId.get(o.operacaoId) ?? null,
+        centro: o.centroId,
         tempo_min: o.tempoMin, custo_mod: o.custoMod, custo_indireto: o.custoIndireto,
         custo_total: o.custoTotal, origem_rev: rp?.rev ?? 0,
       })

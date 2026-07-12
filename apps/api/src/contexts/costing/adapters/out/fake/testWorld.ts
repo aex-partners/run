@@ -18,7 +18,11 @@ export function seedWorld() {
   s.seedRecord('PRODUTOS', { id: 'BTN', version: 1, data: { produto: 'BOTAO', preco_custo: 0.3 } })
   s.seedRecord('PRODUTOS', { id: 'SKU', version: 1, data: { produto: 'BOMBACHA T38 CAQUI', modelo: 'M1', variacoes: ['T38', 'CAQUI'] } })
   // ficha do modelo (rev 1 publicada)
-  s.seedRecord('FICHAS_TECNICAS', { id: 'f1', version: 1, data: { modelo: 'M1', item: 'PH', unidade: 'm2', qty_base: 1.4, qty_por_tamanho: JSON.stringify({ T38: 1.4 }), rev: 1, status: 'publicada' } })
+  // f1 ATRIBUÍDA: `operacao_codigo: 'COSTURA'` casa com o codigo da operação de ROTEIRO_M1 — é o
+  // elo "onde cada insumo é consumido" (o headline da feature). f2 fica SEM atribuição (null),
+  // que é o estado inicial legítimo de uma linha ainda não atribuída: os dois caminhos ficam
+  // cobertos pelo mesmo mundo.
+  s.seedRecord('FICHAS_TECNICAS', { id: 'f1', version: 1, data: { modelo: 'M1', item: 'PH', unidade: 'm2', qty_base: 1.4, qty_por_tamanho: JSON.stringify({ T38: 1.4 }), rev: 1, status: 'publicada', operacao_codigo: 'COSTURA' } })
   s.seedRecord('FICHAS_TECNICAS', { id: 'f2', version: 1, data: { modelo: 'M1', item: 'BTN', unidade: 'un', qty_base: 2, qty_por_tamanho: '{}', rev: 1, status: 'publicada' } })
   // substituição da cor
   s.seedRecord('SUBSTITUICOES', { id: 'sub1', version: 1, data: { variacao: 'CAQUI', de_item: 'PH', para_item: 'SARJA' } })

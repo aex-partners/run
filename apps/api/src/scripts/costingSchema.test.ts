@@ -63,9 +63,31 @@ describe('costingSchema — process engineering additions', () => {
     expect(chave.options).toEqual(['taxa_fixa_min', 'taxa_moi_min', 'taxa_depreciacao_min'])
   })
 
-  it('links a ficha line to the operation that consumes it', () => {
-    expect(FICHAS_TECNICAS_NEW_FIELDS.map((f) => f.slug)).toEqual(['operacao'])
-    expect(FICHAS_TECNICAS_NEW_FIELDS[0].targetSlug).toBe('operacoes')
+  // A atribuição do insumo à operação é pelo CÓDIGO ESTÁVEL da operação, nunca pela linha
+  // da revisão: cada revisão publica linhas NOVAS de `operacoes`, então uma relação à linha
+  // penduraria no vazio na revisão seguinte. Por isso é `text`, e NÃO `relation`.
+  it('links a ficha line to the operation CODE that consumes it (stable across revisions)', () => {
+    expect(FICHAS_TECNICAS_NEW_FIELDS.map((f) => f.slug)).toEqual(['operacao_codigo'])
+    expect(fieldConfig(FICHAS_TECNICAS_NEW_FIELDS[0], () => 'X')).toEqual({ kind: 'text' })
+    expect(FICHAS_TECNICAS_NEW_FIELDS[0].targetSlug).toBeUndefined()
+  })
+
+  it('carries the operation code onto the exploded line', () => {
+    expect(FICHAS_EXPLODIDAS_NEW_FIELDS.map((f) => f.slug)).toEqual(['operacao_codigo'])
+    expect(fieldConfig(FICHAS_EXPLODIDAS_NEW_FIELDS[0], () => 'X')).toEqual({ kind: 'text' })
+    expect(FICHAS_EXPLODIDAS_NEW_FIELDS[0].targetSlug).toBeUndefined()
+  })
+
+  // custos_de_operacao é a linha CUSTEADA daquela revisão: mantém a RELAÇÃO à linha de
+  // `operacoes` (a instância custeada da rev) e ganha `codigo` só para legibilidade.
+  it('custos_de_operacao keeps the relation to the revision row AND carries the codigo', () => {
+    const c = COSTING_ENTITIES.find((e) => e.slug === 'custos_de_operacao')!
+    expect(c.fields.map((f) => f.slug)).toEqual(
+      ['sku', 'operacao', 'codigo', 'centro', 'tempo_min', 'custo_mod', 'custo_indireto',
+       'custo_total', 'origem_rev'],
+    )
+    expect(c.fields.find((f) => f.slug === 'operacao')!.targetSlug).toBe('operacoes')
+    expect(fieldConfig(c.fields.find((f) => f.slug === 'codigo')!, () => 'X')).toEqual({ kind: 'text' })
   })
 
   it('snapshot carries the full cost breakdown', () => {

@@ -60,12 +60,16 @@ import { custoUnitarioTool } from '@/contexts/costing/adapters/in/mcp/CustoUnita
 
 import { ObterRoteiro } from '@/contexts/manufacturing/application/ports/in/ObterRoteiro'
 import { DefinirCentro } from '@/contexts/manufacturing/application/ports/in/DefinirCentro'
+import { ListarCentros } from '@/contexts/manufacturing/application/ports/in/ListarCentros'
 import { DefinirOperacao } from '@/contexts/manufacturing/application/ports/in/DefinirOperacao'
 import { PublicarRoteiro } from '@/contexts/manufacturing/application/ports/in/PublicarRoteiro'
+import { AbrirRevisaoRoteiro } from '@/contexts/manufacturing/application/ports/in/AbrirRevisaoRoteiro'
 import { obterRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/ObterRoteiroTool'
 import { definirCentroTool } from '@/contexts/manufacturing/adapters/in/mcp/DefinirCentroTool'
+import { listarCentrosTool } from '@/contexts/manufacturing/adapters/in/mcp/ListarCentrosTool'
 import { definirOperacaoTool } from '@/contexts/manufacturing/adapters/in/mcp/DefinirOperacaoTool'
 import { publicarRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/PublicarRoteiroTool'
+import { abrirRevisaoRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/AbrirRevisaoRoteiroTool'
 
 export interface McpToolDeps {
   // data in-ports
@@ -102,8 +106,10 @@ export interface McpToolDeps {
   // manufacturing in-ports (centros de trabalho + roteiro de produção)
   obterRoteiro: ObterRoteiro
   definirCentro: DefinirCentro
+  listarCentros: ListarCentros
   definirOperacao: DefinirOperacao
   publicarRoteiro: PublicarRoteiro
+  abrirRevisaoRoteiro: AbrirRevisaoRoteiro
 }
 
 export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
@@ -143,7 +149,9 @@ export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
     // manufacturing (centros de trabalho + roteiro de produção)
     obterRoteiroTool(deps.obterRoteiro),
     definirCentroTool(deps.definirCentro),
+    listarCentrosTool(deps.listarCentros),
     definirOperacaoTool(deps.definirOperacao),
     publicarRoteiroTool(deps.publicarRoteiro),
+    abrirRevisaoRoteiroTool(deps.abrirRevisaoRoteiro),
   ]
 }

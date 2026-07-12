@@ -6,7 +6,7 @@
 //   * RecordStore    -> data ListEntities/QueryRecords/GetRecord/InsertRecord/
 //                       UpdateRecord/DeleteRecord (CRUD over the dynamic records,
 //                       keyed by entityId; the bridge resolves entityId -> slug).
-// Builds the five use-cases and the tRPC controller. Exposes the in-ports so the
+// Builds the six use-cases and the tRPC controller. Exposes the in-ports so the
 // assistant tool assembly, routes AND the costing wiring can reach them: costing's
 // ManufacturingRoteiroProvider bridge is fed `obterRoteiro` from here, which is why
 // this builder must run BEFORE wireCosting in the composition root.
@@ -20,6 +20,7 @@ import { DefinirCentroService } from '@/contexts/manufacturing/application/use-c
 import { ListarCentrosService } from '@/contexts/manufacturing/application/use-cases/ListarCentrosService'
 import { DefinirOperacaoService } from '@/contexts/manufacturing/application/use-cases/DefinirOperacaoService'
 import { PublicarRoteiroService } from '@/contexts/manufacturing/application/use-cases/PublicarRoteiroService'
+import { AbrirRevisaoRoteiroService } from '@/contexts/manufacturing/application/use-cases/AbrirRevisaoRoteiroService'
 import { manufacturingController } from '@/contexts/manufacturing/adapters/in/http/ManufacturingController'
 
 type ManufacturingDeps = {
@@ -52,14 +53,20 @@ export function wireManufacturing(_infra: Infra, deps: ManufacturingDeps) {
   const listarCentros = new ListarCentrosService(store, registry)
   const definirOperacao = new DefinirOperacaoService(store, registry)
   const publicarRoteiro = new PublicarRoteiroService(store, registry)
+  // Clona a revisão publicada inteira para rascunho. É o que torna estrutural a regra
+  // "uma revisão é o conjunto COMPLETO de operações": sem ele, editar uma operação e publicar
+  // criaria uma revisão só com ela e as demais sumiriam do custo em silêncio.
+  const abrirRevisaoRoteiro = new AbrirRevisaoRoteiroService(store, registry)
 
   const controller = manufacturingController({
-    obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro,
+    obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro,
   })
 
   return {
     controller,
-    ports: { obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro },
+    ports: {
+      obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro,
+    },
   }
 }
 

@@ -30,6 +30,7 @@ export class ObterRoteiroService implements ObterRoteiro {
     const rows = await this.store.query(opsId, [{ field: 'modelo', op: 'eq', value: q.modeloId }], LIMITE)
     const ops: OperacaoRow[] = rows.map((r) => ({
       id: r.id,
+      codigo: String(r.data.codigo ?? ''),
       seq: num(r.data.seq),
       nome: String(r.data.nome ?? ''),
       centroId: r.data.centro == null || r.data.centro === '' ? null : String(r.data.centro),
@@ -57,6 +58,7 @@ export class ObterRoteiroService implements ObterRoteiro {
       rev: roteiro.rev,
       operacoes: roteiro.operacoes.map((o) => ({
         id: o.id,
+        codigo: o.codigo,
         seq: o.seq,
         centroId: o.centroId,
         tempoPadraoMin: o.tempoPadraoMin,

@@ -13,13 +13,13 @@ export const publicarRoteiroTool = (uc: PublicarRoteiro): ToolDefinition => ({
   name: 'publicar_roteiro',
   readOnly: false,
   description:
-    'Publica os rascunhos do roteiro de produção de um Modelo como uma nova revisão. Input: { modeloId: string }. Só depois de publicado o roteiro passa a custear a conversão (mão de obra + indireto) nas explosões de ficha. Falha se o modelo não tiver operações em rascunho. Retorna { rev }.',
+    'Publica os rascunhos do roteiro de produção de um Modelo como uma nova revisão. Input: { modeloId: string }. A nova revisão é EXATAMENTE o conjunto de rascunhos do modelo: uma revisão é o roteiro COMPLETO, não um delta. Para alterar um roteiro já publicado, chame abrir_revisao_roteiro (que clona a revisão inteira para rascunho), edite os rascunhos e só então publique. Só depois de publicado o roteiro passa a custear a conversão (mão de obra + indireto) nas explosões de ficha. Falha se o modelo não tiver operações em rascunho. Retorna { rev, operacoes } — confira `operacoes` contra o total esperado do roteiro.',
   async execute(input: Json) {
     const obj = asObject('publicar_roteiro', input)
     if (!obj.ok) return fail(obj.error)
     const modeloId = reqString('publicar_roteiro', obj.value, 'modeloId')
     if (!modeloId.ok) return fail(modeloId.error)
     const r = await uc.execute({ modeloId: modeloId.value })
-    return r.ok ? ok({ rev: r.value.rev }) : fail(r.error)
+    return r.ok ? ok({ rev: r.value.rev, operacoes: r.value.operacoes }) : fail(r.error)
   },
 })
