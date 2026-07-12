@@ -1,4 +1,5 @@
 import { Cond, RecordRow, RecordStore } from '@/contexts/costing/application/ports/out/RecordStore'
+import { ResolveOwner } from '@/contexts/costing/application/ports/out/ResolveOwner'
 
 // Local shapes for the data ListEntities/QueryRecords/GetRecord/InsertRecord/
 // UpdateRecord/DeleteRecord in-ports this bridge calls. Structurally identical
@@ -6,6 +7,9 @@ import { Cond, RecordRow, RecordStore } from '@/contexts/costing/application/por
 // so this adapter never crosses the context boundary at the type level; the
 // concrete data in-ports injected by main/wiring/costing.ts satisfy these
 // shapes structurally.
+// `createdBy` mirrors data's InsertRecordCommand.createdBy (optional there);
+// this bridge always resolves an owner id before inserting, so it always
+// supplies one -- see insert() below.
 interface EntityRow { id: string; slug: string }
 interface ListEntitiesLike { execute(): Promise<EntityRow[]> }
 interface QueryRecordsLike {
@@ -17,7 +21,7 @@ interface QueryRecordsLike {
 }
 interface GetRecordLike { execute(q: { recordId: string }): Promise<RecordRow | null> }
 interface InsertRecordLike {
-  execute(cmd: { entityId: string; data: Record<string, unknown> }): Promise<{ ok: boolean; value?: { id: string }; error?: string }>
+  execute(cmd: { entityId: string; data: Record<string, unknown>; createdBy?: string }): Promise<{ ok: boolean; value?: { id: string }; error?: string }>
 }
 interface UpdateRecordLike {
   execute(cmd: { recordId: string; data: Record<string, unknown>; expectedVersion: number }): Promise<{ ok: boolean; error?: string }>
@@ -33,6 +37,7 @@ export interface DataRecordStoreDeps {
   insert: InsertRecordLike
   update: UpdateRecordLike
   delete: DeleteRecordLike
+  resolveOwner: ResolveOwner
 }
 
 // ACL bridge: costing RecordStore -> data ListEntities/QueryRecords/GetRecord/
@@ -65,7 +70,9 @@ export class DataRecordStore implements RecordStore {
   }
 
   async insert(entityId: string, data: Record<string, unknown>): Promise<string> {
-    const r = await this.deps.insert.execute({ entityId, data })
+    const createdBy = await this.deps.resolveOwner.ownerId()
+    if (!createdBy) throw new Error('nenhum usuário owner: não é possível gravar registros')
+    const r = await this.deps.insert.execute({ entityId, data, createdBy })
     if (!r.ok || !r.value) throw new Error(r.error ?? 'insert failed')
     return r.value.id
   }

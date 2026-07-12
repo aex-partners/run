@@ -15,6 +15,7 @@ import { DataWiring } from '@/main/wiring/data'
 
 import { DataEntityRegistry } from '@/contexts/manufacturing/adapters/out/bridge/DataEntityRegistry'
 import { DataRecordStore } from '@/contexts/manufacturing/adapters/out/bridge/DataRecordStore'
+import { DrizzleResolveOwner } from '@/contexts/manufacturing/adapters/out/persistence/DrizzleResolveOwner'
 import { ObterRoteiroService } from '@/contexts/manufacturing/application/use-cases/ObterRoteiroService'
 import { DefinirCentroService } from '@/contexts/manufacturing/application/use-cases/DefinirCentroService'
 import { ListarCentrosService } from '@/contexts/manufacturing/application/use-cases/ListarCentrosService'
@@ -33,11 +34,14 @@ type ManufacturingDeps = {
   >
 }
 
-export function wireManufacturing(_infra: Infra, deps: ManufacturingDeps) {
+export function wireManufacturing(infra: Infra, deps: ManufacturingDeps) {
   const { data } = deps
 
   // ACL bridge: manufacturing EntityRegistry -> data ListEntities.
   const registry = new DataEntityRegistry({ listEntities: data.listEntities })
+  // Resolves the workspace owner that record writes must be attributed to
+  // (entity_records.created_by is a NOT NULL FK to users.id).
+  const resolveOwner = new DrizzleResolveOwner(infra.db)
   // ACL bridge: manufacturing RecordStore -> data ListEntities/QueryRecords/GetRecord/
   // InsertRecord/UpdateRecord/DeleteRecord.
   const store = new DataRecordStore({
@@ -47,6 +51,7 @@ export function wireManufacturing(_infra: Infra, deps: ManufacturingDeps) {
     insert: data.insertRecord,
     update: data.updateRecord,
     delete: data.deleteRecord,
+    resolveOwner,
   })
 
   const obterRoteiro = new ObterRoteiroService(store, registry)

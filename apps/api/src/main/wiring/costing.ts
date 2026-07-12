@@ -16,6 +16,7 @@ import { ManufacturingWiring } from '@/main/wiring/manufacturing'
 
 import { DataEntityRegistry } from '@/contexts/costing/adapters/out/bridge/DataEntityRegistry'
 import { DataRecordStore } from '@/contexts/costing/adapters/out/bridge/DataRecordStore'
+import { DrizzleResolveOwner } from '@/contexts/costing/adapters/out/persistence/DrizzleResolveOwner'
 import { ManufacturingRoteiroProvider } from '@/contexts/costing/adapters/out/bridge/ManufacturingRoteiroProvider'
 import { ExplodirFichaService } from '@/contexts/costing/application/use-cases/ExplodirFichaService'
 import { RecalcularCustoService } from '@/contexts/costing/application/use-cases/RecalcularCustoService'
@@ -38,11 +39,14 @@ type CostingDeps = {
   manufacturing: Pick<ManufacturingWiring['ports'], 'obterRoteiro'>
 }
 
-export function wireCosting(_infra: Infra, deps: CostingDeps) {
+export function wireCosting(infra: Infra, deps: CostingDeps) {
   const { data, manufacturing } = deps
 
   // ACL bridge: costing EntityRegistry -> data ListEntities.
   const registry = new DataEntityRegistry({ listEntities: data.listEntities })
+  // Resolves the workspace owner that record writes must be attributed to
+  // (entity_records.created_by is a NOT NULL FK to users.id).
+  const resolveOwner = new DrizzleResolveOwner(infra.db)
   // ACL bridge: costing RecordStore -> data ListEntities/QueryRecords/GetRecord/
   // InsertRecord/UpdateRecord/DeleteRecord.
   const store = new DataRecordStore({
@@ -52,6 +56,7 @@ export function wireCosting(_infra: Infra, deps: CostingDeps) {
     insert: data.insertRecord,
     update: data.updateRecord,
     delete: data.deleteRecord,
+    resolveOwner,
   })
 
   // ACL bridge: costing RoteiroProvider -> manufacturing ObterRoteiro. A explosão lê
