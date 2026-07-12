@@ -54,6 +54,16 @@ export class DefinirOperacaoService implements DefinirOperacao {
     // conjunto COMPLETO para rascunho) e mexer no rascunho.
     if (existing.data.status === 'publicada') return fail(ManufacturingError.operacaoPublicada)
 
+    // O `codigo` é a IDENTIDADE ESTÁVEL da operação no modelo — o update reescreve a linha inteira
+    // a partir de `cmd`, então deixá-lo passar RE-IDENTIFICARIA a operação: toda linha de ficha
+    // técnica atribuída ao código antigo (operacao_codigo) vira uma atribuição ORFÃ, e o "onde
+    // cada insumo é consumido" (o headline da feature) quebra em silêncio — a atribuição pendurada
+    // só aparece como erro soft na explosão seguinte. Trocar de operação é criar outra linha.
+    const codigoAtual = String(existing.data.codigo ?? '')
+    if (codigoAtual !== '' && codigoAtual !== cmd.codigo) {
+      return fail(ManufacturingError.codigoImutavel(codigoAtual, cmd.codigo))
+    }
+
     await this.store.update(existing.id, data, existing.version)
     return ok({ id: existing.id })
   }

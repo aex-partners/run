@@ -29,6 +29,16 @@ export class DefinirTaxaCustoService implements DefinirTaxaCusto {
     if (cmd.vigenciaFim != null && cmd.vigenciaFim !== '' && !ISO_DATE.test(cmd.vigenciaFim)) {
       return fail(`vigenciaFim inválida: ${cmd.vigenciaFim} (use o formato ISO YYYY-MM-DD, ou omita para vigência aberta)`)
     }
+    // Janela INVERTIDA (fim antes do início): passa o regex e falha FECHADA — `taxasVigentes` exige
+    // `inicio <= hoje <= fim`, que nenhuma data satisfaz, então a taxa NUNCA entra em vigor. É
+    // sempre um erro de digitação, e o sintoma (custo indireto zerado, sem erro) é indistinguível
+    // de "esqueci de cadastrar a taxa". Recusar aqui é a única chance de dizer isso na cara.
+    if (cmd.vigenciaFim != null && cmd.vigenciaFim !== '' && cmd.vigenciaFim < cmd.vigenciaInicio) {
+      return fail(
+        `vigência invertida: vigenciaFim ${cmd.vigenciaFim} é anterior a vigenciaInicio ${cmd.vigenciaInicio} ` +
+        '(a taxa nunca entraria em vigor)',
+      )
+    }
     const id = await this.registry.entityIdBySlug('parametros_de_custo')
     if (!id) return fail(CostingError.entidadeFaltando)
     const novoId = await this.store.insert(id, {

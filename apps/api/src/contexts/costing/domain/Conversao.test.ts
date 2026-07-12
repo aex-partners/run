@@ -99,13 +99,97 @@ describe('computeConversao — bordas', () => {
   })
   it('centro sem custo por minuto: MOD 0 + erro', () => {
     const conv = computeConversao({
-      operacoes: [op()], centros: { C1: { id: 'C1', custoMinMod: null } }, taxas: [], skuVariacoes: [],
+      operacoes: [op()], centros: { C1: { id: 'C1', custoMinMod: null } },
+      taxas: [{ chave: 'taxa_fixa_min', centroId: null, valor: 0.5 }], skuVariacoes: [],
     })
     expect(conv.custoMod).toBe(0)
-    expect(conv.erros.length).toBe(1)
+    expect(conv.erros.length).toBe(1)                    // SÓ o do custo por minuto: a taxa existe
   })
   it('sem operações: conversão zerada, sem erro', () => {
     const conv = computeConversao({ operacoes: [], centros: {}, taxas: [], skuVariacoes: [] })
     expect(conv).toMatchObject({ tempoTotalMin: 0, custoMod: 0, custoIndireto: 0, custoConversao: 0, erros: [] })
+  })
+})
+
+// O ÚLTIMO caminho de ZERO SILENCIOSO do indireto. Um modelo com roteiro perfeitamente sadio, mas
+// SEM nenhuma taxa de absorção em vigor (nenhuma linha em parametros_de_custo, ou todas expiradas,
+// ou uma janela invertida que falha fechada) produzia custoIndireto: 0 com `erros: []` — o custo
+// unitário sai subestimado e parece SAUDÁVEL. É o mesmo estado final do bug de truncagem original,
+// alcançável sem truncagem nenhuma. `pickTaxa` devolvia 0 tanto para "taxa ausente" quanto para
+// "taxa vale 0": a diferença entre as duas é a diferença entre um erro e uma decisão.
+describe('computeConversao — nenhuma taxa de absorção em vigor (o zero silencioso)', () => {
+  it('SEM taxa nenhuma: custo indireto 0 + erro SOFT nomeando a situação (o custo continua saindo)', () => {
+    const conv = computeConversao({
+      operacoes: [op({ tempoPadraoMin: 10 })],
+      centros: { C1: { id: 'C1', custoMinMod: 1 } },
+      taxas: [],                                          // nenhuma taxa vigente
+      skuVariacoes: [],
+    })
+    expect(conv.custoIndireto).toBe(0)
+    expect(conv.custoMod).toBe(10)                        // SOFT: o custo é calculado do mesmo jeito
+    expect(conv.custoConversao).toBe(10)
+    expect(conv.erros).toHaveLength(1)
+    expect(conv.erros[0]).toContain('nenhuma taxa de absorção vigente')
+    expect(conv.erros[0]).toContain('C1')
+  })
+
+  it('COM taxa em vigor: nenhum erro', () => {
+    const conv = computeConversao({
+      operacoes: [op({ tempoPadraoMin: 10 })],
+      centros: { C1: { id: 'C1', custoMinMod: 1 } },
+      taxas: [{ chave: 'taxa_moi_min', centroId: null, valor: 0.03 }],   // uma das três basta
+      skuVariacoes: [],
+    })
+    expect(conv.custoIndireto).toBeCloseTo(0.3, 6)
+    expect(conv.erros).toEqual([])
+  })
+
+  // AUSENTE != ZERO. Uma taxa cadastrada valendo 0 é uma DECISÃO legítima (ex.: centro sem
+  // depreciação a absorver) e não pode gritar — senão o erro vira ruído e ninguém lê mais.
+  it('taxa que EXISTE valendo 0 não reclama (é uma decisão, não uma ausência)', () => {
+    const conv = computeConversao({
+      operacoes: [op({ tempoPadraoMin: 10 })],
+      centros: { C1: { id: 'C1', custoMinMod: 1 } },
+      taxas: [{ chave: 'taxa_fixa_min', centroId: null, valor: 0 }],
+      skuVariacoes: [],
+    })
+    expect(conv.custoIndireto).toBe(0)
+    expect(conv.erros).toEqual([])                        // 0 explícito: sem erro
+  })
+
+  // A taxa do centro sobrepõe a global — inclusive para a AUSÊNCIA: se o centro tem taxa, existe
+  // absorção em vigor para ele, mesmo sem nenhuma taxa global.
+  it('taxa só do centro: em vigor, sem erro', () => {
+    const conv = computeConversao({
+      operacoes: [op({ tempoPadraoMin: 10 })],
+      centros: { C1: { id: 'C1', custoMinMod: 1 } },
+      taxas: [{ chave: 'taxa_fixa_min', centroId: 'C1', valor: 0.4 }],
+      skuVariacoes: [],
+    })
+    expect(conv.custoIndireto).toBeCloseTo(4, 6)
+    expect(conv.erros).toEqual([])
+  })
+
+  // Uma mensagem POR CENTRO, não por operação: um roteiro de 20 operações no mesmo centro daria 20
+  // cópias do mesmo erro e afogaria os outros.
+  it('N operações no mesmo centro sem taxa: UM erro só (por centro)', () => {
+    const conv = computeConversao({
+      operacoes: [op({ id: 'o1' }), op({ id: 'o2' }), op({ id: 'o3', centroId: 'C2' })],
+      centros: { C1: { id: 'C1', custoMinMod: 1 }, C2: { id: 'C2', custoMinMod: 1 } },
+      taxas: [], skuVariacoes: [],
+    })
+    expect(conv.erros).toHaveLength(2)                    // C1 e C2, uma vez cada
+    expect(conv.erros.filter((e) => e.includes('C1'))).toHaveLength(1)
+    expect(conv.erros.filter((e) => e.includes('C2'))).toHaveLength(1)
+  })
+
+  // Operação SEM centro já reclama por outro motivo (MOD não calculado) e o rateio global ainda
+  // incide sobre o tempo: não duplicar o erro nela.
+  it('operação sem centro não dispara o erro de taxa (já tem o seu, e não há centro a nomear)', () => {
+    const conv = computeConversao({
+      operacoes: [op({ centroId: null })], centros: {}, taxas: [], skuVariacoes: [],
+    })
+    expect(conv.erros).toHaveLength(1)
+    expect(conv.erros[0]).toContain('sem centro de trabalho')
   })
 })

@@ -54,8 +54,11 @@ export const manufacturingController = (deps: {
       )
       .mutation(async ({ input }) => unwrap(await deps.definirOperacao.execute(input))),
 
+    // `substituirTudo` desliga a guarda de completude (o rascunho tem de conter TODAS as operações
+    // da revisão publicada): é a substituição DELIBERADA do roteiro inteiro, ex.: refinar uma
+    // operação agregada em várias finas, descartando a agregada.
     publicarRoteiro: protectedProcedure
-      .input(z.object({ modeloId: z.string().min(1) }))
+      .input(z.object({ modeloId: z.string().min(1), substituirTudo: z.boolean().optional() }))
       .mutation(async ({ input }) => unwrap(await deps.publicarRoteiro.execute(input))),
 
     // Clona a revisão publicada inteira para rascunho: passo obrigatório antes de editar um

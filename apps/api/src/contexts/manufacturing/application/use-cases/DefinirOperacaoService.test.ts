@@ -90,6 +90,48 @@ describe('DefinirOperacao', () => {
     expect(roteiro?.operacoes).toHaveLength(1)           // o roteiro NÃO sumiu
   })
 
+  // O `codigo` é a IDENTIDADE ESTÁVEL da operação: a linha da ficha técnica (operacao_codigo)
+  // aponta para ele para dizer ONDE cada insumo é consumido, e ele atravessa as revisões. O update
+  // reescreve a linha inteira a partir do comando, então deixar o codigo passar RE-IDENTIFICARIA a
+  // operação e ORFANARIA toda atribuição que aponta para o código antigo — em silêncio, porque a
+  // atribuição pendurada só vira erro (soft) na explosão seguinte. Trocar de operação é criar outra.
+  it('REJECTS changing the codigo on update (a identidade da operação é imutável)', async () => {
+    const s = seedManufacturing()
+    const definir = new DefinirOperacaoService(s, s)
+
+    const criada = await definir.execute({
+      modeloId: 'M1', codigo: 'CORTE', seq: 10, nome: 'CORTE', centroId: 'C1', tempoPadraoMin: 10,
+    })
+    expect(criada.ok).toBe(true)
+    if (!criada.ok) return
+
+    // mesmo em RASCUNHO (onde a edição é permitida), o codigo não pode virar outro
+    const r = await definir.execute({
+      id: criada.value.id, modeloId: 'M1', codigo: 'BORDADO', seq: 10, nome: 'CORTE',
+      centroId: 'C1', tempoPadraoMin: 10,
+    })
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.error).toContain('CORTE')
+    expect(r.error).toContain('BORDADO')
+    expect(r.error).toContain('imutável')
+
+    // a linha continua sendo o CORTE: nenhuma ficha atribuída a CORTE foi orfanada
+    const rows = await opsDoModelo(s)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.data.codigo).toBe('CORTE')
+
+    // e o resto do update (tempo, seq, nome) continua funcionando com o MESMO codigo
+    const ok2 = await definir.execute({
+      id: criada.value.id, modeloId: 'M1', codigo: 'CORTE', seq: 15, nome: 'CORTE REVISADO',
+      centroId: 'C1', tempoPadraoMin: 12,
+    })
+    expect(ok2.ok).toBe(true)
+    const depois = await opsDoModelo(s)
+    expect(depois[0]!.data.tempo_padrao_min).toBe(12)
+    expect(depois[0]!.data.nome).toBe('CORTE REVISADO')
+  })
+
   it('fails when the given id does not exist', async () => {
     const s = seedManufacturing()
     const r = await new DefinirOperacaoService(s, s).execute({

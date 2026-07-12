@@ -48,6 +48,30 @@ describe('DefinirTaxaCusto', () => {
       expect(r.error).toContain('vigenciaFim')
     })
 
+    // JANELA INVERTIDA: passa o regex e falha FECHADA. `taxasVigentes` exige
+    // `inicio <= hoje <= fim`, que NENHUMA data satisfaz quando fim < inicio: a taxa nunca entra em
+    // vigor, o custo indireto zera e o sintoma é indistinguível de "esqueci de cadastrar". É sempre
+    // um erro de digitação — recusar aqui é a única chance de dizer isso na cara do usuário.
+    it('rejeita vigenciaFim ANTERIOR a vigenciaInicio (a taxa nunca entraria em vigor)', async () => {
+      const s = seedWorld()
+      const r = await new DefinirTaxaCustoService(s, s).execute({
+        chave: 'taxa_fixa_min', valor: 1, vigenciaInicio: '2026-08-01', vigenciaFim: '2026-07-01',
+      })
+      expect(r.ok).toBe(false)
+      if (r.ok) return
+      expect(r.error).toContain('invertida')
+      // e nada foi gravado
+      expect(await s.query('PARAMETROS', [{ field: 'valor', op: 'eq', value: 1 }], 500)).toHaveLength(0)
+    })
+
+    it('aceita vigenciaFim IGUAL a vigenciaInicio (janela de um dia)', async () => {
+      const s = seedWorld()
+      const r = await new DefinirTaxaCustoService(s, s).execute({
+        chave: 'taxa_fixa_min', valor: 1, vigenciaInicio: '2026-07-01', vigenciaFim: '2026-07-01',
+      })
+      expect(r.ok).toBe(true)
+    })
+
     it('aceita ISO válido, com e sem vigenciaFim', async () => {
       const s = seedWorld()
       const svc = new DefinirTaxaCustoService(s, s)

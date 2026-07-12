@@ -71,12 +71,21 @@ export function taxasVigentes(rows: TaxaRow[], emISO: string): TaxaVigente[] {
   return [...melhor.values()].map((r) => ({ chave: r.chave, centroId: r.centroId, valor: r.valor }))
 }
 
+// A taxa EM VIGOR para (chave, centro), ou `undefined` se NÃO EXISTE nenhuma.
+//
+// A distinção AUSENTE vs. ZERO é o ponto: `pickTaxa` colapsa as duas em `0`, e um 0 por ausência
+// (nenhum parametro_de_custo cadastrado, todos expirados, janela invertida) zera o custo indireto
+// sem uma linha de erro — que é EXATAMENTE o estado final do bug de truncagem, alcançável sem
+// truncagem nenhuma. Quem precisa reclamar (computeConversao) usa esta função; quem só precisa do
+// número usa `pickTaxa`. Taxa do centro sobrepõe a global.
+export function acharTaxa(taxas: TaxaVigente[], chave: string, centroId: string | null): TaxaVigente | undefined {
+  const doCentro = centroId ? taxas.find((t) => t.chave === chave && t.centroId === centroId) : undefined
+  return doCentro ?? taxas.find((t) => t.chave === chave && t.centroId == null)
+}
+
 // Taxa do centro sobrepõe a global. Nenhuma -> 0.
 export function pickTaxa(taxas: TaxaVigente[], chave: string, centroId: string | null): number {
-  const doCentro = centroId ? taxas.find((t) => t.chave === chave && t.centroId === centroId) : undefined
-  if (doCentro) return doCentro.valor
-  const global = taxas.find((t) => t.chave === chave && t.centroId == null)
-  return global ? global.valor : 0
+  return acharTaxa(taxas, chave, centroId)?.valor ?? 0
 }
 
 export function computeConversao(input: {
@@ -84,6 +93,11 @@ export function computeConversao(input: {
   taxas: TaxaVigente[]; skuVariacoes: SkuVariacao[]
 }): ConversaoResult {
   const erros: string[] = []
+  // Centros (resolvíveis) para os quais NENHUMA das três chaves de absorção tem taxa em vigor.
+  // Reportados UMA vez por centro no fim, não por operação: um roteiro de 20 operações no mesmo
+  // centro produziria 20 cópias da mesma mensagem e afogaria os outros erros.
+  const semTaxaAlguma = new Set<string>()
+
   const operacoes: OperacaoCusteada[] = input.operacoes.map((op) => {
     const tempoMin = resolveTempo(op, input.skuVariacoes)
     const centro = op.centroId ? input.centros[op.centroId] : undefined
@@ -97,9 +111,15 @@ export function computeConversao(input: {
 
     const custoMinMod = centro?.custoMinMod ?? 0
     const custoMod = custoMinMod * tempoMin
-    const taxaIndireta = CHAVES_INDIRETAS.reduce(
-      (s, chave) => s + pickTaxa(input.taxas, chave, op.centroId), 0,
-    )
+
+    // AUSÊNCIA, não zero: as três chaves resolvidas por `acharTaxa`. Se NENHUMA existe, não há
+    // absorção nenhuma em vigor e o indireto sai 0 — o mesmo dinheiro faltando do bug de
+    // truncagem, mas com um roteiro perfeitamente sadio. Uma taxa que EXISTE valendo 0 é uma
+    // decisão legítima e NÃO reclama. SOFT: o custo é calculado do mesmo jeito.
+    const vigentes = CHAVES_INDIRETAS.map((chave) => acharTaxa(input.taxas, chave, op.centroId))
+    if (!semCentro && vigentes.every((t) => t === undefined)) semTaxaAlguma.add(centro.id)
+
+    const taxaIndireta = vigentes.reduce((s, t) => s + (t?.valor ?? 0), 0)
     const custoIndireto = taxaIndireta * tempoMin
 
     return {
@@ -107,6 +127,13 @@ export function computeConversao(input: {
       custoMod, custoIndireto, custoTotal: custoMod + custoIndireto, semCentro,
     }
   })
+
+  for (const centroId of semTaxaAlguma) {
+    erros.push(
+      `centro ${centroId}: nenhuma taxa de absorção vigente (fixa/MOI/depreciação): custo indireto = 0 ` +
+      '(cadastre em parametros_de_custo com definir_taxa_custo, ou confira as vigências)',
+    )
+  }
 
   const tempoTotalMin = operacoes.reduce((s, o) => s + o.tempoMin, 0)
   const custoMod = operacoes.reduce((s, o) => s + o.custoMod, 0)

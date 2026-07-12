@@ -110,10 +110,11 @@ describe('AbrirRevisaoRoteiro', () => {
     // rev 1: uma operação agregada
     await definir.execute({ modeloId: 'M1', codigo: 'COSTURA', seq: 10, nome: 'COSTURA', centroId: 'C1', tempoPadraoMin: 45 })
     await publicar.execute({ modeloId: 'M1' })
-    // rev 2: refino em duas operações finas (linhas novas)
+    // rev 2: refino em duas operações finas (linhas novas). `substituirTudo`: a COSTURA agregada é
+    // descartada DE PROPÓSITO (as finas a substituem), então a guarda de completude sai da frente.
     await definir.execute({ modeloId: 'M1', codigo: 'PREPARA', seq: 10, nome: 'PREPARA', centroId: 'C1', tempoPadraoMin: 15 })
     await definir.execute({ modeloId: 'M1', codigo: 'FECHA', seq: 20, nome: 'FECHA', centroId: 'C1', tempoPadraoMin: 30 })
-    await publicar.execute({ modeloId: 'M1' })
+    expect((await publicar.execute({ modeloId: 'M1', substituirTudo: true })).ok).toBe(true)
 
     const ab = await new AbrirRevisaoRoteiroService(s, s).execute({ modeloId: 'M1' })
     expect(ab.ok).toBe(true)

@@ -15,7 +15,7 @@ export const definirTaxaCustoTool = (uc: DefinirTaxaCusto): ToolDefinition => ({
   name: 'definir_taxa_custo',
   readOnly: false,
   description:
-    'Define uma taxa de custo por minuto usada no custeio da conversão. Input: { chave: "taxa_fixa_min" | "taxa_moi_min" | "taxa_depreciacao_min", valor: number, centroId?: string | null, vigenciaInicio: string (YYYY-MM-DD), vigenciaFim?: string | null }. valor = R$ por MINUTO. centroId ausente/null = taxa global (vale para todos os centros); com centroId a taxa vale só naquele centro. Taxas são versionadas por vigência — definir uma nova não apaga a anterior. Retorna { id }.',
+    'Define uma taxa de custo por minuto usada no custeio da conversão. Input: { chave: "taxa_fixa_min" | "taxa_moi_min" | "taxa_depreciacao_min", valor: number, centroId?: string | null, vigenciaInicio: string (YYYY-MM-DD), vigenciaFim?: string | null }. valor = R$ por MINUTO. centroId ausente/null = taxa global (vale para todos os centros); com centroId a taxa vale só naquele centro. Taxas são versionadas por vigência — definir uma nova não apaga a anterior. vigenciaFim, se informada, não pode ser anterior a vigenciaInicio (a taxa nunca entraria em vigor). Retorna { id }.',
   async execute(input: Json) {
     const obj = asObject('definir_taxa_custo', input)
     if (!obj.ok) return fail(obj.error)

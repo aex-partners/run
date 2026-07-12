@@ -13,7 +13,7 @@ export const abrirRevisaoRoteiroTool = (uc: AbrirRevisaoRoteiro): ToolDefinition
   name: 'abrir_revisao_roteiro',
   readOnly: false,
   description:
-    'Abre uma nova revisão do roteiro de produção de um Modelo, CLONANDO todas as operações da última revisão publicada como rascunhos novos (mesmo codigo, mesmos tempos). Input: { modeloId: string }. É o PRIMEIRO passo obrigatório para alterar um roteiro já publicado: depois disso edite os rascunhos com definir_operacao (operação publicada é imutável) e finalize com publicar_roteiro. Como o rascunho nasce com o roteiro COMPLETO, publicar não perde nenhuma operação. Falha se já houver rascunho aberto para o modelo, ou se o modelo ainda não tiver revisão publicada (nesse caso crie as operações direto com definir_operacao). Retorna { operacoes } = quantas operações foram clonadas.',
+    'Abre uma nova revisão do roteiro de produção de um Modelo, CLONANDO todas as operações da última revisão publicada como rascunhos novos (mesmo codigo, mesmos tempos). Input: { modeloId: string }. É o PRIMEIRO passo obrigatório para alterar OU ADICIONAR operações num roteiro já publicado: depois disso edite os rascunhos clonados com definir_operacao (operação publicada é imutável) e/ou crie as operações NOVAS (definir_operacao sem id), e finalize com publicar_roteiro. Como o rascunho nasce com o roteiro COMPLETO, publicar não perde nenhuma operação. Falha se já houver rascunho aberto para o modelo, ou se o modelo ainda não tiver revisão publicada (nesse caso crie as operações direto com definir_operacao). Retorna { operacoes } = quantas operações foram clonadas.',
   async execute(input: Json) {
     const obj = asObject('abrir_revisao_roteiro', input)
     if (!obj.ok) return fail(obj.error)
