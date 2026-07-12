@@ -6,6 +6,7 @@ import { ListarCentros } from '@/contexts/manufacturing/application/ports/in/Lis
 import { DefinirOperacao } from '@/contexts/manufacturing/application/ports/in/DefinirOperacao'
 import { PublicarRoteiro } from '@/contexts/manufacturing/application/ports/in/PublicarRoteiro'
 import { AbrirRevisaoRoteiro } from '@/contexts/manufacturing/application/ports/in/AbrirRevisaoRoteiro'
+import { DescartarRascunhoRoteiro } from '@/contexts/manufacturing/application/ports/in/DescartarRascunhoRoteiro'
 
 // Driving adapter (tRPC). Thin shell over the manufacturing in-ports (the same ones
 // the AI tools call). Holds no logic: it validates the wire shape with zod and unwraps
@@ -18,6 +19,7 @@ export const manufacturingController = (deps: {
   definirOperacao: DefinirOperacao
   publicarRoteiro: PublicarRoteiro
   abrirRevisaoRoteiro: AbrirRevisaoRoteiro
+  descartarRascunhoRoteiro: DescartarRascunhoRoteiro
 }) =>
   router({
     definirCentro: protectedProcedure
@@ -61,11 +63,17 @@ export const manufacturingController = (deps: {
       .input(z.object({ modeloId: z.string().min(1), substituirTudo: z.boolean().optional() }))
       .mutation(async ({ input }) => unwrap(await deps.publicarRoteiro.execute(input))),
 
-    // Clona a revisão publicada inteira para rascunho: passo obrigatório antes de editar um
-    // roteiro já publicado (definir_operacao recusa mexer numa operação publicada).
+    // Clona da revisão publicada, para rascunho, só o que ainda falta (top-up idempotente):
+    // passo obrigatório antes de editar um roteiro já publicado (definir_operacao recusa mexer
+    // numa operação publicada), e também a forma de curar um rascunho parcial.
     abrirRevisaoRoteiro: protectedProcedure
       .input(z.object({ modeloId: z.string().min(1) }))
       .mutation(async ({ input }) => unwrap(await deps.abrirRevisaoRoteiro.execute(input))),
+
+    // Abandona a revisão em rascunho (apaga tudo); a revisão publicada não é tocada.
+    descartarRascunhoRoteiro: protectedProcedure
+      .input(z.object({ modeloId: z.string().min(1) }))
+      .mutation(async ({ input }) => unwrap(await deps.descartarRascunhoRoteiro.execute(input))),
 
     roteiro: protectedProcedure
       .input(z.object({ modeloId: z.string().min(1) }))

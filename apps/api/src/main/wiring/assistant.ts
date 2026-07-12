@@ -58,7 +58,7 @@ type AssistantDeps = Pick<AclProviders, 'getConversationAgent' | 'manageSession'
   manufacturing: Pick<
     ManufacturingWiring['ports'],
     'obterRoteiro' | 'definirCentro' | 'listarCentros' | 'definirOperacao' | 'publicarRoteiro'
-    | 'abrirRevisaoRoteiro'
+    | 'abrirRevisaoRoteiro' | 'descartarRascunhoRoteiro'
   >
   conversations: Pick<ConversationsWiring['ports'], 'appendMessage' | 'postSystemMessage' | 'listMessages'>
   resolveAgent: AgentsWiring['ports']['resolveAgent']
@@ -75,7 +75,7 @@ export function wireAssistant(infra: Infra, deps: AssistantDeps) {
   const { emitNfe, emitNfce } = fiscal
   const { listBlingResource, getBlingRecord } = bling
   const { explodirFicha, recalcularCusto, publicarRevisao, historicoCusto, definirTaxaCusto, custoUnitario } = costing
-  const { obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro } = manufacturing
+  const { obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro, descartarRascunhoRoteiro } = manufacturing
   const { appendMessage, postSystemMessage, listMessages } = conversations
 
   // Assemble the AI ToolBox from every context's MCP tools (data + knowledge +
@@ -88,6 +88,7 @@ export function wireAssistant(infra: Infra, deps: AssistantDeps) {
     listBlingResource, getBlingRecord,
     explodirFicha, recalcularCusto, publicarRevisao, historicoCusto, definirTaxaCusto, custoUnitario,
     obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro,
+    descartarRascunhoRoteiro,
   })
   const toolIndex = new Map(mcpTools.map((t) => [t.name, t]))
   const toolBox: ToolBox = {

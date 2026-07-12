@@ -37,6 +37,7 @@ describe('AbrirRevisaoRoteiro', () => {
     expect(ab.ok).toBe(true)
     if (!ab.ok) return
     expect(ab.value.operacoes).toBe(3)
+    expect(ab.value.complementadas).toBe(3)
 
     // o roteiro PUBLICADO continua intocado enquanto a revisão está aberta (o custo não oscila)
     const durante = await obter.execute({ modeloId: 'M1' })
@@ -133,21 +134,98 @@ describe('AbrirRevisaoRoteiro', () => {
     expect(r?.operacoes.reduce((sum, o) => sum + o.tempoPadraoMin, 0)).toBe(45)   // 15+30, NÃO 90
   })
 
-  it('falha quando já existe rascunho aberto (clonar de novo duplicaria as operações)', async () => {
+  // TOP-UP IDEMPOTENTE: a versão antiga recusava rodar de novo com "revisão já aberta". Isso
+  // travava o usuário sempre que um clone anterior morria no meio: publicar recusava
+  // (incompleto) e abrir de novo TAMBÉM recusava (já aberto) — beco sem saída sem acesso direto
+  // ao banco. Agora chamar de novo é sempre seguro e NÃO duplica nada.
+  it('idempotente: chamar duas vezes seguidas sucede nas duas e não duplica rascunho', async () => {
     const s = seedManufacturing()
     await publicarTresOperacoes(s)
     const abrir = new AbrirRevisaoRoteiroService(s, s)
 
-    expect((await abrir.execute({ modeloId: 'M1' })).ok).toBe(true)
+    const primeira = await abrir.execute({ modeloId: 'M1' })
+    expect(primeira.ok).toBe(true)
+    if (!primeira.ok) return
+    expect(primeira.value.complementadas).toBe(3)
+    expect(primeira.value.operacoes).toBe(3)
+
     const segunda = await abrir.execute({ modeloId: 'M1' })
-    expect(segunda.ok).toBe(false)
-    if (segunda.ok) return
-    expect(segunda.error).toContain('revisão já aberta')
+    expect(segunda.ok).toBe(true)                        // sucesso, NÃO erro
+    if (!segunda.ok) return
+    expect(segunda.value.complementadas).toBe(0)          // nada faltava: não clonou de novo
+    expect(segunda.value.operacoes).toBe(3)
 
     // não duplicou: 3 publicadas + 3 rascunhos, e nada além disso
     const rows = await s.query('OPERACOES', [{ field: 'modelo', op: 'eq', value: 'M1' }], 500)
     expect(rows.filter((r) => r.data.status === 'rascunho')).toHaveLength(3)
     expect(rows).toHaveLength(6)
+  })
+
+  // A EDIÇÃO EM ANDAMENTO SOBREVIVE. É a garantia que a guarda antiga ("já aberto") existia para
+  // proteger — o top-up precisa preservá-la: uma segunda chamada não pode pisar no que o
+  // engenheiro já editou no rascunho.
+  it('edição em andamento no rascunho não é sobrescrita por um top-up subsequente', async () => {
+    const s = seedManufacturing()
+    await publicarTresOperacoes(s)
+    const abrir = new AbrirRevisaoRoteiroService(s, s)
+    expect((await abrir.execute({ modeloId: 'M1' })).ok).toBe(true)
+
+    const rascunhos = (await s.query('OPERACOES', [{ field: 'modelo', op: 'eq', value: 'M1' }], 500))
+      .filter((r) => r.data.status === 'rascunho')
+    const costura = rascunhos.find((r) => r.data.codigo === 'COSTURA')!
+    const edit = await new DefinirOperacaoService(s, s).execute({
+      id: costura.id, modeloId: 'M1', codigo: 'COSTURA', seq: 20, nome: 'COSTURA',
+      centroId: 'C1', tempoPadraoMin: 99,
+    })
+    expect(edit.ok).toBe(true)
+
+    const topUp = await abrir.execute({ modeloId: 'M1' })     // rascunho já completo: no-op
+    expect(topUp.ok).toBe(true)
+    if (!topUp.ok) return
+    expect(topUp.value.complementadas).toBe(0)
+
+    const depois = (await s.query('OPERACOES', [{ field: 'modelo', op: 'eq', value: 'M1' }], 500))
+      .find((r) => r.id === costura.id)!
+    expect(depois.data.tempo_padrao_min).toBe(99)              // a edição sobreviveu ao top-up
+  })
+
+  // O CASO QUE DESTRAVA O USUÁRIO: um clone PARCIAL (crash no meio dos N inserts não
+  // transacionais) fica com só 2 das 3 operações em rascunho. Antes, abrir de novo recusava
+  // ("já aberto") e publicar recusava (incompleto): sem SQL direto não tinha saída. Agora abrir
+  // de novo CURA o rascunho, sem tocar nas duas linhas que já estavam lá.
+  it('rascunho PARCIAL: completa só o que falta (complementadas: 1, operacoes: 3) e o publish seguinte finalmente sucede', async () => {
+    const s = seedManufacturing()
+    await publicarTresOperacoes(s)
+
+    // simula o clone interrompido: só CORTE e COSTURA viraram rascunho
+    s.seedRecord('OPERACOES', { id: 'clone1', version: 1, data: {
+      modelo: 'M1', codigo: 'CORTE', seq: 10, nome: 'CORTE', centro: 'C1', tempo_padrao_min: 10,
+      tempo_por_tamanho: '{}', tempo_setup_min: 0, lote_setup: 1, agregada: true, rev: 0, status: 'rascunho' } })
+    s.seedRecord('OPERACOES', { id: 'clone2', version: 1, data: {
+      modelo: 'M1', codigo: 'COSTURA', seq: 20, nome: 'COSTURA', centro: 'C1', tempo_padrao_min: 20,
+      tempo_por_tamanho: '{}', tempo_setup_min: 0, lote_setup: 1, agregada: true, rev: 0, status: 'rascunho' } })
+
+    const ab = await new AbrirRevisaoRoteiroService(s, s).execute({ modeloId: 'M1' })
+    expect(ab.ok).toBe(true)
+    if (!ab.ok) return
+    expect(ab.value.complementadas).toBe(1)                    // só ACABAMENTO faltava
+    expect(ab.value.operacoes).toBe(3)                         // rascunho termina completo
+
+    const rascunhos = (await s.query('OPERACOES', [{ field: 'modelo', op: 'eq', value: 'M1' }], 500))
+      .filter((r) => r.data.status === 'rascunho')
+    expect(rascunhos.map((r) => r.data.codigo).sort()).toEqual(['ACABAMENTO', 'CORTE', 'COSTURA'])
+    // as duas linhas ORIGINAIS não foram tocadas (mesmo id, mesma versão)
+    expect(rascunhos.find((r) => r.data.codigo === 'CORTE')!.id).toBe('clone1')
+    expect(rascunhos.find((r) => r.data.codigo === 'CORTE')!.version).toBe(1)
+    expect(rascunhos.find((r) => r.data.codigo === 'COSTURA')!.id).toBe('clone2')
+    expect(rascunhos.find((r) => r.data.codigo === 'COSTURA')!.version).toBe(1)
+
+    // e agora publicar SUCEDE com as 3 operações
+    const p = await new PublicarRoteiroService(s, s).execute({ modeloId: 'M1' })
+    expect(p.ok).toBe(true)
+    if (!p.ok) return
+    expect(p.value.rev).toBe(2)
+    expect(p.value.operacoes).toBe(3)
   })
 
   it('falha quando o modelo não tem revisão publicada para clonar', async () => {

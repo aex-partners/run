@@ -6,13 +6,15 @@
 // NÃO EXISTE no custo. Quem garante a completude é a camada de aplicação:
 //   * `DefinirOperacao` RECUSA editar uma linha já publicada (ela é imutável) e RECUSA trocar o
 //     `codigo` de uma linha existente (a identidade da operação não se re-escreve).
-//   * `AbrirRevisaoRoteiro` CLONA a revisão publicada inteira para rascunho, então o rascunho
-//     já nasce completo.
+//   * `AbrirRevisaoRoteiro` CLONA da revisão publicada, para rascunho, o que faltar (top-up
+//     idempotente), então o rascunho termina completo — seja ele novo ou parcial de uma chamada
+//     anterior interrompida.
 //   * `PublicarRoteiro` RECUSA publicar um rascunho que não contenha todos os `codigo` da revisão
 //     publicada (a menos que o chamador peça `substituirTudo` — o refino deliberado). É a rede que
 //     pega TODO caminho para um rascunho incompleto, inclusive os que não passam por edição:
-//     criar uma operação nova (que não toca em nada publicado) e o clone PARCIAL de uma
-//     AbrirRevisaoRoteiro interrompida no meio dos N inserts não transacionais.
+//     criar uma operação nova (que não toca em nada publicado) e um rascunho semeado/editado por
+//     fora do fluxo (`AbrirRevisaoRoteiro` sozinho já não deixa um rascunho parcial sobreviver:
+//     ele se auto-cura na próxima chamada).
 // Sem essas regras, editar/adicionar UMA operação derrubaria as demais do custo, em silêncio.
 
 export interface OperacaoRow {

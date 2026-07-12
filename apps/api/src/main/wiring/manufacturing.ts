@@ -21,6 +21,7 @@ import { ListarCentrosService } from '@/contexts/manufacturing/application/use-c
 import { DefinirOperacaoService } from '@/contexts/manufacturing/application/use-cases/DefinirOperacaoService'
 import { PublicarRoteiroService } from '@/contexts/manufacturing/application/use-cases/PublicarRoteiroService'
 import { AbrirRevisaoRoteiroService } from '@/contexts/manufacturing/application/use-cases/AbrirRevisaoRoteiroService'
+import { DescartarRascunhoRoteiroService } from '@/contexts/manufacturing/application/use-cases/DescartarRascunhoRoteiroService'
 import { manufacturingController } from '@/contexts/manufacturing/adapters/in/http/ManufacturingController'
 
 type ManufacturingDeps = {
@@ -53,19 +54,27 @@ export function wireManufacturing(_infra: Infra, deps: ManufacturingDeps) {
   const listarCentros = new ListarCentrosService(store, registry)
   const definirOperacao = new DefinirOperacaoService(store, registry)
   const publicarRoteiro = new PublicarRoteiroService(store, registry)
-  // Clona a revisão publicada inteira para rascunho. É o que torna estrutural a regra
-  // "uma revisão é o conjunto COMPLETO de operações": sem ele, editar uma operação e publicar
-  // criaria uma revisão só com ela e as demais sumiriam do custo em silêncio.
+  // Clona da revisão publicada, para rascunho, só o que ainda falta no rascunho atual (top-up
+  // idempotente). É o que torna estrutural a regra "uma revisão é o conjunto COMPLETO de
+  // operações": sem ele, editar uma operação e publicar criaria uma revisão só com ela e as
+  // demais sumiriam do custo em silêncio. E por ser top-up, também é a forma de curar um
+  // rascunho parcial deixado por uma chamada anterior interrompida no meio dos inserts.
   const abrirRevisaoRoteiro = new AbrirRevisaoRoteiroService(store, registry)
+  // Abandona a revisão em rascunho (apaga tudo); a revisão publicada não é tocada. Saída de
+  // emergência para desistir de uma edição em andamento, ou recomeçar do zero em vez de curar
+  // um rascunho parcial via abrirRevisaoRoteiro.
+  const descartarRascunhoRoteiro = new DescartarRascunhoRoteiroService(store, registry)
 
   const controller = manufacturingController({
     obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro,
+    descartarRascunhoRoteiro,
   })
 
   return {
     controller,
     ports: {
       obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro,
+      descartarRascunhoRoteiro,
     },
   }
 }

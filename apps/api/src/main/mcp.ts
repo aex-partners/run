@@ -64,12 +64,14 @@ import { ListarCentros } from '@/contexts/manufacturing/application/ports/in/Lis
 import { DefinirOperacao } from '@/contexts/manufacturing/application/ports/in/DefinirOperacao'
 import { PublicarRoteiro } from '@/contexts/manufacturing/application/ports/in/PublicarRoteiro'
 import { AbrirRevisaoRoteiro } from '@/contexts/manufacturing/application/ports/in/AbrirRevisaoRoteiro'
+import { DescartarRascunhoRoteiro } from '@/contexts/manufacturing/application/ports/in/DescartarRascunhoRoteiro'
 import { obterRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/ObterRoteiroTool'
 import { definirCentroTool } from '@/contexts/manufacturing/adapters/in/mcp/DefinirCentroTool'
 import { listarCentrosTool } from '@/contexts/manufacturing/adapters/in/mcp/ListarCentrosTool'
 import { definirOperacaoTool } from '@/contexts/manufacturing/adapters/in/mcp/DefinirOperacaoTool'
 import { publicarRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/PublicarRoteiroTool'
 import { abrirRevisaoRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/AbrirRevisaoRoteiroTool'
+import { descartarRascunhoRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/DescartarRascunhoRoteiroTool'
 
 export interface McpToolDeps {
   // data in-ports
@@ -110,6 +112,7 @@ export interface McpToolDeps {
   definirOperacao: DefinirOperacao
   publicarRoteiro: PublicarRoteiro
   abrirRevisaoRoteiro: AbrirRevisaoRoteiro
+  descartarRascunhoRoteiro: DescartarRascunhoRoteiro
 }
 
 export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
@@ -153,5 +156,6 @@ export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
     definirOperacaoTool(deps.definirOperacao),
     publicarRoteiroTool(deps.publicarRoteiro),
     abrirRevisaoRoteiroTool(deps.abrirRevisaoRoteiro),
+    descartarRascunhoRoteiroTool(deps.descartarRascunhoRoteiro),
   ]
 }
