@@ -27,6 +27,7 @@ import { CreateEntityService } from '@/contexts/data/application/use-cases/Creat
 import { AddFieldService } from '@/contexts/data/application/use-cases/AddFieldService'
 import { DescribeEntityService } from '@/contexts/data/application/use-cases/DescribeEntityService'
 import { FieldTypeConfig } from '@/contexts/data/domain/FieldType'
+import * as schema from '@/platform/db/schema'
 import {
   COSTING_ENTITIES,
   PRODUTOS_NEW_FIELDS,
@@ -51,6 +52,13 @@ async function main() {
   const createEntity = new CreateEntityService(entityRepo, noopEvents, clock)
   const addField = new AddFieldService(entityRepo, noopEvents, clock)
   const describeEntity = new DescribeEntityService(entityRepo)
+
+  // `entities.created_by` carries an FK to `users`, and the repository persists an
+  // empty string when no author is given, which violates it. Attribute the
+  // provisioning to a real user, exactly as seed-buenaca.ts does.
+  const [autor] = await db.select().from(schema.users).limit(1)
+  if (!autor) throw new Error('provision: nenhum usuário no banco para atribuir created_by')
+  const createdBy = autor.id
 
   const idBySlug = async (slug: string): Promise<string | null> =>
     (await listEntities.execute()).find((e) => e.slug === slug)?.id ?? null
@@ -78,7 +86,7 @@ async function main() {
       console.log(`skip entity ${spec.slug}`)
       continue
     }
-    const r = await createEntity.execute({ name: spec.displayName, fields: [] })
+    const r = await createEntity.execute({ name: spec.displayName, createdBy, fields: [] })
     if (!r.ok) throw new Error(`createEntity ${spec.slug}: ${r.error}`)
     console.log(`created entity ${spec.slug}`)
   }
