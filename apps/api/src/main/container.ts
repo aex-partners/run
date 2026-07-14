@@ -37,6 +37,8 @@ import { wireFiscal } from '@/main/wiring/fiscal'
 import { wireBling } from '@/main/wiring/bling'
 import { wireManufacturing } from '@/main/wiring/manufacturing'
 import { wireCosting } from '@/main/wiring/costing'
+import { wireEstoque } from '@/main/wiring/estoque'
+import { wireCompras } from '@/main/wiring/compras'
 
 export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth) {
   // Infra primitives (clock, events, queue connection) + raw platform handles.
@@ -114,6 +116,20 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
     manufacturing: manufacturingWiring.ports,
   })
 
+  // estoque (livro razão append-only + custo médio ponderado) não tem dependência
+  // cross-context em tempo de construção: liga direto nas in-ports do `data`. Construído
+  // ANTES de compras: o bridge EstoqueMovimentos do compras resolve pela in-port
+  // RegistrarMovimento exposta aqui.
+  const estoqueWiring = wireEstoque(infra, { data: dataWiring.ports })
+
+  // compras (pedido de compra + nota de entrada). A NOTA É QUEM RECEBE: lançá-la move o
+  // estoque E define o custo médio do insumo, através do único ACL entre os dois.
+  // compras NÃO conhece o costing: o custo do PRODUTO só muda por recalcular_custo.
+  const comprasWiring = wireCompras(infra, {
+    data: dataWiring.ports,
+    estoque: estoqueWiring.ports,
+  })
+
   // ----- cross-context contexts, in dependency order. Each wireX takes the sibling
   // in-ports its ACL bridges resolve through (built above); container threads them.
   const conversationsWiring = wireConversations(infra, { getUsers, lookupAgents, grantFileAccess })
@@ -163,6 +179,8 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
     bling: blingWiring.ports,
     costing: costingWiring.ports,
     manufacturing: manufacturingWiring.ports,
+    estoque: estoqueWiring.ports,
+    compras: comprasWiring.ports,
     conversations: { appendMessage, postSystemMessage, listMessages },
     resolveAgent: agentsWiring.ports.resolveAgent,
     resolveSkill: skillsWiring.ports.resolveSkill,
@@ -211,6 +229,8 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
       bling: blingWiring.controller,
       costing: costingWiring.controller,
       manufacturing: manufacturingWiring.controller,
+      estoque: estoqueWiring.controller,
+      compras: comprasWiring.controller,
     },
     publicControllers: {
       publicForms: formsWiring.controllers.publicForms,

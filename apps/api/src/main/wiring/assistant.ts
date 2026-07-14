@@ -19,6 +19,8 @@ import { FiscalWiring } from '@/main/wiring/fiscal'
 import { BlingWiring } from '@/main/wiring/bling'
 import { CostingWiring } from '@/main/wiring/costing'
 import { ManufacturingWiring } from '@/main/wiring/manufacturing'
+import { EstoqueWiring } from '@/main/wiring/estoque'
+import { ComprasWiring } from '@/main/wiring/compras'
 import { ConversationsWiring } from '@/main/wiring/conversations'
 import { AgentsWiring } from '@/main/wiring/agents'
 import { SkillsWiring } from '@/main/wiring/skills'
@@ -60,6 +62,8 @@ type AssistantDeps = Pick<AclProviders, 'getConversationAgent' | 'manageSession'
     'obterRoteiro' | 'definirCentro' | 'listarCentros' | 'definirOperacao' | 'publicarRoteiro'
     | 'abrirRevisaoRoteiro' | 'descartarRascunhoRoteiro'
   >
+  estoque: EstoqueWiring['ports']
+  compras: ComprasWiring['ports']
   conversations: Pick<ConversationsWiring['ports'], 'appendMessage' | 'postSystemMessage' | 'listMessages'>
   resolveAgent: AgentsWiring['ports']['resolveAgent']
   resolveSkill: SkillsWiring['ports']['resolveSkill']
@@ -68,27 +72,31 @@ type AssistantDeps = Pick<AclProviders, 'getConversationAgent' | 'manageSession'
 
 export function wireAssistant(infra: Infra, deps: AssistantDeps) {
   const { redis, clock } = infra
-  const { getConversationAgent, manageSession, data, knowledge, payments, fiscal, bling, costing, manufacturing, conversations, resolveAgent, resolveSkill, ai } = deps
+  const { getConversationAgent, manageSession, data, knowledge, payments, fiscal, bling, costing, manufacturing, estoque, compras, conversations, resolveAgent, resolveSkill, ai } = deps
   const { createEntity, insertRecord, updateRecord, deleteRecord, describeEntity, listEntities, queryRecords } = data
   const { createKnowledge, queryKnowledge, deleteKnowledge } = knowledge
   const { createCharge, getCharge, createPaymentLink, createBoleto } = payments
   const { emitNfe, emitNfce } = fiscal
   const { listBlingResource, getBlingRecord } = bling
-  const { explodirFicha, recalcularCusto, publicarRevisao, historicoCusto, definirTaxaCusto, custoUnitario } = costing
+  const { explodirFicha, recalcularCusto, publicarRevisao, historicoCusto, definirTaxaCusto, custoUnitario, custosDesatualizados } = costing
   const { obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro, descartarRascunhoRoteiro } = manufacturing
+  const { registrarMovimento, consultarSaldo, historicoMovimentos } = estoque
+  const { criarPedidoCompra, lancarNotaEntrada, consultarPedidoCompra } = compras
   const { appendMessage, postSystemMessage, listMessages } = conversations
 
   // Assemble the AI ToolBox from every context's MCP tools (data + knowledge +
-  // payments + fiscal + bling + costing + manufacturing).
+  // payments + fiscal + bling + costing + manufacturing + estoque + compras).
   const mcpTools: ToolDefinition[] = assembleMcpTools({
     createEntity, insertRecord, updateRecord, deleteRecord, describeEntity, listEntities, queryRecords,
     createKnowledge, queryKnowledge, deleteKnowledge, knowledgeUserId: SYSTEM_TOOL_USER,
     createCharge, getCharge, createPaymentLink, createBoleto,
     emitNfe, emitNfce,
     listBlingResource, getBlingRecord,
-    explodirFicha, recalcularCusto, publicarRevisao, historicoCusto, definirTaxaCusto, custoUnitario,
+    explodirFicha, recalcularCusto, publicarRevisao, historicoCusto, definirTaxaCusto, custoUnitario, custosDesatualizados,
     obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro,
     descartarRascunhoRoteiro,
+    registrarMovimento, consultarSaldo, historicoMovimentos,
+    criarPedidoCompra, lancarNotaEntrada, consultarPedidoCompra,
   })
   const toolIndex = new Map(mcpTools.map((t) => [t.name, t]))
   const toolBox: ToolBox = {

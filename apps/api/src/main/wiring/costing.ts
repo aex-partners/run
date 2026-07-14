@@ -24,6 +24,7 @@ import { PublicarRevisaoService } from '@/contexts/costing/application/use-cases
 import { HistoricoCustoService } from '@/contexts/costing/application/use-cases/HistoricoCustoService'
 import { DefinirTaxaCustoService } from '@/contexts/costing/application/use-cases/DefinirTaxaCustoService'
 import { CustoUnitarioService } from '@/contexts/costing/application/use-cases/CustoUnitarioService'
+import { CustosDesatualizadosService } from '@/contexts/costing/application/use-cases/CustosDesatualizadosService'
 import { costingController } from '@/contexts/costing/adapters/in/http/CostingController'
 
 type CostingDeps = {
@@ -71,16 +72,21 @@ export function wireCosting(infra: Infra, deps: CostingDeps) {
   const historicoCusto = new HistoricoCustoService(store, registry)
   const definirTaxaCusto = new DefinirTaxaCustoService(store, registry)
   const custoUnitario = new CustoUnitarioService(store, registry)
+  // READONLY: acusa os SKUs cujo custo é mais velho que o custo médio dos insumos da
+  // ficha. É o que impede a regra "o custo do produto nunca muda sozinho" de virar
+  // "o custo do produto mente para sempre". Não escreve nada.
+  const custosDesatualizados = new CustosDesatualizadosService(store, registry)
 
   const controller = costingController({
     explodirFicha, recalcularCusto, publicarRevisao, historicoCusto,
-    definirTaxa: definirTaxaCusto, custoUnitario,
+    definirTaxa: definirTaxaCusto, custoUnitario, custosDesatualizados,
   })
 
   return {
     controller,
     ports: {
       explodirFicha, recalcularCusto, publicarRevisao, historicoCusto, definirTaxaCusto, custoUnitario,
+      custosDesatualizados,
     },
   }
 }

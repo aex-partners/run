@@ -73,6 +73,23 @@ import { publicarRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/Pu
 import { abrirRevisaoRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/AbrirRevisaoRoteiroTool'
 import { descartarRascunhoRoteiroTool } from '@/contexts/manufacturing/adapters/in/mcp/DescartarRascunhoRoteiroTool'
 
+import { RegistrarMovimento } from '@/contexts/estoque/application/ports/in/RegistrarMovimento'
+import { ConsultarSaldo } from '@/contexts/estoque/application/ports/in/ConsultarSaldo'
+import { HistoricoMovimentos } from '@/contexts/estoque/application/ports/in/HistoricoMovimentos'
+import { registrarMovimentoTool } from '@/contexts/estoque/adapters/in/mcp/RegistrarMovimentoTool'
+import { saldoEstoqueTool } from '@/contexts/estoque/adapters/in/mcp/SaldoEstoqueTool'
+import { historicoMovimentosTool } from '@/contexts/estoque/adapters/in/mcp/HistoricoMovimentosTool'
+
+import { CriarPedidoCompra } from '@/contexts/compras/application/ports/in/CriarPedidoCompra'
+import { LancarNotaEntrada } from '@/contexts/compras/application/ports/in/LancarNotaEntrada'
+import { ConsultarPedidoCompra } from '@/contexts/compras/application/ports/in/ConsultarPedidoCompra'
+import { criarPedidoCompraTool } from '@/contexts/compras/adapters/in/mcp/CriarPedidoCompraTool'
+import { lancarNotaEntradaTool } from '@/contexts/compras/adapters/in/mcp/LancarNotaEntradaTool'
+import { consultarPedidoCompraTool } from '@/contexts/compras/adapters/in/mcp/ConsultarPedidoCompraTool'
+
+import { CustosDesatualizados } from '@/contexts/costing/application/ports/in/CustosDesatualizados'
+import { custosDesatualizadosTool } from '@/contexts/costing/adapters/in/mcp/CustosDesatualizadosTool'
+
 export interface McpToolDeps {
   // data in-ports
   createEntity: CreateEntity
@@ -105,6 +122,7 @@ export interface McpToolDeps {
   historicoCusto: HistoricoCusto
   definirTaxaCusto: DefinirTaxaCusto
   custoUnitario: CustoUnitario
+  custosDesatualizados: CustosDesatualizados
   // manufacturing in-ports (centros de trabalho + roteiro de produção)
   obterRoteiro: ObterRoteiro
   definirCentro: DefinirCentro
@@ -113,6 +131,14 @@ export interface McpToolDeps {
   publicarRoteiro: PublicarRoteiro
   abrirRevisaoRoteiro: AbrirRevisaoRoteiro
   descartarRascunhoRoteiro: DescartarRascunhoRoteiro
+  // estoque in-ports (livro razão + custo médio ponderado)
+  registrarMovimento: RegistrarMovimento
+  consultarSaldo: ConsultarSaldo
+  historicoMovimentos: HistoricoMovimentos
+  // compras in-ports (pedido de compra + nota de entrada)
+  criarPedidoCompra: CriarPedidoCompra
+  lancarNotaEntrada: LancarNotaEntrada
+  consultarPedidoCompra: ConsultarPedidoCompra
 }
 
 export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
@@ -157,5 +183,16 @@ export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
     publicarRoteiroTool(deps.publicarRoteiro),
     abrirRevisaoRoteiroTool(deps.abrirRevisaoRoteiro),
     descartarRascunhoRoteiroTool(deps.descartarRascunhoRoteiro),
+    // costing: o aviso de custo defasado (o par de recalcular_custo)
+    custosDesatualizadosTool(deps.custosDesatualizados),
+    // estoque (livro razão + custo médio). registrar_movimento_estoque REJEITA
+    // entrada_nota: entrada de compra só entra com nota, por lancar_nota_entrada.
+    registrarMovimentoTool(deps.registrarMovimento),
+    saldoEstoqueTool(deps.consultarSaldo),
+    historicoMovimentosTool(deps.historicoMovimentos),
+    // compras (pedido + nota de entrada)
+    criarPedidoCompraTool(deps.criarPedidoCompra),
+    lancarNotaEntradaTool(deps.lancarNotaEntrada),
+    consultarPedidoCompraTool(deps.consultarPedidoCompra),
   ]
 }
