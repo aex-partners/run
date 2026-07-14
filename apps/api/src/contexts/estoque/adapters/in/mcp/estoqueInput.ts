@@ -1,11 +1,11 @@
 import { Json, JsonObject, isJsonObject } from '@/shared/domain/Json'
 import { Result, ok, fail } from '@/shared/kernel/Result'
 
-// Shared input parsing for the costing MCP tools (explodir_ficha / recalcular_custo /
-// publicar_revisao_ficha / historico_custo / definir_taxa_custo / custo_unitario).
-// Turns the AI's (Eric's) loosely-typed JSON into validated commands, returning
-// `Result` failures (never throwing) with actionable messages. Kept here so the six
-// tools stay thin and consistent.
+// Parsing compartilhado das MCP tools do estoque (registrar_movimento_estoque /
+// saldo_estoque / historico_movimentos). Transforma o JSON frouxo do Eric em comandos
+// validados, devolvendo falhas em `Result` (nunca lançando), com mensagens acionáveis.
+// Espelha manufacturing/adapters/in/mcp/manufacturingInput.ts. Não existe inputSchema
+// em ToolDefinition: toda guarda é feita à mão aqui.
 
 // Narrow the tool input to a JSON object.
 export const asObject = (tool: string, input: Json): Result<JsonObject> =>
@@ -24,32 +24,31 @@ export const optString = (tool: string, obj: JsonObject, field: string): Result<
   return typeof v === 'string' ? ok(v) : fail(`${tool}: ${field} must be a string`)
 }
 
-// Nullable string field: absent/null both collapse to null (a taxa sem escopo de
-// centro é global — `centroId: null` é um valor de negócio, não um campo ausente).
+// Nullable string field: absent/null both collapse to null (the in-port takes
+// `string | null` for an optional foreign key, e.g. operação sem centro).
 export const nullableString = (tool: string, obj: JsonObject, field: string): Result<string | null> => {
   const v = obj[field]
   if (v === undefined || v === null) return ok(null)
   return typeof v === 'string' ? ok(v) : fail(`${tool}: ${field} must be a string or null`)
 }
 
-// Required finite number field (rejects NaN/Infinity and numeric strings: uma taxa
-// coercida silenciosamente para 0 zeraria o custo indireto sem qualquer erro).
+// Required finite number field (rejects NaN/Infinity and numeric strings: the AI
+// must send a real number, otherwise a silent 0 would corrupt the cost).
 export const reqNumber = (tool: string, obj: JsonObject, field: string): Result<number> => {
   const v = obj[field]
   return typeof v === 'number' && Number.isFinite(v) ? ok(v) : fail(`${tool}: ${field} (number) obrigatório`)
 }
 
-// Lista opcional de ids (o retorno de custos_desatualizados alimenta recalcular_custo).
-// Um elemento não-string falha ALTO: descartá-lo em silêncio deixaria SKUs sem recalcular
-// e o usuário achando que recalculou tudo.
-export const optStringArray = (tool: string, obj: JsonObject, field: string): Result<string[] | undefined> => {
+// Optional finite number field: ok(undefined) when absent/null.
+export const optNumber = (tool: string, obj: JsonObject, field: string): Result<number | undefined> => {
   const v = obj[field]
   if (v === undefined || v === null) return ok(undefined)
-  if (!Array.isArray(v)) return fail(`${tool}: ${field} must be an array of strings`)
-  const out: string[] = []
-  for (const [i, raw] of v.entries()) {
-    if (typeof raw !== 'string' || raw.length === 0) return fail(`${tool}: ${field}[${i}] must be a non-empty string`)
-    out.push(raw)
-  }
-  return ok(out)
+  return typeof v === 'number' && Number.isFinite(v) ? ok(v) : fail(`${tool}: ${field} must be a number`)
+}
+
+// Optional boolean field: ok(undefined) when absent/null.
+export const optBoolean = (tool: string, obj: JsonObject, field: string): Result<boolean | undefined> => {
+  const v = obj[field]
+  if (v === undefined || v === null) return ok(undefined)
+  return typeof v === 'boolean' ? ok(v) : fail(`${tool}: ${field} must be a boolean`)
 }
