@@ -60,6 +60,11 @@ async function main() {
     // compara `data->>'controla_estoque'` (texto) contra o parâmetro. Um boolean JS nativo
     // aqui vira parâmetro tipo boolean no bind, e o Postgres rejeita "text = boolean" --
     // confirmado ao vivo. String bate com a representação textual gravada no jsonb.
+    //
+    // ARMADILHA para o próximo: o fake `InMemoryRecordStore` (contexts/*/adapters/out/fake)
+    // compara com `=== c.value`, então um filtro de boolean com `value: true` PASSA no fake e
+    // QUEBRA contra o Postgres real. Suíte verde não prova nada aqui: filtro de campo boolean
+    // sempre com o VALOR EM STRING.
     where: [{ field: 'controla_estoque', op: 'eq', value: 'true' }],
     limit: TETO,
   } as never)) as { rows?: { id: string; version: number; data: Record<string, unknown> }[] }
@@ -122,14 +127,18 @@ async function main() {
 
     if (dryRun) continue
 
-    // Reescreve as projeções a partir do livro.
+    // Reescreve as projeções a partir do livro. Confere o Result: uma escrita que falha em
+    // silêncio é exatamente como o Achado 1 escapou (chave desconhecida rejeitada pelo
+    // RecordSchema, produto inteiro não gravado, e o script imprimindo sucesso do mesmo jeito).
+    // Este é o ÚNICO reparo do custo médio -- se ele não grava, tem que gritar, não mentir.
     const p = await getRecord.execute({ recordId: insumo.id })
     if (p) {
-      await updateRecord.execute({
+      const r = await updateRecord.execute({
         recordId: insumo.id,
         data: { ...p.data, saldo_total: estado.saldo, custo_medio: estado.custoMedio, preco_custo: estado.custoMedio },
         expectedVersion: p.version,
       })
+      if (!r.ok) throw new Error(`replay: falha ao reconstruir o produto ${insumo.id}: ${r.error}`)
     }
 
     const saldosRes = (await queryRecords.execute({
@@ -142,13 +151,15 @@ async function main() {
     for (const [dep, qtd] of porDeposito) {
       const row = existentes.get(dep)
       if (row) {
-        await updateRecord.execute({
+        const r = await updateRecord.execute({
           recordId: row.id, data: { ...row.data, qtd }, expectedVersion: row.version,
         })
+        if (!r.ok) throw new Error(`replay: falha ao reconstruir saldo (insumo ${insumo.id}, depósito ${dep}): ${r.error}`)
       } else {
-        await insertRecord.execute({
+        const r = await insertRecord.execute({
           entityId: saldosId, data: { insumo: insumo.id, deposito: dep, qtd }, createdBy: autor.id,
         })
+        if (!r.ok) throw new Error(`replay: falha ao criar saldo (insumo ${insumo.id}, depósito ${dep}): ${r.error}`)
       }
     }
   }

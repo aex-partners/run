@@ -81,4 +81,13 @@ export const PRODUTOS_ESTOQUE_FIELDS: FieldSpec[] = [
   { slug: 'custo_medio', displayName: 'Custo medio', kind: 'currency', decimalPlaces: 4 },
   { slug: 'saldo_total', displayName: 'Saldo total', kind: 'decimal', decimalPlaces: 4 },
   { slug: 'custo_medio_atualizado_em', displayName: 'Custo medio atualizado em', kind: 'datetime' },
+  // O ESPELHO. É o campo que o `costing` lê como custo de MATERIAL na explosão da ficha, e é
+  // por ele que o custo médio do estoque chega ao custo do produto sem o costing mudar uma linha.
+  //
+  // NINGUÉM o declarava: `costingSchema` e este arquivo apenas COMENTAVAM que ele "já existe"
+  // (semântica Bling), e o espelho do Bling cria `preco_de_custo`, com "de" — outro campo. Ele
+  // existe em produção só porque nasceu do uso real. Num ambiente novo não existiria, e aí o
+  // RecordSchema rejeitaria a chave desconhecida e a atualização INTEIRA do produto falharia:
+  // custo_medio e saldo_total nunca seriam persistidos, e a ficha fecharia com material a R$ 0.
+  { slug: 'preco_custo', displayName: 'Preco custo', kind: 'currency', decimalPlaces: 4 },
 ]

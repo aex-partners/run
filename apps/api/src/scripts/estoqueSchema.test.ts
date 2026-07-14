@@ -35,7 +35,7 @@ describe('estoqueSchema', () => {
   it('acrescenta a produtos a conversão de unidade, o flag de estoque e o custo médio', () => {
     expect(PRODUTOS_ESTOQUE_FIELDS.map((f) => f.slug).sort()).toEqual([
       'controla_estoque', 'custo_medio', 'custo_medio_atualizado_em',
-      'fator_conversao', 'saldo_total', 'unidade_compra', 'unidade_consumo',
+      'fator_conversao', 'preco_custo', 'saldo_total', 'unidade_compra', 'unidade_consumo',
     ])
     const custoMedio = PRODUTOS_ESTOQUE_FIELDS.find((f) => f.slug === 'custo_medio')!
     expect(fieldConfig(custoMedio, () => null))
