@@ -54,4 +54,33 @@ describe('RecalcularCustoService', () => {
     const r = await svc.execute({})
     expect(r.ok).toBe(false)
   })
+
+  it('recalcula uma LISTA de SKUs (é o retorno do custos_desatualizados)', async () => {
+    const s = seedWorld()
+    const { explodir, calls } = stubExplodir()
+    const svc = new RecalcularCustoService(explodir, s, s)
+
+    const r = await svc.execute({ skuIds: ['SKU_A', 'SKU_B'] })
+    expect(r.ok && r.value.recalculados).toBe(2)
+    expect(calls).toEqual(['SKU_A', 'SKU_B'])
+  })
+
+  it('skuIds vazio é recusado: recalcular zero SKUs e devolver ok é um no-op que PARECE sucesso', async () => {
+    const s = seedWorld()
+    const { explodir, calls } = stubExplodir()
+    const svc = new RecalcularCustoService(explodir, s, s)
+
+    const r = await svc.execute({ skuIds: [] })
+    expect(r.ok).toBe(false)
+    expect(calls).toEqual([])
+  })
+
+  it('skuId tem precedência sobre skuIds', async () => {
+    const s = seedWorld()
+    const { explodir, calls } = stubExplodir()
+    const svc = new RecalcularCustoService(explodir, s, s)
+
+    await svc.execute({ skuId: 'SKU', skuIds: ['OUTRO'] })
+    expect(calls).toEqual(['SKU'])
+  })
 })
