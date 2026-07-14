@@ -83,14 +83,36 @@ export function custearNota(input: {
 }): CustoNotaResult {
   const { itens, valorFrete, politica } = input
 
+  const erros: string[] = []
+
+  // Dinheiro não-finito (NaN/Infinity) atravessaria todas as contas em silêncio e
+  // produziria um custo NaN com `erros` VAZIO: a nota seria ACEITA e o custo médio do
+  // insumo viraria lixo. `??` não pega NaN, e `NaN === 0` é falso, então nenhuma das
+  // guardas existentes barra isso. Erro DURO: a nota não lança.
+  if (!Number.isFinite(valorFrete)) {
+    erros.push(`valor do frete inválido (${valorFrete})`)
+  }
+
   const fretes = politica.incluirFrete
     ? ratearFrete(itens, valorFrete, politica.criterioRateioFrete)
     : itens.map(() => 0)
 
   const out: ItemCusteado[] = []
-  const erros: string[] = []
 
   for (const [i, item] of itens.entries()) {
+    let itemInvalido = false
+    for (const [campo, v] of [
+      ['precoUnitario', item.precoUnitario],
+      ['desconto', item.desconto],
+      ['imposto', item.imposto],
+    ] as const) {
+      if (!Number.isFinite(v)) {
+        erros.push(`insumo ${item.insumoId}: ${campo} inválido (${v})`)
+        itemInvalido = true
+      }
+    }
+    if (itemInvalido) continue
+
     if (!(item.fatorConversao > 0)) {
       erros.push(
         `insumo ${item.insumoId}: fator_conversao deve ser maior que zero (recebido: ${item.fatorConversao}). ` +
@@ -109,7 +131,14 @@ export function custearNota(input: {
     // `ratearFrete` devolve SEMPRE um valor por item (todos os seus caminhos são
     // `itens.map`), e o ramo do `else` também. Logo `fretes[i]` existe para todo `i`
     // que este laço visita: o `?? 0` só existe para o noUncheckedIndexedAccess do
-    // TypeScript, que não consegue provar isso, e nunca dispara em execução.
+    // TypeScript, que não consegue provar isso, e nunca dispara em execução por
+    // índice ausente.
+    //
+    // Isso NÃO cobre `NaN`: `??` só pega `null`/`undefined`, e `NaN ?? 0` é `NaN`. Se
+    // `valorFrete` não for finito, `fretes[i]` pode vir `NaN` aqui mesmo assim, mas
+    // nesse caso a guarda de `valorFrete` lá em cima já pôs um erro DURO em `erros`,
+    // então este item custeado (possivelmente com `NaN`) só sai acompanhado do erro
+    // que faz o chamador recusar a nota inteira.
     const freteRateado = fretes[i] ?? 0
 
     const custoTotal =

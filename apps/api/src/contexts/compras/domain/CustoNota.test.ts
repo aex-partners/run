@@ -144,4 +144,76 @@ describe('custearNota', () => {
     expect(r.erros).toHaveLength(1)
     // Quem decide recusar a nota inteira é o serviço (Task 7): erros.length > 0 -> fail.
   })
+
+  // NaN/Infinity em dinheiro atravessaria tudo em silêncio: `??` não pega NaN e
+  // `NaN === 0` é falso. Sem estas guardas, a nota seria ACEITA com custo NaN.
+  it('frete não-finito é erro DURO', () => {
+    const r = custearNota({ itens: [item()], valorFrete: NaN, politica: POLITICA_PADRAO })
+    expect(r.erros.length).toBeGreaterThan(0)
+  })
+
+  it('preço unitário não-finito é erro DURO, e não contamina o custo', () => {
+    const r = custearNota({
+      itens: [item({ insumoId: 'ruim', precoUnitario: NaN })],
+      valorFrete: 0, politica: POLITICA_PADRAO,
+    })
+    expect(r.itens).toEqual([])
+    expect(r.erros.length).toBeGreaterThan(0)
+    expect(r.erros[0]).toContain('ruim')
+  })
+
+  it('imposto ou desconto não-finito é erro DURO', () => {
+    expect(custearNota({ itens: [item({ imposto: Infinity })], valorFrete: 0, politica: POLITICA_PADRAO }).erros.length).toBeGreaterThan(0)
+    expect(custearNota({ itens: [item({ desconto: NaN })], valorFrete: 0, politica: POLITICA_PADRAO }).erros.length).toBeGreaterThan(0)
+  })
+
+  it('nenhum custo NaN sai daqui com a lista de erros VAZIA', () => {
+    const r = custearNota({
+      itens: [item({ precoUnitario: NaN }), item({ insumoId: 'b' })],
+      valorFrete: NaN, politica: POLITICA_PADRAO,
+    })
+    // A invariante que fecha o buraco: se algum custo saiu NaN, TEM que haver erro.
+    const temNaN = r.itens.some((i) => !Number.isFinite(i.custoUnitarioFinal) || !Number.isFinite(i.custoTotal))
+    if (temNaN) expect(r.erros.length).toBeGreaterThan(0)
+    expect(r.erros.length).toBeGreaterThan(0)
+  })
+
+  // O ELO MAIS PERIGOSO DO MÓDULO, e o que faltava: mais de um item COM frete. Sem este
+  // teste, trocar `fretes[i]` por `fretes[0]`, inverter o array, ou chumbar o critério em
+  // 'valor' passa na suíte inteira, e o frete vai parar no item errado em silêncio.
+  it('cada item recebe O SEU frete rateado, e a soma fecha com o frete da nota', () => {
+    const r = custearNota({
+      itens: [
+        item({ insumoId: 'caro', qtdCompra: 1, precoUnitario: 300 }),   // 75%
+        item({ insumoId: 'barato', qtdCompra: 1, precoUnitario: 100 }), // 25%
+      ],
+      valorFrete: 200,
+      politica: POLITICA_PADRAO,
+    })
+    expect(r.erros).toEqual([])
+    expect(r.itens[0].insumoId).toBe('caro')
+    expect(r.itens[0].freteRateado).toBeCloseTo(150, 10)
+    expect(r.itens[1].insumoId).toBe('barato')
+    expect(r.itens[1].freteRateado).toBeCloseTo(50, 10)
+    // A invariante: nenhum centavo some no rateio.
+    expect(r.itens.reduce((s, i) => s + i.freteRateado, 0)).toBeCloseTo(200, 10)
+    // E o custo de cada um carrega O SEU frete: 300 + 150 = 450; 100 + 50 = 150.
+    expect(r.itens[0].custoTotal).toBeCloseTo(450, 10)
+    expect(r.itens[1].custoTotal).toBeCloseTo(150, 10)
+  })
+
+  // O critério da POLÍTICA tem que chegar ao rateio. Chumbar 'valor' passaria em tudo o mais.
+  it('custearNota respeita o critério de rateio da política', () => {
+    const r = custearNota({
+      itens: [
+        item({ insumoId: 'a', qtdCompra: 3, precoUnitario: 100 }),
+        item({ insumoId: 'b', qtdCompra: 1, precoUnitario: 900 }),
+      ],
+      valorFrete: 200,
+      politica: { ...POLITICA_PADRAO, criterioRateioFrete: 'quantidade' },
+    })
+    // Por QUANTIDADE: 3/4 e 1/4. Por VALOR seria 300/1200 e 900/1200, o inverso.
+    expect(r.itens[0].freteRateado).toBeCloseTo(150, 10)
+    expect(r.itens[1].freteRateado).toBeCloseTo(50, 10)
+  })
 })
