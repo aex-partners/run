@@ -106,17 +106,23 @@ export function custearNota(input: {
       continue
     }
 
+    // `ratearFrete` devolve SEMPRE um valor por item (todos os seus caminhos são
+    // `itens.map`), e o ramo do `else` também. Logo `fretes[i]` existe para todo `i`
+    // que este laço visita: o `?? 0` só existe para o noUncheckedIndexedAccess do
+    // TypeScript, que não consegue provar isso, e nunca dispara em execução.
+    const freteRateado = fretes[i] ?? 0
+
     const custoTotal =
       item.qtdCompra * item.precoUnitario
       - (politica.incluirDescontos ? item.desconto : 0)
-      + fretes[i]
+      + freteRateado
       + (politica.incluirImpostos ? item.imposto : 0)
 
     out.push({
       insumoId: item.insumoId,
       qtdCompra: item.qtdCompra,
       qtdConsumo,
-      freteRateado: fretes[i],
+      freteRateado,
       custoTotal,
       custoUnitarioFinal: custoTotal / qtdConsumo,
     })
