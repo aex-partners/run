@@ -262,11 +262,19 @@ describe('custearNota', () => {
   // NENHUM custo não-finito sai daqui sem erro.
   it('nenhum custo não-finito escapa com a lista de erros vazia', () => {
     const venenos = [
+      // literais não-finitos
       { qtdCompra: Infinity }, { qtdCompra: NaN }, { qtdCompra: -Infinity },
       { precoUnitario: Infinity }, { precoUnitario: NaN },
       { desconto: Infinity }, { desconto: NaN },
       { imposto: Infinity }, { imposto: NaN },
       { fatorConversao: Infinity }, { fatorConversao: NaN },
+      // OPERANDOS FINITOS cujo RESULTADO não é. É por isto que validar a entrada não basta:
+      { qtdCompra: 1e308, precoUnitario: 10 },              // produto -> Infinity
+      { precoUnitario: 1.7e308, imposto: 1.7e308 },          // SOMA -> Infinity
+      { precoUnitario: -1.7e308, desconto: 1.7e308 },        // soma -> -Infinity
+      { qtdCompra: 1e-200, fatorConversao: 1e-200 },         // UNDERFLOW -> qtdConsumo 0 -> divisão por zero
+      { qtdCompra: 5e-324, fatorConversao: 0.5 },            // underflow -> 0
+      { qtdCompra: 1e308, fatorConversao: 10 },              // overflow -> qtdConsumo Infinity -> custo evapora para 0
     ]
     for (const veneno of venenos) {
       for (const frete of [0, 100, NaN, Infinity]) {
@@ -284,5 +292,49 @@ describe('custearNota', () => {
         expect(r.erros.length).toBeGreaterThan(0)
       }
     }
+  })
+
+  // Um item cujo PESO estoura (operandos finitos, produto Infinity) envenenava o `total`
+  // do rateio e zerava o frete do item BOM, sem erro nenhum.
+  it('item com peso que estoura NÃO rouba o frete do item bom', () => {
+    const r = custearNota({
+      itens: [
+        item({ insumoId: 'estoura', qtdCompra: 1e308, precoUnitario: 10 }),
+        item({ insumoId: 'bom', qtdCompra: 2, precoUnitario: 50 }),
+      ],
+      valorFrete: 100,
+      politica: POLITICA_PADRAO,
+    })
+    expect(r.erros.length).toBeGreaterThan(0)
+    expect(r.itens.map((i) => i.insumoId)).toEqual(['bom'])
+    expect(r.itens[0].freteRateado).toBeCloseTo(100, 10)
+    expect(Number.isFinite(r.itens[0].custoTotal)).toBe(true)
+  })
+
+  // REGRESSÃO: guardar os OPERANDOS não guarda o DENOMINADOR. 1e-200 × 1e-200 faz
+  // underflow para 0, e a divisão por zero volta a ser alcançável.
+  it('quantidade que faz underflow para zero é erro DURO', () => {
+    const r = custearNota({
+      itens: [item({ insumoId: 'micro', qtdCompra: 1e-200, fatorConversao: 1e-200 })],
+      valorFrete: 0, politica: POLITICA_PADRAO,
+    })
+    expect(r.itens).toEqual([])
+    expect(r.erros.length).toBeGreaterThan(0)
+  })
+
+  // A política pode mandar IGNORAR o frete. Se o `valorFrete` que chegou é lixo mas
+  // nunca vai entrar em nenhuma conta, recusar a nota inteira por causa dele recusaria
+  // itens provadamente bons.
+  it('frete não-finito é IGNORADO quando a política não inclui frete', () => {
+    const politica: PoliticaCusto = { ...POLITICA_PADRAO, incluirFrete: false }
+    const r = custearNota({
+      itens: [item({ insumoId: 'bom', qtdCompra: 10, precoUnitario: 10 })],
+      valorFrete: NaN,
+      politica,
+    })
+    expect(r.erros).toEqual([])
+    expect(r.itens.map((i) => i.insumoId)).toEqual(['bom'])
+    expect(r.itens[0].freteRateado).toBe(0)
+    expect(r.itens[0].custoTotal).toBeCloseTo(100, 10)
   })
 })

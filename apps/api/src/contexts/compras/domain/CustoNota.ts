@@ -9,8 +9,10 @@
 //        qtdConsumo          = qtdCompra × fatorConversao
 //        custoUnitarioFinal  = custoTotal / qtdConsumo
 //
-// TODO erro aqui é DURO: o serviço recusa a nota. Um fator inválido ou uma quantidade
-// zerada só poderiam produzir divisão por zero ou um custo inventado.
+// Todo erro aqui é DURO: o serviço recusa a nota. Não só entrada inválida (fator
+// zerado, quantidade negativa) quebra essas contas: overflow e underflow de ponto
+// flutuante fazem o mesmo estrago a partir de operandos perfeitamente finitos, então
+// cada valor CALCULADO é conferido depois de calculado, não só os operandos de entrada.
 
 export interface PoliticaCusto {
   incluirFrete: boolean
@@ -95,7 +97,12 @@ export function custearNota(input: {
   // produziria um custo NaN com `erros` VAZIO: a nota seria ACEITA e o custo médio do
   // insumo viraria lixo. `??` não pega NaN, e `NaN === 0` é falso, então nenhuma das
   // guardas existentes barra isso. Erro DURO: a nota não lança.
-  const freteInvalido = !Number.isFinite(valorFrete)
+  //
+  // Mas só importa quando o frete de fato ENTRA na conta: com `incluirFrete: false` ele
+  // nunca participa da aritmética (todo item usa `freteRateado: 0`), então cada item já
+  // sai PROVADAMENTE finito por esse lado. Barrar a nota inteira por um `valorFrete`
+  // inválido que a própria política manda ignorar recusaria itens bons sem motivo.
+  const freteInvalido = politica.incluirFrete && !Number.isFinite(valorFrete)
   if (freteInvalido) {
     erros.push(`valor do frete inválido (${valorFrete})`)
   }
@@ -153,32 +160,70 @@ export function custearNota(input: {
   // que entra nas contas abaixo (`qtdCompra`, `fatorConversao`, `precoUnitario`,
   // `desconto`, `imposto`, e o `valorFrete` que alimenta `ratearFrete`) já passou pela
   // Fase 1 ou pelo guard acima: nenhum deles pode ser NaN ou Infinity aqui.
-  const fretes = politica.incluirFrete
-    ? ratearFrete(validos, valorFrete, politica.criterioRateioFrete)
-    : validos.map(() => 0)
+  //
+  // Mas campo de ENTRADA finito não garante RESULTADO finito: multiplicação e soma
+  // estouram, e underflow zera um denominador em silêncio. Por isso a Fase 2 não para
+  // na validação dos operandos — ela confere cada valor CALCULADO (o peso do rateio,
+  // `qtdConsumo`, `custoTotal`, `custoUnitarioFinal`) DEPOIS de calculado. É essa
+  // checagem sobre o resultado, e não uma lista de entradas proibidas, que garante que
+  // nenhum custo não-finito escapa: uma implicação sobre a saída, não uma enumeração
+  // dos venenos que alguém pensou em testar.
+  let custeaveis = validos
+  let fretes = politica.incluirFrete
+    ? ratearFrete(custeaveis, valorFrete, politica.criterioRateioFrete)
+    : custeaveis.map(() => 0)
+
+  // POSTCONDIÇÃO sobre o RESULTADO do rateio, não sobre os operandos: dois itens com
+  // todo campo finito podem ter um PESO (qtdCompra × precoUnitario, ou só qtdCompra,
+  // conforme o critério) que estoura pra Infinity. Isso estoura o `total` somado dentro
+  // de `ratearFrete`, e a fatia do item que estourou volta `Infinity / Infinity = NaN`.
+  // `ratearFrete` só devolve `number[]` e não tem como reportar isso (a assinatura dela
+  // não muda), então a checagem é feita aqui, sobre o array que ela devolveu: tira o
+  // item cuja fatia saiu não-finita — é sempre o próprio item que estourou, nunca o
+  // vizinho, porque só ele tem `Infinity` no numerador E no denominador — e RE-RATEIA
+  // só sobre quem sobrou. Sem o re-rateio, o item BOM ficaria com a fatia errada
+  // (`valorFrete × peso_bom / Infinity = 0`): o frete dele evaporaria em silêncio, sem
+  // nenhum erro, mesmo ele sendo provadamente são.
+  if (politica.incluirFrete) {
+    let poluidos = custeaveis.filter((_, i) => !Number.isFinite(fretes[i]))
+    while (poluidos.length > 0) {
+      for (const item of poluidos) {
+        erros.push(
+          `insumo ${item.insumoId}: peso do item no rateio de frete não é finito, item não pôde ser custeado`,
+        )
+      }
+      custeaveis = custeaveis.filter((_, i) => Number.isFinite(fretes[i]))
+      fretes = custeaveis.length > 0
+        ? ratearFrete(custeaveis, valorFrete, politica.criterioRateioFrete)
+        : []
+      poluidos = custeaveis.filter((_, i) => !Number.isFinite(fretes[i]))
+    }
+  }
 
   const out: ItemCusteado[] = []
 
-  for (const [i, item] of validos.entries()) {
+  for (const [i, item] of custeaveis.entries()) {
+    // `ratearFrete` devolve SEMPRE um valor por item (todos os seus caminhos são
+    // `itens.map`), e o ramo do `else` também. O `?? 0` aqui só existe para o
+    // noUncheckedIndexedAccess do TypeScript, que não consegue provar isso: o filtro
+    // logo acima já garante que `fretes[i]` é finito para todo item que este laço
+    // visita, então este `?? 0` nunca dispara de fato em execução.
+    const freteRateado = fretes[i] ?? 0
+
     const qtdConsumo = item.qtdCompra * item.fatorConversao
 
-    // `ratearFrete` devolve SEMPRE um valor por item (todos os seus caminhos são
-    // `itens.map`), e o ramo do `else` também. Logo `fretes[i]` existe para todo `i`
-    // que este laço visita: o `?? 0` só existe para o noUncheckedIndexedAccess do
-    // TypeScript, que não consegue provar isso, e nunca dispara em execução por
-    // índice ausente.
-    //
-    // Isso NÃO cobre `NaN`: `??` só pega `null`/`undefined`, e `NaN ?? 0` é `NaN`. Mas
-    // agora isso é inofensivo de verdade, não só por sorte: o guard logo acima já
-    // interrompeu a função (com `itens: []`) se `valorFrete` não fosse finito, e todo
-    // `item` que chega aqui veio de `validos`, ou seja, já passou pela Fase 1 com
-    // `precoUnitario`, `desconto`, `imposto` finitos e `fatorConversao`/`qtdCompra`
-    // finitos e positivos. Logo `fretes[i]` é sempre um número finito real — nunca
-    // `NaN`, nunca `Infinity` — e a garantia do módulo é uma implicação, não uma
-    // esperança: todo item que sai custeado TEM custo finito, ponto. Um custo
-    // não-finito só poderia escapar se algum destes inputs escapasse da Fase 1 sem
-    // validação, o que não acontece.
-    const freteRateado = fretes[i] ?? 0
+    // Guarda no valor CALCULADO, não só nos operandos: `qtdCompra` e `fatorConversao`
+    // já passaram pela Fase 1 (finitos e positivos), mas o PRODUTO dos dois pode fazer
+    // underflow pra 0 (ex.: 1e-200 × 1e-200) ou overflow pra Infinity (ex.: 1e308 × 10).
+    // O primeiro é divisão por zero logo abaixo; o segundo evapora o custo unitário pra
+    // 0. Os dois em silêncio, e os dois com `erros` vazio se só os operandos fossem
+    // checados. Mesma mensagem da Fase 1: para quem lê o erro, é a mesma causa raiz.
+    if (!(qtdConsumo > 0) || !Number.isFinite(qtdConsumo)) {
+      erros.push(
+        `insumo ${item.insumoId}: quantidade em unidade de consumo deve ser maior que zero (recebido: ${qtdConsumo})`,
+      )
+      continue
+    }
 
     const custoTotal =
       item.qtdCompra * item.precoUnitario
@@ -186,13 +231,31 @@ export function custearNota(input: {
       + freteRateado
       + (politica.incluirImpostos ? item.imposto : 0)
 
+    // A SOMA pode estourar mesmo com todo operando finito (ex.: `precoUnitario` e
+    // `imposto` ambos perto de `Number.MAX_VALUE`). Sem esta guarda, `custoTotal:
+    // Infinity` sairia com `erros` vazio, e o custo médio do insumo viraria lixo.
+    if (!Number.isFinite(custoTotal)) {
+      erros.push(`insumo ${item.insumoId}: custo total não-finito (recebido: ${custoTotal})`)
+      continue
+    }
+
+    const custoUnitarioFinal = custoTotal / qtdConsumo
+
+    // Divisão de dois finitos ainda pode sair não-finita perto dos limites de
+    // precisão do double (custoTotal enorme / qtdConsumo minúscula). Confere o
+    // RESULTADO da divisão, não só os dois lados dela.
+    if (!Number.isFinite(custoUnitarioFinal)) {
+      erros.push(`insumo ${item.insumoId}: custo unitário final não-finito (recebido: ${custoUnitarioFinal})`)
+      continue
+    }
+
     out.push({
       insumoId: item.insumoId,
       qtdCompra: item.qtdCompra,
       qtdConsumo,
       freteRateado,
       custoTotal,
-      custoUnitarioFinal: custoTotal / qtdConsumo,
+      custoUnitarioFinal,
     })
   }
 
