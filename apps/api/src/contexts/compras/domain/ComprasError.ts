@@ -13,6 +13,16 @@ export const ComprasError = {
   custeioInvalido: (erros: string[]): string =>
     `nota não lançada, o custo não pôde ser calculado: ${erros.join('; ')}`,
 
+  // Uma entrada a custo zero zeraria o custo médio do insumo, em silêncio, e o aviso de custo
+  // defasado nem dispararia (o valor não "muda"). Material recebido de graça NÃO é uma compra a
+  // custo zero: entra por um `ajuste` de estoque, que soma a quantidade ao custo médio vigente
+  // e não mente sobre o custo.
+  itemSemCusto: (insumoIds: string[]): string =>
+    `nota não lançada: ${insumoIds.length === 1 ? 'o item' : 'os itens'} ${insumoIds.join(', ')} ${insumoIds.length === 1 ? 'ficou' : 'ficaram'} com custo unitário ZERO. ` +
+    'Uma entrada a custo zero corromperia o custo médio do insumo, em silêncio. ' +
+    'Confira o preço, o desconto e o fator de conversão. Se o material veio de graça (bonificação), ' +
+    'registre um ajuste de estoque em vez de incluí-lo na nota.',
+
   // Não há transação entre a gravação da nota e os movimentos de estoque. Se um
   // movimento falhar no meio, a nota fica em `rascunho` com movimentos PARCIAIS.
   // Falha ALTO e diz exatamente o que fazer, em vez de deixar o estoque torto calado.

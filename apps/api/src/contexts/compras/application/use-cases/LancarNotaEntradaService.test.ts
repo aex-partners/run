@@ -261,4 +261,65 @@ describe('LancarNotaEntradaService', () => {
     // O movimento de A foi registrado; o de B não. É por isso que o erro manda rodar o replay.
     expect(estoque.recebidos.map((m) => m.insumoId)).toEqual(['A'])
   })
+
+  // O `estoque` recusa custo <= 0 (zeraria o custo médio em silêncio). `custearNota` pode
+  // produzir custo zero legitimamente. Barrar ANTES de gravar: senão a nota fica presa em
+  // `rascunho` e o usuário recebe um erro de "movimento parcial" que não descreve o que houve.
+  it('item com custo final ZERO recusa a nota ANTES de gravar', async () => {
+    const w = testWorld()
+    const { nota, estoque } = svc(w)
+    const r = await nota.execute({
+      ...notaBase,
+      itens: [{ insumoId: 'TECIDO', qtd: 10, precoUnitario: 0 }],
+    })
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.error).toContain('TECIDO')
+    expect(!r.ok && r.error).toContain('custo unitário ZERO')
+    // NADA foi gravado, e nenhum movimento foi empurrado para o estoque.
+    expect(await w.store.query(E.notas, [], 500)).toHaveLength(0)
+    expect(await w.store.query(E.itensNota, [], 500)).toHaveLength(0)
+    expect(estoque.recebidos).toHaveLength(0)
+  })
+
+  // Desconto que anula o item inteiro cai na mesma armadilha.
+  it('desconto que zera o custo do item recusa a nota', async () => {
+    const w = testWorld()
+    const { nota, estoque } = svc(w)
+    const r = await nota.execute({
+      ...notaBase,
+      itens: [{ insumoId: 'TECIDO', qtd: 10, precoUnitario: 10, desconto: 100 }],
+    })
+    expect(r.ok).toBe(false)
+    expect(await w.store.query(E.notas, [], 500)).toHaveLength(0)
+    expect(estoque.recebidos).toHaveLength(0)
+  })
+
+  // Um item bom junto de um zerado: a nota inteira é recusada. O custo é da NOTA, não do item:
+  // deixar passar os bons e recusar o zerado gravaria uma nota que não bate com o documento.
+  it('um item zerado recusa a nota INTEIRA, mesmo com outros itens bons', async () => {
+    const w = testWorld([{ id: 'A' }, { id: 'B' }])
+    const { nota, estoque } = svc(w)
+    const r = await nota.execute({
+      ...notaBase,
+      itens: [
+        { insumoId: 'A', qtd: 10, precoUnitario: 10 },
+        { insumoId: 'B', qtd: 5, precoUnitario: 0 },
+      ],
+    })
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.error).toContain('B')
+    expect(await w.store.query(E.notas, [], 500)).toHaveLength(0)
+    expect(estoque.recebidos).toHaveLength(0)
+  })
+
+  // Um custo POSITIVO mas minúsculo é legítimo e passa (não confundir "zero" com "barato").
+  it('custo positivo pequeno passa normalmente', async () => {
+    const w = testWorld()
+    const { nota } = svc(w)
+    const r = await nota.execute({
+      ...notaBase,
+      itens: [{ insumoId: 'TECIDO', qtd: 1000, precoUnitario: 0.01 }],
+    })
+    expect(r.ok).toBe(true)
+  })
 })

@@ -13,6 +13,11 @@ export class FakeEstoqueMovimentos implements EstoqueMovimentos {
 
   async registrarEntrada(m: MovimentoEntrada) {
     if (this.falharEm?.(m)) throw new Error(`estoque recusou o insumo ${m.insumoId}`)
+    // ESPELHA a regra real do estoque: uma entrada com custo <= 0 é RECUSADA (zeraria o custo
+    // médio em silêncio). Um fake mais permissivo que o real esconde exatamente esta classe de bug.
+    if (!(m.custoUnitario > 0)) {
+      throw new Error(`estoque recusou o insumo ${m.insumoId}: custoUnitario deve ser maior que zero (recebido: ${m.custoUnitario})`)
+    }
     this.recebidos.push(m)
 
     const atual = this.estado.get(m.insumoId) ?? { saldo: 0, custoMedio: 0 }

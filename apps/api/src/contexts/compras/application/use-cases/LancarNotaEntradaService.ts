@@ -62,6 +62,17 @@ export class LancarNotaEntradaService implements LancarNotaEntrada {
     // Erro de custeio é DURO: divisão por zero ou custo inventado. A nota não lança.
     if (custeio.erros.length > 0) return fail(ComprasError.custeioInvalido(custeio.erros))
 
+    // O `estoque` RECUSA uma entrada com custo unitário <= 0: ela zeraria o custo médio do
+    // insumo em silêncio (e nem carimbaria `custo_medio_atualizado_em`, então o aviso de custo
+    // defasado também não dispararia). `custearNota` pode devolver custo ZERO legitimamente —
+    // uma linha de brinde, preço zero, sem frete e sem imposto. Barrar AQUI, antes de gravar
+    // qualquer linha, em vez de deixar o estoque recusar o movimento com a nota já gravada e
+    // presa em `rascunho`, com uma mensagem de "movimento parcial" que não descreve o que houve.
+    const semCusto = custeio.itens.filter((i) => !(i.custoUnitarioFinal > 0))
+    if (semCusto.length > 0) {
+      return fail(ComprasError.itemSemCusto(semCusto.map((i) => i.insumoId)))
+    }
+
     const valorProdutos = itensCusteio.reduce((s, i) => s + i.qtdCompra * i.precoUnitario, 0)
     const valorDesconto = itensCusteio.reduce((s, i) => s + i.desconto, 0)
     const valorImpostos = itensCusteio.reduce((s, i) => s + i.imposto, 0)
