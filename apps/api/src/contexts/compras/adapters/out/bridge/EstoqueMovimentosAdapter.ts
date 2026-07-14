@@ -17,7 +17,11 @@ interface RegistrarMovimentoLike {
     origemTipo?: string
     origemId?: string
     observacao?: string
-  }): Promise<{ ok: boolean; value?: { movimentoId: string; saldoTotal: number; custoMedio: number }; error?: string }>
+  }): Promise<{
+    ok: boolean
+    value?: { movimentoId: string; saldoTotal: number; custoMedio: number; erros?: string[] }
+    error?: string
+  }>
 }
 
 // ACL bridge: compras EstoqueMovimentos -> estoque RegistrarMovimento.
@@ -39,6 +43,10 @@ export class EstoqueMovimentosAdapter implements EstoqueMovimentos {
       observacao: m.observacao,
     })
     if (!r.ok || !r.value) throw new Error(r.error ?? 'movimento de estoque recusado')
-    return r.value
+    // O estoque real reporta `erros` SUAVES (ex.: falha na projeção de custo_medio /
+    // preco_custo) junto com um `ok`. Descartar este campo escondia exatamente o caso em que
+    // o movimento foi aceito mas o custo do produto ficou desatualizado — a nota seria
+    // marcada `lancada` sem nenhum sinal do problema.
+    return { ...r.value, erros: r.value.erros ?? [] }
   }
 }

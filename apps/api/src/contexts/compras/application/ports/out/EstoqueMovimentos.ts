@@ -17,5 +17,14 @@ export interface MovimentoEntrada {
 }
 
 export interface EstoqueMovimentos {
-  registrarEntrada(m: MovimentoEntrada): Promise<{ movimentoId: string; saldoTotal: number; custoMedio: number }>
+  registrarEntrada(m: MovimentoEntrada): Promise<{
+    movimentoId: string
+    saldoTotal: number
+    custoMedio: number
+    // Erros SUAVES do lado do estoque (ex.: a projeção de `produtos.custo_medio` /
+    // `preco_custo` falhou depois que o livro já foi gravado). O movimento FOI aceito — não é
+    // motivo para o `compras` recusar a nota — mas precisa ficar visível, porque
+    // `preco_custo` é o campo que o `costing` lê como custo do material.
+    erros: string[]
+  }>
 }

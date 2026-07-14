@@ -36,6 +36,11 @@ export interface NotaResumo {
     custoUnitarioFinal: number   // unidade de CONSUMO
     custoMedioApos: number       // o médio do insumo DEPOIS desta entrada
   }[]
+  // Avisos SUAVES: a nota FOI lançada (o material chegou, o estoque moveu), mas algo merece
+  // atenção — um item que não bateu com o pedido, ou um erro suave devolvido pelo estoque
+  // (ex.: a projeção de custo_medio/preco_custo falhou depois do movimento). Nunca impedem o
+  // lançamento; só precisam ficar visíveis.
+  avisos: string[]
 }
 
 export interface LancarNotaEntrada {

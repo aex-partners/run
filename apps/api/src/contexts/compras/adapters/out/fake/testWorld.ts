@@ -45,5 +45,11 @@ export function testWorld(insumos: InsumoSeed[] = [{ id: 'TECIDO' }]) {
     })
   }
 
-  return { store, E }
+  // Exposto para seedar o FakeEstoqueMovimentos: ele precisa saber quais depósitos e quais
+  // produtos (controla_estoque) EXISTEM, para poder recusar os que não existem do mesmo jeito
+  // que o estoque real recusa. Ver FakeEstoqueMovimentos.ts.
+  const depositosConhecidos = new Set(['DEP1'])
+  const produtos = new Map(insumos.map((i) => [i.id, { controlaEstoque: i.controlaEstoque ?? true }]))
+
+  return { store, E, depositosConhecidos, produtos }
 }
