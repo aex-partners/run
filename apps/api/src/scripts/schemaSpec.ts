@@ -4,12 +4,12 @@
 export interface FieldSpec {
   slug: string
   displayName: string
-  // text | long_text | number | boolean | date | datetime | duration | currency | select | relation
+  // text | long_text | number | decimal | boolean | date | datetime | duration | currency | select | relation
   kind: string
   targetSlug?: string    // kind 'relation': target entity slug
   multiple?: boolean     // kind 'relation'
   options?: string[]     // kind 'select'
-  decimalPlaces?: number // kind 'currency'
+  decimalPlaces?: number // kind 'currency' | 'decimal'
 }
 
 export interface EntitySpec {
@@ -26,6 +26,11 @@ export function fieldConfig(
   switch (spec.kind) {
     case 'boolean': return { kind: 'boolean' }
     case 'number': return { kind: 'number' }
+    // Quantidade de estoque é FRACIONÁRIA (1,3 mt de tecido). `number` arredondaria.
+    case 'decimal':
+      return spec.decimalPlaces == null
+        ? { kind: 'decimal' }
+        : { kind: 'decimal', decimalPlaces: spec.decimalPlaces }
     case 'text': return { kind: 'text' }
     case 'long_text': return { kind: 'long_text' }
     case 'date': return { kind: 'date' }

@@ -24,4 +24,10 @@ describe('fieldConfig', () => {
   it('throws on an unknown kind', () => {
     expect(() => fieldConfig(f({ kind: 'bogus' }), () => null)).toThrow()
   })
+  it('mapeia decimal, com e sem decimalPlaces', () => {
+    expect(fieldConfig({ slug: 'qtd', displayName: 'Qtd', kind: 'decimal' }, () => null))
+      .toEqual({ kind: 'decimal' })
+    expect(fieldConfig({ slug: 'qtd', displayName: 'Qtd', kind: 'decimal', decimalPlaces: 4 }, () => null))
+      .toEqual({ kind: 'decimal', decimalPlaces: 4 })
+  })
 })
