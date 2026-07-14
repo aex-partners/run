@@ -216,4 +216,73 @@ describe('custearNota', () => {
     expect(r.itens[0].freteRateado).toBeCloseTo(150, 10)
     expect(r.itens[1].freteRateado).toBeCloseTo(50, 10)
   })
+
+  // A guarda `!(qtdConsumo > 0)` pega NaN mas NÃO pega Infinity (`Infinity > 0` é true).
+  // Sem esta guarda: custoTotal = Infinity, custoUnitarioFinal = Infinity/Infinity = NaN,
+  // e `erros` VAZIO — a nota seria ACEITA com custo NaN.
+  it('quantidade infinita é erro DURO', () => {
+    const r = custearNota({
+      itens: [item({ insumoId: 'inf', qtdCompra: Infinity })],
+      valorFrete: 0, politica: POLITICA_PADRAO,
+    })
+    expect(r.itens).toEqual([])
+    expect(r.erros.length).toBeGreaterThan(0)
+    expect(r.erros[0]).toContain('inf')
+  })
+
+  it('fator de conversão infinito é erro DURO', () => {
+    const r = custearNota({
+      itens: [item({ insumoId: 'inf', fatorConversao: Infinity })],
+      valorFrete: 0, politica: POLITICA_PADRAO,
+    })
+    expect(r.itens).toEqual([])
+    expect(r.erros.length).toBeGreaterThan(0)
+  })
+
+  // HOLE 2: o rateio rodava sobre a lista INTEIRA, então um item ruim envenenava o `total`
+  // e o frete do item BOM saía NaN (ou uma fração errada), em silêncio.
+  it('um item ruim NÃO contamina o frete do item bom', () => {
+    const r = custearNota({
+      itens: [
+        item({ insumoId: 'ruim', precoUnitario: NaN }),
+        item({ insumoId: 'bom', qtdCompra: 2, precoUnitario: 50 }),
+      ],
+      valorFrete: 100,
+      politica: POLITICA_PADRAO,
+    })
+    expect(r.erros.length).toBeGreaterThan(0)           // a nota será recusada pelo serviço
+    expect(r.itens.map((i) => i.insumoId)).toEqual(['bom'])
+    // O item bom é o ÚNICO válido, então leva o frete inteiro, e o custo é finito.
+    expect(r.itens[0].freteRateado).toBeCloseTo(100, 10)
+    expect(Number.isFinite(r.itens[0].custoTotal)).toBe(true)
+    expect(Number.isFinite(r.itens[0].custoUnitarioFinal)).toBe(true)
+  })
+
+  // A INVARIANTE que fecha o buraco de vez, sobre uma bateria de entradas venenosas:
+  // NENHUM custo não-finito sai daqui sem erro.
+  it('nenhum custo não-finito escapa com a lista de erros vazia', () => {
+    const venenos = [
+      { qtdCompra: Infinity }, { qtdCompra: NaN }, { qtdCompra: -Infinity },
+      { precoUnitario: Infinity }, { precoUnitario: NaN },
+      { desconto: Infinity }, { desconto: NaN },
+      { imposto: Infinity }, { imposto: NaN },
+      { fatorConversao: Infinity }, { fatorConversao: NaN },
+    ]
+    for (const veneno of venenos) {
+      for (const frete of [0, 100, NaN, Infinity]) {
+        const r = custearNota({
+          itens: [item(veneno), item({ insumoId: 'ok' })],
+          valorFrete: frete,
+          politica: POLITICA_PADRAO,
+        })
+        const naoFinito = r.itens.some(
+          (i) => !Number.isFinite(i.custoTotal) || !Number.isFinite(i.custoUnitarioFinal) || !Number.isFinite(i.freteRateado),
+        )
+        // Se algum custo saiu não-finito, TEM que haver erro. E, de fato, nada não-finito
+        // deveria sair: todo item custeado passou pela validação.
+        expect(naoFinito).toBe(false)
+        expect(r.erros.length).toBeGreaterThan(0)
+      }
+    }
+  })
 })

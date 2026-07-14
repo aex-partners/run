@@ -76,6 +76,12 @@ export function ratearFrete(
   return itens.map((i) => (valorFrete * peso(i)) / total)
 }
 
+// Finito e estritamente positivo. Usado para quantidades: `qtdCompra` e
+// `fatorConversao` não fazem sentido zerados, negativos, NaN ou infinitos, e
+// `Infinity > 0` é `true` — só `Number.isFinite` pega o Infinity que a guarda
+// negada (`!(v > 0)`) deixa passar.
+const positivoFinito = (v: number): boolean => Number.isFinite(v) && v > 0
+
 export function custearNota(input: {
   itens: ItemNotaInput[]
   valorFrete: number
@@ -89,17 +95,19 @@ export function custearNota(input: {
   // produziria um custo NaN com `erros` VAZIO: a nota seria ACEITA e o custo médio do
   // insumo viraria lixo. `??` não pega NaN, e `NaN === 0` é falso, então nenhuma das
   // guardas existentes barra isso. Erro DURO: a nota não lança.
-  if (!Number.isFinite(valorFrete)) {
+  const freteInvalido = !Number.isFinite(valorFrete)
+  if (freteInvalido) {
     erros.push(`valor do frete inválido (${valorFrete})`)
   }
 
-  const fretes = politica.incluirFrete
-    ? ratearFrete(itens, valorFrete, politica.criterioRateioFrete)
-    : itens.map(() => 0)
+  // FASE 1 — valida CADA item, sobre a lista INTEIRA, ANTES de qualquer conta. Um
+  // item ruim aqui só entra em `erros`: ele nunca chega a `ratearFrete` nem ao custeio.
+  // É isso que impede um `precoUnitario: NaN` de envenenar o `total` do rateio e
+  // devolver `freteRateado: NaN` para os itens BONS vizinhos (o item ruim não polui
+  // mais o rateio porque ele nem participa da lista que a Fase 2 rateia).
+  const validos: ItemNotaInput[] = []
 
-  const out: ItemCusteado[] = []
-
-  for (const [i, item] of itens.entries()) {
+  for (const item of itens) {
     let itemInvalido = false
     for (const [campo, v] of [
       ['precoUnitario', item.precoUnitario],
@@ -113,20 +121,46 @@ export function custearNota(input: {
     }
     if (itemInvalido) continue
 
-    if (!(item.fatorConversao > 0)) {
+    if (!positivoFinito(item.fatorConversao)) {
       erros.push(
         `insumo ${item.insumoId}: fator_conversao deve ser maior que zero (recebido: ${item.fatorConversao}). ` +
         'Corrija o cadastro do produto: é ele que converte a unidade de compra na unidade de consumo.',
       )
       continue
     }
-    const qtdConsumo = item.qtdCompra * item.fatorConversao
-    if (!(qtdConsumo > 0)) {
+
+    if (!positivoFinito(item.qtdCompra)) {
       erros.push(
-        `insumo ${item.insumoId}: quantidade em unidade de consumo deve ser maior que zero (recebido: ${qtdConsumo})`,
+        `insumo ${item.insumoId}: quantidade em unidade de consumo deve ser maior que zero (recebido: ${item.qtdCompra * item.fatorConversao})`,
       )
       continue
     }
+
+    validos.push(item)
+  }
+
+  // O frete é UM valor por NOTA INTEIRA, não por item: se ele não for finito, todo
+  // rateio que dependa dele sai não-finito para QUALQUER item, sem exceção. Ao
+  // contrário de um item ruim (que só contamina a si mesmo e é isolado pela Fase 1),
+  // não existe subconjunto "bom" a salvar aqui. Por isso a nota inteira para de ser
+  // custeada: nenhum item sai com `freteRateado`, `custoTotal` ou `custoUnitarioFinal`
+  // poluído. O erro de `valorFrete` já foi empurrado para `erros` lá em cima.
+  if (freteInvalido) {
+    return { itens: [], erros }
+  }
+
+  // FASE 2 — rateia o frete só sobre os itens VÁLIDOS, e custeia cada um. Todo campo
+  // que entra nas contas abaixo (`qtdCompra`, `fatorConversao`, `precoUnitario`,
+  // `desconto`, `imposto`, e o `valorFrete` que alimenta `ratearFrete`) já passou pela
+  // Fase 1 ou pelo guard acima: nenhum deles pode ser NaN ou Infinity aqui.
+  const fretes = politica.incluirFrete
+    ? ratearFrete(validos, valorFrete, politica.criterioRateioFrete)
+    : validos.map(() => 0)
+
+  const out: ItemCusteado[] = []
+
+  for (const [i, item] of validos.entries()) {
+    const qtdConsumo = item.qtdCompra * item.fatorConversao
 
     // `ratearFrete` devolve SEMPRE um valor por item (todos os seus caminhos são
     // `itens.map`), e o ramo do `else` também. Logo `fretes[i]` existe para todo `i`
@@ -134,11 +168,16 @@ export function custearNota(input: {
     // TypeScript, que não consegue provar isso, e nunca dispara em execução por
     // índice ausente.
     //
-    // Isso NÃO cobre `NaN`: `??` só pega `null`/`undefined`, e `NaN ?? 0` é `NaN`. Se
-    // `valorFrete` não for finito, `fretes[i]` pode vir `NaN` aqui mesmo assim, mas
-    // nesse caso a guarda de `valorFrete` lá em cima já pôs um erro DURO em `erros`,
-    // então este item custeado (possivelmente com `NaN`) só sai acompanhado do erro
-    // que faz o chamador recusar a nota inteira.
+    // Isso NÃO cobre `NaN`: `??` só pega `null`/`undefined`, e `NaN ?? 0` é `NaN`. Mas
+    // agora isso é inofensivo de verdade, não só por sorte: o guard logo acima já
+    // interrompeu a função (com `itens: []`) se `valorFrete` não fosse finito, e todo
+    // `item` que chega aqui veio de `validos`, ou seja, já passou pela Fase 1 com
+    // `precoUnitario`, `desconto`, `imposto` finitos e `fatorConversao`/`qtdCompra`
+    // finitos e positivos. Logo `fretes[i]` é sempre um número finito real — nunca
+    // `NaN`, nunca `Infinity` — e a garantia do módulo é uma implicação, não uma
+    // esperança: todo item que sai custeado TEM custo finito, ponto. Um custo
+    // não-finito só poderia escapar se algum destes inputs escapasse da Fase 1 sem
+    // validação, o que não acontece.
     const freteRateado = fretes[i] ?? 0
 
     const custoTotal =
