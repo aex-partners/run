@@ -24,7 +24,9 @@ export interface MovimentoResumo {
   saldoDeposito: number
   saldoTotal: number
   custoMedio: number
-  // Erros SUAVES: o movimento foi gravado. Hoje só o saldo negativo cai aqui.
+  // Erros SUAVES: o movimento foi gravado no livro. Hoje caem aqui o saldo negativo e
+  // uma eventual falha de escrita nas projeções (saldo por depósito / custo médio) — o
+  // livro continua correto nos dois casos; nenhum deles desfaz o movimento.
   erros: string[]
 }
 

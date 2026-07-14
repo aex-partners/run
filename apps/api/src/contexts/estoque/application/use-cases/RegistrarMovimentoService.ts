@@ -31,15 +31,18 @@ export class RegistrarMovimentoService implements RegistrarMovimento {
     if (!insumo) return fail(EstoqueError.insumoNaoEncontrado)
     if (insumo.data.controla_estoque !== true) return fail(EstoqueError.semControleDeEstoque(cmd.insumoId))
 
-    const deposito = await this.store.get(cmd.depositoId)
-    if (!deposito) return fail(EstoqueError.depositoNaoEncontrado)
+    // `store.get` devolve QUALQUER registro por id: um produto passado como depósito seria
+    // aceito, e o livro (append-only) ganharia uma linha apontando para um não-depósito.
+    // Confere a pertinência à entidade `depositos`.
+    const depositos = await this.store.query(ids.depositos, [], LIMITE)
+    if (!depositos.some((d) => d.id === cmd.depositoId)) return fail(EstoqueError.depositoNaoEncontrado)
 
     const custeando = custeia(cmd.tipo)
     if (custeando) {
-      // Entrada sem custo produziria um custo médio ZERADO em silêncio: o pior modo de
-      // falha possível num motor de custo.
-      if (cmd.custoUnitario == null || !Number.isFinite(cmd.custoUnitario)) {
-        return fail(EstoqueError.entradaSemCusto(cmd.tipo))
+      if (cmd.custoUnitario == null) return fail(EstoqueError.entradaSemCusto(cmd.tipo))
+      // NEGADO de propósito: `!(x > 0)` também pega NaN, que `x <= 0` deixaria passar.
+      if (!(cmd.custoUnitario > 0) || !Number.isFinite(cmd.custoUnitario)) {
+        return fail(EstoqueError.entradaCustoInvalido(cmd.tipo, cmd.custoUnitario))
       }
       if (!(cmd.qtd > 0)) return fail(EstoqueError.entradaQtdInvalida(cmd.tipo, cmd.qtd))
     }
@@ -82,31 +85,38 @@ export class RegistrarMovimentoService implements RegistrarMovimento {
       observacao: cmd.observacao ?? null,
     })
 
-    // projeção 1: saldo por depósito
-    if (saldoRow) {
-      await this.store.update(saldoRow.id, { ...saldoRow.data, qtd: saldoDepositoApos }, saldoRow.version)
-    } else {
-      await this.store.insert(ids.saldos_de_estoque, {
-        insumo: cmd.insumoId, deposito: cmd.depositoId, qtd: saldoDepositoApos,
-      })
-    }
+    // O LIVRO JÁ ESTÁ GRAVADO (é a verdade). As projeções podem falhar (conflito de versão
+    // por concorrência, por exemplo) sem invalidar o movimento. Falhar aqui faria o chamador
+    // REPETIR e duplicar o lançamento. Erro SUAVE, e o replay conserta.
+    try {
+      // projeção 1: saldo por depósito
+      if (saldoRow) {
+        await this.store.update(saldoRow.id, { ...saldoRow.data, qtd: saldoDepositoApos }, saldoRow.version)
+      } else {
+        await this.store.insert(ids.saldos_de_estoque, {
+          insumo: cmd.insumoId, deposito: cmd.depositoId, qtd: saldoDepositoApos,
+        })
+      }
 
-    // projeção 2: Produtos (saldo global + custo médio + o ESPELHO em preco_custo).
-    //
-    // `custo_medio_atualizado_em` só é reescrito quando o médio MUDA DE VALOR. Se toda
-    // baixa carimbasse a data, todo SKU apareceria como "custo defasado" a cada saída e
-    // o aviso do CustosDesatualizados viraria ruído puro.
-    const mudouCusto = depois.custoMedio !== antes.custoMedio
-    await this.store.update(cmd.insumoId, {
-      ...insumo.data,
-      saldo_total: depois.saldo,
-      custo_medio: depois.custoMedio,
-      // ESPELHO: é o campo que o `costing` lê como custo de material na explosão.
-      // Escrevê-lo aqui NÃO recalcula ficha nenhuma: o custo do PRODUTO só muda quando
-      // alguém manda recalcular.
-      preco_custo: depois.custoMedio,
-      ...(mudouCusto ? { custo_medio_atualizado_em: new Date().toISOString() } : {}),
-    }, insumo.version)
+      // projeção 2: Produtos (saldo global + custo médio + o ESPELHO em preco_custo).
+      //
+      // `custo_medio_atualizado_em` só é reescrito quando o médio MUDA DE VALOR. Se toda
+      // baixa carimbasse a data, todo SKU apareceria como "custo defasado" a cada saída e
+      // o aviso do CustosDesatualizados viraria ruído puro.
+      const mudouCusto = depois.custoMedio !== antes.custoMedio
+      await this.store.update(cmd.insumoId, {
+        ...insumo.data,
+        saldo_total: depois.saldo,
+        custo_medio: depois.custoMedio,
+        // ESPELHO: é o campo que o `costing` lê como custo de material na explosão.
+        // Escrevê-lo aqui NÃO recalcula ficha nenhuma: o custo do PRODUTO só muda quando
+        // alguém manda recalcular.
+        preco_custo: depois.custoMedio,
+        ...(mudouCusto ? { custo_medio_atualizado_em: new Date().toISOString() } : {}),
+      }, insumo.version)
+    } catch (e) {
+      erros.push(EstoqueError.projecaoDesatualizada((e as Error).message))
+    }
 
     return ok({
       movimentoId,

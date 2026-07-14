@@ -15,7 +15,10 @@ export class HistoricoMovimentosService implements HistoricoMovimentos {
     const movId = await this.registry.entityIdBySlug('movimentos_de_estoque')
     if (!movId) return fail(EstoqueError.entidadeFaltando)
 
-    const limite = Math.min(q.limite ?? TETO, TETO)
+    // Clampa por baixo também: um `limite` <= 0 (ou negativo) chegaria ao engine real como
+    // `LIMIT -n`, erro de Postgres. `Math.max(1, ...)` garante que a consulta sempre pede
+    // pelo menos 1 linha.
+    const limite = Math.max(1, Math.min(q.limite ?? TETO, TETO))
     const rows = await this.store.query(movId, [{ field: 'insumo', op: 'eq', value: q.insumoId }], limite)
 
     // SATURAÇÃO DECLARADA. Bateu no limite = há movimentos MAIS ANTIGOS que não vieram

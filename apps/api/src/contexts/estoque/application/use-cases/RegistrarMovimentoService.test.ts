@@ -69,6 +69,18 @@ describe('RegistrarMovimentoService', () => {
     expect(movs[0].data.custo_unitario).toBe(15)
   })
 
+  // Um `saida_manual` que trouxesse custoUnitario NÃO pode usá-lo: a saída sai ao custo médio
+  // VIGENTE. Sem este teste, `cmd.custoUnitario ?? antes.custoMedio` passaria na suíte inteira.
+  it('custoUnitario é IGNORADO num movimento que não custeia', async () => {
+    const { store } = testWorld([{ id: 'TECIDO', saldoTotal: 100, custoMedio: 15 }])
+    const r = await svc(store).execute({
+      insumoId: 'TECIDO', depositoId: 'DEP1', tipo: 'saida_manual', qtd: -10, custoUnitario: 999,
+    })
+    expect(r.ok && r.value.custoMedio).toBe(15)
+    const movs = await store.query(E.movimentos, [{ field: 'insumo', op: 'eq', value: 'TECIDO' }], 500)
+    expect(movs[0].data.custo_unitario).toBe(15)   // o médio vigente, não os 999
+  })
+
   it('ajuste, contagem e devolução também não mexem no custo médio', async () => {
     for (const tipo of ['ajuste', 'contagem', 'devolucao_fornecedor']) {
       const { store } = testWorld([{ id: 'TECIDO', saldoTotal: 100, custoMedio: 15 }])
@@ -161,6 +173,39 @@ describe('RegistrarMovimentoService', () => {
     expect(await store.query(E.movimentos, [], 500)).toHaveLength(0)
   })
 
+  // A FALHA EXATA que esta guarda existe para impedir: custo zero zera o custo médio E não
+  // carimba custo_medio_atualizado_em (0 !== 0 é falso), então nem o aviso de defasagem pega.
+  it('entrada com custoUnitario ZERO é recusada, e nada é gravado', async () => {
+    const { store } = testWorld()
+    const r = await svc(store).execute({
+      insumoId: 'TECIDO', depositoId: 'DEP1', tipo: 'entrada_nota', qtd: 100, custoUnitario: 0,
+    })
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.error).toContain('maior que zero')
+    expect(await store.query(E.movimentos, [], 500)).toHaveLength(0)
+    const p = await produto(store, 'TECIDO')
+    expect(p.custo_medio).toBe(0)      // intacto: era 0 e continua 0, mas NADA foi gravado
+    expect(p.saldo_total).toBe(0)
+  })
+
+  it('entrada com custoUnitario NEGATIVO é recusada', async () => {
+    const { store } = testWorld()
+    const r = await svc(store).execute({
+      insumoId: 'TECIDO', depositoId: 'DEP1', tipo: 'entrada_nota', qtd: 100, custoUnitario: -5,
+    })
+    expect(r.ok).toBe(false)
+    expect(await store.query(E.movimentos, [], 500)).toHaveLength(0)
+  })
+
+  it('inventário de abertura a custo zero é recusado pelo mesmo motivo', async () => {
+    const { store } = testWorld()
+    const r = await svc(store).execute({
+      insumoId: 'TECIDO', depositoId: 'DEP1', tipo: 'inventario_abertura', qtd: 42, custoUnitario: 0,
+    })
+    expect(r.ok).toBe(false)
+    expect(await store.query(E.movimentos, [], 500)).toHaveLength(0)
+  })
+
   it('entrada com quantidade negativa é recusada', async () => {
     const { store } = testWorld()
     const r = await svc(store).execute({
@@ -214,5 +259,59 @@ describe('RegistrarMovimentoService', () => {
     })
     expect(r.ok).toBe(false)
     expect(!r.ok && r.error).toContain('depósito')
+  })
+
+  it('um id que NÃO é de depósito é recusado (o livro é append-only: não dá para desfazer)', async () => {
+    const { store } = testWorld()
+    // 'TECIDO' é um produto, não um depósito.
+    const r = await svc(store).execute({
+      insumoId: 'TECIDO', depositoId: 'TECIDO', tipo: 'ajuste', qtd: 10,
+    })
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.error).toContain('depósito')
+    expect(await store.query(E.movimentos, [], 500)).toHaveLength(0)
+  })
+
+  // O livro é a verdade. Se a projeção falhar, o movimento CONTINUA válido: devolver falha
+  // faria o chamador repetir e gravar o movimento DUAS vezes.
+  it('falha de projeção NÃO derruba o movimento: erro suave, e o livro fica gravado', async () => {
+    const { store } = testWorld()
+    const original = store.update.bind(store)
+    store.update = async () => {
+      throw new Error('version conflict')
+    }
+    const r = await svc(store).execute({
+      insumoId: 'TECIDO', depositoId: 'DEP1', tipo: 'entrada_nota', qtd: 100, custoUnitario: 10,
+    })
+    store.update = original
+    expect(r.ok).toBe(true)                                   // o movimento vale
+    if (!r.ok) return
+    expect(r.value.erros.some((e) => e.includes('replay'))).toBe(true)
+    expect(await store.query(E.movimentos, [], 500)).toHaveLength(1)   // o livro tem a linha
+  })
+
+  // A INVARIANTE QUE DÁ NOME À TASK: o LIVRO primeiro, as projeções depois. Se a projeção
+  // falhar, o livro continua certo e o replay reconstrói. Na ordem inversa, um crash deixaria
+  // a projeção ADIANTADA e sem a linha do livro que a explica, e isso é irreversível.
+  it('grava o LIVRO antes das projeções', async () => {
+    const { store } = testWorld()
+    const ordem: string[] = []
+    const insertOriginal = store.insert.bind(store)
+    const updateOriginal = store.update.bind(store)
+    store.insert = async (entityId: string, data: Record<string, unknown>) => {
+      ordem.push(entityId === E.movimentos ? 'LIVRO' : entityId === E.saldos ? 'saldo' : entityId)
+      return insertOriginal(entityId, data)
+    }
+    store.update = async (id: string, data: Record<string, unknown>, v: number) => {
+      ordem.push(id === 'TECIDO' ? 'produto' : 'saldo')
+      return updateOriginal(id, data, v)
+    }
+    await svc(store).execute({
+      insumoId: 'TECIDO', depositoId: 'DEP1', tipo: 'entrada_nota', qtd: 100, custoUnitario: 10,
+    })
+    store.insert = insertOriginal
+    store.update = updateOriginal
+    expect(ordem[0]).toBe('LIVRO')                 // o livro SEMPRE primeiro
+    expect(ordem.slice(1)).toContain('produto')    // as projeções depois
   })
 })
