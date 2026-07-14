@@ -59,6 +59,20 @@ export class CustosDesatualizadosService implements CustosDesatualizados {
           .sort()
           .pop() ?? null
 
+        // SEM SNAPSHOT = o custo NUNCA foi gravado. Defasado por definição, independentemente
+        // de os insumos terem carimbo ou não. Deixar de fora um SKU cujo custo nunca existiu é
+        // o pior silêncio que um sistema de AVISO pode ter: ele foi feito exatamente para isso.
+        if (snapshotEm === null) {
+          out.push({
+            skuId: sku.id,
+            modeloId,
+            snapshotEm: null,
+            insumoAtualizadoEm: '',
+            insumos: [...new Set(explodidas.map((e) => String(e.data.item ?? '')).filter(Boolean))],
+          })
+          continue
+        }
+
         // Os insumos cujo custo médio mudou DEPOIS do snapshot.
         const defasados: string[] = []
         let maisRecente = ''
@@ -67,7 +81,7 @@ export class CustosDesatualizadosService implements CustosDesatualizados {
           const em = String(p?.data.custo_medio_atualizado_em ?? '')
           // Sem carimbo = o insumo nunca teve movimento de estoque. Não defasa nada.
           if (em === '') continue
-          if (snapshotEm !== null && em <= snapshotEm) continue
+          if (em <= snapshotEm) continue
           defasados.push(itemId)
           if (em > maisRecente) maisRecente = em
         }

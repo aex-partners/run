@@ -70,6 +70,19 @@ describe('CustosDesatualizadosService', () => {
     expect(r.value.skus[0].snapshotEm).toBeNull()
   })
 
+  // O buraco: SEM snapshot E com um insumo que NUNCA teve movimento de estoque (sem carimbo).
+  // `defasados` ficava vazio e o SKU sumia do aviso, mesmo com o custo nunca tendo sido gravado.
+  it('acusa o SKU sem snapshot mesmo quando NENHUM insumo tem carimbo', async () => {
+    const store = mundo({ snapshotEm: null })   // sem insumoEm: o TECIDO nunca se moveu
+    const r = await svc(store).execute({})
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.skus).toHaveLength(1)
+    expect(r.value.skus[0].skuId).toBe('SKU1')
+    expect(r.value.skus[0].snapshotEm).toBeNull()
+    expect(r.value.skus[0].insumos).toEqual(['TECIDO'])
+  })
+
   it('SKU sem ficha explodida (nunca custeado) é ignorado', async () => {
     const store = mundo({ snapshotEm: '2026-07-01T00:00:00.000Z', insumoEm: '2026-07-12T00:00:00.000Z' })
     store.seedRecord(E.produtos, { id: 'SKU_NOVO', version: 1, data: { produto: 'X', modelo: 'MOD1' } })
@@ -113,6 +126,21 @@ describe('CustosDesatualizadosService', () => {
     expect(r.value.skus[0].insumos.sort()).toEqual(['LINHA', 'TECIDO'])
     // O carimbo reportado é o MAIS RECENTE entre os insumos defasados.
     expect(r.value.skus[0].insumoAtualizadoEm).toBe('2026-07-12T00:00:00.000Z')
+  })
+
+  // SATURAÇÃO DECLARADA. Se a consulta bate no teto de 500 do engine, há linhas que NÃO vieram,
+  // e o chamador precisa saber que a resposta é PARCIAL. Sem este teste, uma regressão que
+  // apagasse os `saturou(...)` diria "completo" sobre uma resposta truncada, em silêncio.
+  it('declara truncado quando a consulta bate no teto do engine', async () => {
+    const store = mundo({ snapshotEm: '2026-07-01T00:00:00.000Z', insumoEm: '2026-07-12T00:00:00.000Z' })
+    // 500 linhas de ficha explodida para o mesmo SKU: a consulta satura.
+    for (let i = 0; i < 500; i++) {
+      store.seedRecord(E.explodidas, { id: `FE_${i}`, version: 1, data: { sku: 'SKU1', item: 'TECIDO', custo_total: 1 } })
+    }
+    const r = await svc(store).execute({})
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.truncado).toBe(true)
   })
 
   it('falha quando as entidades não estão provisionadas', async () => {
