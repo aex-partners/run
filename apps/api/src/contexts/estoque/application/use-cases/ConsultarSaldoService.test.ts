@@ -44,3 +44,39 @@ describe('ConsultarSaldoService', () => {
     expect(r.value.custoMedio).toBe(0)
   })
 })
+
+describe('ConsultarSaldoService: nome do depósito', () => {
+  // Os depósitos REAIS em produção vieram do espelho do Bling e guardam o nome em `descricao`,
+  // não em `nome` (o campo `nome` foi acrescentado pelo provisionamento do estoque e está
+  // vazio neles). Sem este fallback, o saldo exibe o UUID cru no lugar do nome do depósito —
+  // foi exatamente o que o smoke em produção mostrou.
+  it('cai para `descricao` quando o depósito não tem `nome` (o caso do Bling)', async () => {
+    const { store, E } = testWorld()
+    store.seedRecord(E.depositos, {
+      id: 'DEP_BLING', version: 1,
+      data: { descricao: 'Fábrica Panambi', bling_id: '123', situacao: 1 },   // sem `nome`
+    })
+    store.seedRecord(E.saldos, {
+      id: 'S1', version: 1, data: { insumo: 'TECIDO', deposito: 'DEP_BLING', qtd: 42 },
+    })
+
+    const r = await new ConsultarSaldoService(store, store).execute({ insumoId: 'TECIDO' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.porDeposito).toHaveLength(1)
+    expect(r.value.porDeposito[0]!.deposito).toBe('Fábrica Panambi')   // não o UUID
+    expect(r.value.porDeposito[0]!.depositoId).toBe('DEP_BLING')
+  })
+
+  it('prefere `nome` quando os dois existem', async () => {
+    const { store, E } = testWorld()
+    store.seedRecord(E.depositos, {
+      id: 'DEP_X', version: 1, data: { nome: 'Almoxarifado', descricao: 'antigo' },
+    })
+    store.seedRecord(E.saldos, {
+      id: 'S2', version: 1, data: { insumo: 'TECIDO', deposito: 'DEP_X', qtd: 1 },
+    })
+    const r = await new ConsultarSaldoService(store, store).execute({ insumoId: 'TECIDO' })
+    expect(r.ok && r.value.porDeposito[0]!.deposito).toBe('Almoxarifado')
+  })
+})

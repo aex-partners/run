@@ -7,6 +7,19 @@ import { EstoqueError } from '@/contexts/estoque/domain/EstoqueError'
 const LIMITE = 500
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0)) || 0
 
+// A entidade `depositos` NÃO nasceu aqui: ela já existia, vinda do espelho do Bling, e lá os
+// depósitos guardam o nome em `descricao` (os 3 reais em produção são "Geral", "Fábrica
+// Panambi" e "Loja Panambi"). O provisionamento do estoque acrescentou o campo `nome`, que
+// fica VAZIO nesses registros. Ler só `nome` faria o saldo exibir o UUID cru do depósito no
+// lugar do nome dele — foi o que o smoke em produção mostrou.
+const nomeDoDeposito = (data: Record<string, unknown> | undefined, fallbackId: string): string => {
+  for (const chave of ['nome', 'descricao']) {
+    const v = data?.[chave]
+    if (typeof v === 'string' && v.trim() !== '') return v
+  }
+  return fallbackId
+}
+
 export class ConsultarSaldoService implements ConsultarSaldo {
   constructor(private readonly store: RecordStore, private readonly registry: EntityRegistry) {}
 
@@ -22,7 +35,7 @@ export class ConsultarSaldoService implements ConsultarSaldo {
     for (const r of rows) {
       const depId = String(r.data.deposito ?? '')
       const dep = depId ? await this.store.get(depId) : null
-      porDeposito.push({ depositoId: depId, deposito: String(dep?.data.nome ?? depId), qtd: num(r.data.qtd) })
+      porDeposito.push({ depositoId: depId, deposito: nomeDoDeposito(dep?.data, depId), qtd: num(r.data.qtd) })
     }
 
     return ok({
