@@ -347,6 +347,48 @@ describe('LancarNotaEntradaService', () => {
     expect(itens).toHaveLength(2)               // um item por nota, nenhum a mais
   })
 
+  // CORRIDA (o caso que a guarda check-then-act acima NÃO pega): dois posts CONCORRENTES da
+  // MESMA nota passam os dois pela checagem inicial (ela ainda está vazia para os dois) e só
+  // divergem no INSERT da linha da nota. Simula injetando, no momento em que a NOSSA nota é
+  // gravada, uma segunda linha idêntica (numero+fornecedor) -- como se a outra requisição
+  // tivesse acabado de vencer a corrida. O recheck pós-insert (Fix 3) tem que pegar isso e
+  // abortar ANTES do primeiro movimento: o livro nunca pode ver as duas ponderações.
+  it('duas notas concorrentes (mesma numero+fornecedor) abortam ANTES do primeiro movimento: o livro não é tocado', async () => {
+    const w = testWorld()
+    let corridaInjetada = false
+    const storeComCorrida: RecordStore = {
+      query: (entityId, where, limit) => w.store.query(entityId, where, limit),
+      get: (recordId) => w.store.get(recordId),
+      insert: async (entityId, data) => {
+        const id = await w.store.insert(entityId, data)
+        // Só a nota nasce com `status: 'rascunho'`; os itens da nota não têm esse campo.
+        // Na primeira vez que isso acontece, injeta a "nota concorrente": mesma numero e
+        // fornecedor, gravada diretamente no store compartilhado, como se um segundo post
+        // tivesse chegado entre o NOSSO insert e o NOSSO recheck.
+        if (data.status === 'rascunho' && !corridaInjetada) {
+          corridaInjetada = true
+          await w.store.insert(entityId, { ...data })
+        }
+        return id
+      },
+      update: (recordId, data, expectedVersion) => w.store.update(recordId, data, expectedVersion),
+      delete: (recordId) => w.store.delete(recordId),
+    }
+    const estoque = new FakeEstoqueMovimentos({ depositosConhecidos: w.depositosConhecidos, produtos: w.produtos })
+    const nota = new LancarNotaEntradaService(storeComCorrida, w.store, estoque)
+    const r = await nota.execute({ ...notaBase, itens: [{ insumoId: 'TECIDO', qtd: 10, precoUnitario: 10 }] })
+
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.error).toContain('DUAS vezes')
+
+    // O LIVRO nunca foi tocado: nenhum movimento chegou a ser empurrado para o estoque.
+    expect(estoque.recebidos).toHaveLength(0)
+    // Pior caso aceitável: as DUAS notas ficam órfãs em rascunho -- nunca corrompidas.
+    const notas = await w.store.query(E.notas, [], 500)
+    expect(notas).toHaveLength(2)
+    expect(notas.every((n) => n.data.status === 'rascunho')).toBe(true)
+  })
+
   it('o mesmo numero de nota de um fornecedor DIFERENTE é aceito (a chave é numero + fornecedor)', async () => {
     const w = testWorld()
     w.store.seedRecord(E.pessoas, { id: 'FORN2', version: 1, data: { nome: 'Outro Fornecedor' } })

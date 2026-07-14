@@ -16,6 +16,12 @@ export interface InsumoSeed {
   unidadeConsumo?: string
   custoMedio?: number
   saldoTotal?: number
+  // Independente de `custoMedio`. Em produção, `preco_custo` já chega com o custo real herdado
+  // do ERP antigo (Bling) ANTES de o estoque escrever uma linha sequer -- o mundo de teste
+  // precisava conseguir expressar isso (um insumo com custo real e livro vazio), e um fake que
+  // sempre iguala os dois campos nunca consegue reproduzir a janela onde eles DIVERGEM. Default
+  // preserva o comportamento antigo (espelha `custoMedio`) para não quebrar testes existentes.
+  precoCusto?: number
 }
 
 export function testWorld(insumos: InsumoSeed[] = [{ id: 'TECIDO' }]) {
@@ -39,7 +45,7 @@ export function testWorld(insumos: InsumoSeed[] = [{ id: 'TECIDO' }]) {
         unidade_consumo: i.unidadeConsumo ?? 'MT',
         custo_medio: i.custoMedio ?? 0,
         saldo_total: i.saldoTotal ?? 0,
-        preco_custo: i.custoMedio ?? 0,
+        preco_custo: i.precoCusto ?? i.custoMedio ?? 0,
       },
     })
   }

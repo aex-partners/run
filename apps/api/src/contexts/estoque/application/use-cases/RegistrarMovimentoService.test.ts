@@ -98,6 +98,33 @@ describe('RegistrarMovimentoService', () => {
     expect(r.ok && r.value.saldoTotal).toBe(42)
   })
 
+  // C1: `preco_custo` é o custo que o motor de ficha LÊ, e em produção ele já vem do ERP antigo.
+  // Um movimento que não custeia (ajuste/contagem/saída) NÃO tem opinião de custo: espelhar o
+  // custo médio 0 em cima de um custo real o DESTRUIRIA, e em silêncio (mudouCusto seria falso,
+  // o carimbo não sairia, e o custos_desatualizados nem avisaria).
+  it('movimento sem custo NÃO zera o preco_custo real de um insumo com livro vazio', async () => {
+    const { store } = testWorld([{ id: 'SARJA', precoCusto: 25, custoMedio: 0, saldoTotal: 0 }])
+    const r = await svc(store).execute({
+      insumoId: 'SARJA', depositoId: 'DEP1', tipo: 'ajuste', qtd: 50,
+    })
+    expect(r.ok).toBe(true)
+    const p = (await store.get('SARJA'))!.data
+    expect(p.preco_custo).toBe(25)     // INTACTO
+    expect(p.saldo_total).toBe(50)     // a quantidade entrou
+    expect(p.custo_medio).toBe(0)      // o estoque ainda não tem custo
+  })
+
+  it('a PRIMEIRA entrada com custo assume o preco_custo', async () => {
+    const { store } = testWorld([{ id: 'SARJA', precoCusto: 25, custoMedio: 0, saldoTotal: 0 }])
+    await svc(store).execute({
+      insumoId: 'SARJA', depositoId: 'DEP1', tipo: 'inventario_abertura', qtd: 10, custoUnitario: 30,
+    })
+    const p = (await store.get('SARJA'))!.data
+    expect(p.custo_medio).toBe(30)
+    expect(p.preco_custo).toBe(30)     // AGORA sim: o estoque tem uma opinião de custo
+    expect(p.custo_medio_atualizado_em).toBeTruthy()
+  })
+
   // Uma saída NÃO pode carimbar custo_medio_atualizado_em: se carimbasse, todo SKU
   // apareceria como "custo defasado" a cada baixa, e o aviso viraria ruído.
   it('movimento que não custeia NÃO carimba custo_medio_atualizado_em', async () => {

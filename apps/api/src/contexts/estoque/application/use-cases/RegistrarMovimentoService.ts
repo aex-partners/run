@@ -111,7 +111,14 @@ export class RegistrarMovimentoService implements RegistrarMovimento {
         // ESPELHO: é o campo que o `costing` lê como custo de material na explosão.
         // Escrevê-lo aqui NÃO recalcula ficha nenhuma: o custo do PRODUTO só muda quando
         // alguém manda recalcular.
-        preco_custo: depois.custoMedio,
+        //
+        // O ESPELHO É CONDICIONAL. `preco_custo` é o campo que o `costing` lê como custo de
+        // MATERIAL, e em produção ele já guarda o custo real herdado do ERP antigo. Enquanto o
+        // livro deste insumo estiver vazio, o custo médio é 0 -- e 0 NÃO é uma opinião de custo,
+        // é a ausência dela. Espelhar esse 0 DESTRUIRIA o custo real que a ficha está usando, e
+        // em silêncio: `mudouCusto` seria falso (0 -> 0), o carimbo não sairia, e o
+        // `custos_desatualizados` nem avisaria. O estoque só sobrescreve o custo quando TEM um.
+        ...(depois.custoMedio > 0 ? { preco_custo: depois.custoMedio } : {}),
         ...(mudouCusto ? { custo_medio_atualizado_em: new Date().toISOString() } : {}),
       }, insumo.version)
     } catch (e) {

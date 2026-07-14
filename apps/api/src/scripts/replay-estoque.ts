@@ -98,6 +98,15 @@ async function main() {
       )
     }
 
+    // Livro VAZIO: não há o que reconstruir. Tocar nas projeções aqui ZERARIA o custo real que
+    // o `costing` está lendo (`preco_custo`) e, pior, o script reportaria "OK" -- porque 0 bate
+    // com 0. Um reparador que destrói o que deveria proteger e diz que está tudo certo é o pior
+    // resultado possível. Pula.
+    if (movs.length === 0) {
+      console.log(`skip ${insumo.id}: sem movimentos (livro vazio, nada a reconstruir)`)
+      continue
+    }
+
     // Reaplica o motor, movimento a movimento, do zero.
     let estado: EstadoCusto = { saldo: 0, custoMedio: 0 }
     const porDeposito = new Map<string, number>()
@@ -135,7 +144,21 @@ async function main() {
     if (p) {
       const r = await updateRecord.execute({
         recordId: insumo.id,
-        data: { ...p.data, saldo_total: estado.saldo, custo_medio: estado.custoMedio, preco_custo: estado.custoMedio },
+        data: {
+          ...p.data,
+          saldo_total: estado.saldo,
+          custo_medio: estado.custoMedio,
+          // ESPELHO CONDICIONAL: mesma regra do RegistrarMovimentoService. `preco_custo` é o
+          // custo que o `costing` lê, e em produção ele já pode vir do ERP antigo. Um médio
+          // reconstruído em 0 (ex.: só movimentos sem custo no livro) NÃO é uma opinião de
+          // custo -- é a ausência dela -- e não pode sobrescrever um custo real.
+          ...(estado.custoMedio > 0 ? { preco_custo: estado.custoMedio } : {}),
+          // REARMA O AVISO. O replay MUDA o número que `costing` usa como custo de material: se
+          // o custo reconstruído diverge do que estava gravado (bateCusto === false), o carimbo
+          // de `custos_desatualizados` precisa avançar também, senão o canal criado para pegar
+          // exatamente esta situação (custo corrigido, ficha não recalculada) fica mudo para sempre.
+          ...(!bateCusto ? { custo_medio_atualizado_em: new Date().toISOString() } : {}),
+        },
         expectedVersion: p.version,
       })
       if (!r.ok) throw new Error(`replay: falha ao reconstruir o produto ${insumo.id}: ${r.error}`)

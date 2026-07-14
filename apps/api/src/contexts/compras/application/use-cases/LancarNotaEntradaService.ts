@@ -168,6 +168,20 @@ export class LancarNotaEntradaService implements LancarNotaEntrada {
       })
     }
 
+    // CORRIDA. A guarda de duplicidade acima é check-then-act, e o banco não tem constraint de
+    // unicidade: dois posts SIMULTÂNEOS da mesma nota passam os dois e ponderam o custo médio
+    // DUAS VEZES. Relê AGORA, com a nossa linha já gravada: se apareceu outra, alguém chegou
+    // junto. Aborta ANTES de empurrar qualquer movimento -- o pior caso vira uma nota órfã em
+    // rascunho, e o LIVRO, que é a única coisa que não pode ser corrompida, não é tocado.
+    const corrida = await this.store.query(ids.notas_de_entrada, [
+      { field: 'numero', op: 'eq', value: cmd.numero },
+      { field: 'fornecedor', op: 'eq', value: cmd.fornecedorId },
+    ], LIMITE)
+    if (corrida.length > 1) {
+      const outra = corrida.find((n) => n.id !== notaId)
+      if (outra) return fail(ComprasError.notaDuplicada(cmd.numero, outra.id))
+    }
+
     // --- empurra as entradas para o estoque, JÁ em unidade de CONSUMO
     const resumoItens: NotaResumo['itens'] = []
     const avisos: string[] = []
