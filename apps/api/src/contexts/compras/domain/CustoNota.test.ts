@@ -259,8 +259,11 @@ describe('custearNota', () => {
   })
 
   // A INVARIANTE que fecha o buraco de vez, sobre uma bateria de entradas venenosas:
-  // NENHUM custo não-finito sai daqui sem erro.
-  it('nenhum custo não-finito escapa com a lista de erros vazia', () => {
+  // NENHUM custo não-finito sai daqui sem erro, E quando algum item sobrevive com
+  // frete, a SOMA das parcelas fecha com o frete da nota. Checar só `Number.isFinite`
+  // em cada parcela NÃO pega a soma dos PESOS estourando pra Infinity lá dentro de
+  // `ratearFrete` e zerando toda parcela: finita, e errada, em silêncio.
+  it('nenhum custo não-finito escapa, e quando sobra item, o frete fecha com a nota', () => {
     const venenos = [
       // literais não-finitos
       { qtdCompra: Infinity }, { qtdCompra: NaN }, { qtdCompra: -Infinity },
@@ -276,22 +279,89 @@ describe('custearNota', () => {
       { qtdCompra: 5e-324, fatorConversao: 0.5 },            // underflow -> 0
       { qtdCompra: 1e308, fatorConversao: 10 },              // overflow -> qtdConsumo Infinity -> custo evapora para 0
     ]
-    for (const veneno of venenos) {
-      for (const frete of [0, 100, NaN, Infinity]) {
-        const r = custearNota({
-          itens: [item(veneno), item({ insumoId: 'ok' })],
-          valorFrete: frete,
-          politica: POLITICA_PADRAO,
-        })
-        const naoFinito = r.itens.some(
-          (i) => !Number.isFinite(i.custoTotal) || !Number.isFinite(i.custoUnitarioFinal) || !Number.isFinite(i.freteRateado),
-        )
-        // Se algum custo saiu não-finito, TEM que haver erro. E, de fato, nada não-finito
-        // deveria sair: todo item custeado passou pela validação.
-        expect(naoFinito).toBe(false)
-        expect(r.erros.length).toBeGreaterThan(0)
+    for (const criterio of ['valor', 'quantidade'] as const) {
+      for (const veneno of venenos) {
+        for (const frete of [0, 100, NaN, Infinity]) {
+          const r = custearNota({
+            itens: [item(veneno), item({ insumoId: 'ok' })],
+            valorFrete: frete,
+            politica: { ...POLITICA_PADRAO, criterioRateioFrete: criterio },
+          })
+          const naoFinito = r.itens.some(
+            (i) => !Number.isFinite(i.custoTotal) || !Number.isFinite(i.custoUnitarioFinal) || !Number.isFinite(i.freteRateado),
+          )
+          // Se algum custo saiu não-finito, TEM que haver erro. E, de fato, nada não-finito
+          // deveria sair: todo item custeado passou pela validação.
+          expect(naoFinito).toBe(false)
+          expect(r.erros.length).toBeGreaterThan(0)
+          // A PROPRIEDADE que de fato quebrava: se algum item voltou custeado com frete
+          // finito na nota, a soma das parcelas TEM que fechar com o frete da nota.
+          if (r.itens.length > 0 && Number.isFinite(frete)) {
+            const somaFretes = r.itens.reduce((s, i) => s + i.freteRateado, 0)
+            expect(somaFretes).toBeCloseTo(frete, 6)
+          }
+        }
       }
     }
+
+    // FORMAS COM MAIS DE UM ITEM PESADO: nenhum veneno de item único acima consegue
+    // estourar a SOMA dos pesos dentro de `ratearFrete` (o item pesado sozinho já é
+    // excluído na Fase 1, pela sua própria `base`). Só dois itens grandes JUNTOS
+    // estouram o total do rateio, e é isso que a bateria acima não cobria.
+    for (const criterio of ['valor', 'quantidade'] as const) {
+      const r = custearNota({
+        itens: [
+          item({ insumoId: 'a', qtdCompra: 1e308, precoUnitario: 1 }),
+          item({ insumoId: 'b', qtdCompra: 1e308, precoUnitario: 1 }),
+        ],
+        valorFrete: 1,
+        politica: { ...POLITICA_PADRAO, criterioRateioFrete: criterio },
+      })
+      const naoFinito = r.itens.some(
+        (i) => !Number.isFinite(i.custoTotal) || !Number.isFinite(i.custoUnitarioFinal) || !Number.isFinite(i.freteRateado),
+      )
+      expect(naoFinito).toBe(false)
+      expect(r.erros.length).toBeGreaterThan(0)
+      if (r.itens.length > 0) {
+        const somaFretes = r.itens.reduce((s, i) => s + i.freteRateado, 0)
+        expect(somaFretes).toBeCloseTo(1, 6)
+      }
+    }
+  })
+
+  // A soma dos PESOS estoura dentro do ratearFrete -> cada parcela sai finita E ZERO, e o
+  // frete INTEIRO some. Checar `Number.isFinite` em cada parcela NÃO pega isto.
+  it('frete que some por overflow da soma dos pesos é erro DURO', () => {
+    for (const criterio of ['valor', 'quantidade'] as const) {
+      const r = custearNota({
+        itens: [
+          item({ insumoId: 'a', qtdCompra: 1e308, precoUnitario: 1 }),
+          item({ insumoId: 'b', qtdCompra: 1e308, precoUnitario: 1 }),
+        ],
+        valorFrete: 1,
+        politica: { ...POLITICA_PADRAO, criterioRateioFrete: criterio },
+      })
+      expect(r.erros.length).toBeGreaterThan(0)
+      expect(r.itens).toEqual([])
+    }
+  })
+
+  // Um item descartado DEPOIS do rateio deixaria os sobreviventes com parcelas calculadas
+  // sobre um conjunto que não existe mais. Agora o rateio roda UMA vez, sobre o conjunto final.
+  it('item descartado não deixa o sobrevivente com uma parcela de frete velha', () => {
+    const r = custearNota({
+      itens: [
+        item({ insumoId: 'gordo', qtdCompra: 1e300, fatorConversao: 1e300 }),  // qtdConsumo -> Infinity
+        item({ insumoId: 'bom', qtdCompra: 2, precoUnitario: 50 }),
+      ],
+      valorFrete: 100,
+      politica: POLITICA_PADRAO,
+    })
+    expect(r.erros.length).toBeGreaterThan(0)
+    expect(r.itens.map((i) => i.insumoId)).toEqual(['bom'])
+    // 'bom' é o único item custeável, então leva o frete INTEIRO — não uma sobra de 1e-298.
+    expect(r.itens[0].freteRateado).toBeCloseTo(100, 10)
+    expect(r.itens[0].custoTotal).toBeCloseTo(200, 10)
   })
 
   // Um item cujo PESO estoura (operandos finitos, produto Infinity) envenenava o `total`
