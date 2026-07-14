@@ -278,6 +278,8 @@ describe('custearNota', () => {
       { qtdCompra: 1e-200, fatorConversao: 1e-200 },         // UNDERFLOW -> qtdConsumo 0 -> divisão por zero
       { qtdCompra: 5e-324, fatorConversao: 0.5 },            // underflow -> 0
       { qtdCompra: 1e308, fatorConversao: 10 },              // overflow -> qtdConsumo Infinity -> custo evapora para 0
+      { fatorConversao: 5e-324 },                                   // denormal -> quociente estoura na fase 3
+      { qtdCompra: 1e-300, precoUnitario: 1e300, fatorConversao: 1e-23 },
     ]
     for (const criterio of ['valor', 'quantidade'] as const) {
       for (const veneno of venenos) {
@@ -390,6 +392,24 @@ describe('custearNota', () => {
     })
     expect(r.itens).toEqual([])
     expect(r.erros.length).toBeGreaterThan(0)
+  })
+
+  // Um item que passa a fase 1, ENTRA NO RATEIO, e só então estoura na fase 3 (fator
+  // denormal -> qtdConsumo denormal -> o quociente estoura). Descartá-lo e seguir deixaria
+  // o vizinho com metade de um frete que agora é todo dele. Por isso a recusa é GLOBAL.
+  it('item que estoura DEPOIS do rateio recusa a nota inteira', () => {
+    const r = custearNota({
+      itens: [
+        item({ insumoId: 'ruim', qtdCompra: 10, precoUnitario: 10, fatorConversao: 5e-324 }),
+        item({ insumoId: 'bom', qtdCompra: 2, precoUnitario: 50 }),
+      ],
+      valorFrete: 100,
+      politica: POLITICA_PADRAO,
+    })
+    expect(r.erros.length).toBeGreaterThan(0)
+    // NENHUM item custeado: o rateio da fase 2 incluiu 'ruim', então a parcela de 'bom'
+    // está calculada sobre um conjunto que não existe mais.
+    expect(r.itens).toEqual([])
   })
 
   // A política pode mandar IGNORAR o frete. Se o `valorFrete` que chegou é lixo mas

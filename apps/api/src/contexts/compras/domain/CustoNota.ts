@@ -225,10 +225,14 @@ export function custearNota(input: {
   }
 
   // FASE 3 — custeia cada sobrevivente com o `qtdConsumo` e a `base` já calculados na
-  // Fase 1, mais a fatia de frete que a Fase 2 apurou. As guardas abaixo são uma REDE
-  // final: depois das Fases 1 e 2, `custoTotal` e `custoUnitarioFinal` já deveriam ser
-  // provadamente finitos. Mantê-las mesmo assim não custa nada e é o ponto do método —
-  // uma postcondição que se prova inalcançável ainda vale a pena escrever.
+  // Fase 1, mais a fatia de frete que a Fase 2 apurou. As duas guardas abaixo SÃO
+  // alcançáveis: um `fatorConversao` denormal (ex.: 5e-324) produz um `qtdConsumo`
+  // igualmente denormal — finito e positivo, então sobrevive à Fase 1 e ENTRA no rateio
+  // da Fase 2 — mas o quociente `custoTotal / qtdConsumo` estoura para Infinity aqui.
+  // Por isso uma falha aqui NÃO pode ser um `continue`: o item já tomou sua fatia do
+  // frete na Fase 2, e descartá-lo sozinho deixaria os OUTROS sobreviventes com parcelas
+  // calculadas sobre um conjunto que não existe mais. A recusa é GLOBAL, igual à do
+  // invariante do frete logo acima.
   const out: ItemCusteado[] = []
 
   for (const [i, c] of custeaveis.entries()) {
@@ -241,14 +245,22 @@ export function custearNota(input: {
 
     if (!Number.isFinite(custoTotal)) {
       erros.push(`insumo ${c.item.insumoId}: custo total não-finito (recebido: ${custoTotal})`)
-      continue
+      // GLOBAL, não `continue`: este item já entrou no rateio da fase 2. Descartá-lo aqui
+      // deixaria os sobreviventes com parcelas de frete calculadas sobre um conjunto que não
+      // existe mais (o vizinho sairia com metade de um frete que agora é todo dele). Um
+      // descarte DEPOIS do rateio invalida o custo de TODOS.
+      return { itens: [], erros }
     }
 
     const custoUnitarioFinal = custoTotal / c.qtdConsumo
 
     if (!Number.isFinite(custoUnitarioFinal)) {
       erros.push(`insumo ${c.item.insumoId}: custo unitário final não-finito (recebido: ${custoUnitarioFinal})`)
-      continue
+      // GLOBAL, não `continue`: este item já entrou no rateio da fase 2. Descartá-lo aqui
+      // deixaria os sobreviventes com parcelas de frete calculadas sobre um conjunto que não
+      // existe mais (o vizinho sairia com metade de um frete que agora é todo dele). Um
+      // descarte DEPOIS do rateio invalida o custo de TODOS.
+      return { itens: [], erros }
     }
 
     out.push({
