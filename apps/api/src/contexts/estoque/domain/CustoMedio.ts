@@ -23,7 +23,9 @@ export function custeia(tipo: string): boolean {
 // Entrada COM custo (nota ou inventário de abertura): pondera.
 export function aplicarEntrada(estado: EstadoCusto, qtdEntrada: number, custoEntrada: number): EstadoCusto {
   // Entrada de quantidade zero ou negativa não é entrada. Não mexe em nada.
-  if (!(qtdEntrada > 0)) return estado
+  // Cópia nova (não o `estado` do chamador): mantém a mesma identidade de retorno dos
+  // outros caminhos, para quem não pode assumir que possui o objeto devolvido.
+  if (!(qtdEntrada > 0)) return { ...estado }
 
   const saldoNovo = estado.saldo + qtdEntrada
 

@@ -17,6 +17,14 @@ describe('CustoMedio', () => {
     expect(e).toEqual({ saldo: 150, custoMedio: 15 })
   })
 
+  // O outro lado do contrato de SINAL, e o que faltava: uma sobra encontrada na contagem,
+  // ou uma devolução, ENTRA sem custear. Sem este teste, uma implementação que fizesse
+  // `saldo - Math.abs(qtd)` passaria na suíte inteira e subtrairia uma sobra em silêncio.
+  it('movimento sem custo POSITIVO soma ao saldo e não toca no custo médio', () => {
+    expect(aplicarMovimentoSemCusto({ saldo: 100, custoMedio: 10 }, 10))
+      .toEqual({ saldo: 110, custoMedio: 10 })
+  })
+
   it('pondera com quantidades desiguais', () => {
     // 30 a R$10 + 70 a R$20 = (300 + 1400) / 100 = 17
     let e = aplicarEntrada({ saldo: 0, custoMedio: 0 }, 30, 10)
@@ -38,9 +46,10 @@ describe('CustoMedio', () => {
   })
 
   it('entrada com quantidade zero ou negativa não muda nada', () => {
-    const e = { saldo: 100, custoMedio: 10 }
-    expect(aplicarEntrada(e, 0, 999)).toEqual(e)
-    expect(aplicarEntrada(e, -5, 999)).toEqual(e)
+    // Contra um LITERAL, não contra a mesma referência: `aplicarEntrada` devolve o próprio
+    // `estado` neste caminho, então comparar com ele mesmo passaria até se a função mutasse.
+    expect(aplicarEntrada({ saldo: 100, custoMedio: 10 }, 0, 999)).toEqual({ saldo: 100, custoMedio: 10 })
+    expect(aplicarEntrada({ saldo: 100, custoMedio: 10 }, -5, 999)).toEqual({ saldo: 100, custoMedio: 10 })
   })
 
   // Saída maior que o saldo é PERMITIDA (bloquear trava a fábrica). O saldo fica
