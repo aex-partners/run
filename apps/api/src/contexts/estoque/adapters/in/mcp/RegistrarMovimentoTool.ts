@@ -17,7 +17,8 @@ export const registrarMovimentoTool = (uc: RegistrarMovimento): ToolDefinition =
     'Registra um movimento de estoque. Input: { insumoId: string, depositoId: string, tipo: string, qtd: number, custoUnitario?: number, observacao?: string }. ' +
     `tipo ∈ [${TIPOS_PERMITIDOS.join(', ')}]. qtd COM SINAL (positiva entra, negativa sai), na unidade de CONSUMO do insumo. ` +
     'custoUnitario é OBRIGATÓRIO em inventario_abertura (é ele que semeia o custo médio) e ignorado nos demais tipos, que se movem ao custo médio vigente. ' +
-    'Entrada de compra NÃO entra por aqui: use lancar_nota_entrada. Retorna { movimentoId, saldoDeposito, saldoTotal, custoMedio, erros }.',
+    'Entrada de compra NÃO entra por aqui: use lancar_nota_entrada. Retorna { movimentoId, saldoDeposito, saldoTotal, custoMedio, erros: string[] }. ' +
+    'erros traz avisos SUAVES: o movimento FOI gravado, mas algo merece atenção (ex.: saldo ficou negativo, ou uma projeção de saldo/custo médio falhou ao atualizar). Nunca desfaz o movimento. SEMPRE mostre os erros ao usuário.',
   async execute(input: Json) {
     const obj = asObject('registrar_movimento_estoque', input)
     if (!obj.ok) return fail(obj.error)

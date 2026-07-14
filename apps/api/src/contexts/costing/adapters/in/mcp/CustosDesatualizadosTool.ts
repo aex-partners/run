@@ -14,6 +14,7 @@ export const custosDesatualizadosTool = (uc: CustosDesatualizados): ToolDefiniti
     'Lista os SKUs cujo custo está DEFASADO: o custo foi calculado antes de o custo médio de algum insumo da ficha mudar. ' +
     'Input: { modeloId?: string } (sem modeloId, varre todos os modelos). ' +
     'Retorna { skus: [{ skuId, modeloId, snapshotEm, insumoAtualizadoEm, insumos }], truncado }. ' +
+    'truncado=true significa que a consulta bateu no teto do motor e há SKUs defasados que NÃO vieram nesta lista. Informe isso ao usuário. ' +
     'Não altera nada: para atualizar, chame recalcular_custo com os skuIds devolvidos.',
   async execute(input: Json) {
     const obj = asObject('custos_desatualizados', input)

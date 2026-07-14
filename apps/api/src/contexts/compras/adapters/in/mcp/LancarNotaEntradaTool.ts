@@ -15,7 +15,8 @@ export const lancarNotaEntradaTool = (uc: LancarNotaEntrada): ToolDefinition => 
     'qtd e precoUnitario na unidade de COMPRA (o motor converte para a unidade de consumo pelo fator_conversao do produto). ' +
     'pedidoId é opcional: compra direta, sem pedido, é aceita. O frete é rateado entre os itens conforme a política de custo. ' +
     'NÃO recalcula o custo dos produtos: para isso, use custos_desatualizados e depois recalcular_custo. ' +
-    'Retorna { notaId, valorTotal, itens: [{ insumoId, qtdCompra, qtdConsumo, freteRateado, custoUnitarioFinal, custoMedioApos }] }.',
+    'Retorna { notaId, valorTotal, itens: [{ insumoId, qtdCompra, qtdConsumo, freteRateado, custoUnitarioFinal, custoMedioApos }], avisos: string[] }. ' +
+    'avisos traz problemas SUAVES: a nota FOI lançada (o estoque moveu), mas algo merece atenção (um item que não estava no pedido, uma quantidade acima da pedida, ou um erro suave devolvido pelo estoque, como uma projeção de custo que falhou). SEMPRE mostre os avisos ao usuário.',
   async execute(input: Json) {
     const obj = asObject('lancar_nota_entrada', input)
     if (!obj.ok) return fail(obj.error)
