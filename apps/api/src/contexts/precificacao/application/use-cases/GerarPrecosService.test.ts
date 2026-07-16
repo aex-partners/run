@@ -70,6 +70,46 @@ describe('GerarPrecosService', () => {
     const { store } = testWorld()
     expect((await svc(store).execute({ skuIds: [] })).ok).toBe(false)
   })
+
+  // A ORDEM que importa: o skip de custo<=0 vem ANTES do delete. Um SKU que JÁ tinha preços e
+  // depois perdeu o custo NÃO pode ter a tabela apagada. Sem este teste, um delete-then-skip
+  // (apaga e só então pula) passaria — apagando a tabela do SKU em silêncio.
+  it('SKU que perdeu o custo mantém a tabela que já tinha (não apaga)', async () => {
+    const { store } = testWorld()
+    // 1) gera com custo válido -> cria as linhas
+    const g1 = await svc(store).execute({ skuId: 'SKU' })
+    expect(g1.ok && g1.value.gravados).toBeGreaterThan(0)
+    const antes = await store.query(E.precos, [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    expect(antes.length).toBeGreaterThan(0)
+    // 2) o custo some
+    const sku = (await store.get('SKU'))!
+    await store.update('SKU', { ...sku.data, custo_unitario_total: 0 }, sku.version)
+    // 3) re-gerar: pula (custo<=0) e NÃO apaga a tabela anterior
+    const g2 = await svc(store).execute({ skuId: 'SKU' })
+    expect(g2.ok).toBe(true)
+    if (!g2.ok) return
+    expect(g2.value.gravados).toBe(0)
+    expect(g2.value.erros.length).toBeGreaterThan(0)
+    const depois = await store.query(E.precos, [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    expect(depois.length).toBe(antes.length)   // a tabela sobreviveu
+  })
+
+  // Σ%≥1 pula SÓ a célula que estoura; as outras do MESMO SKU continuam gravadas. Sem um caso
+  // MISTO (uma condição passa, outra estoura), o comportamento "pula a célula, não o SKU" fica
+  // sem prova.
+  it('uma condição que estoura não derruba as outras do mesmo SKU', async () => {
+    const { store } = testWorld()
+    // uma condição com despesa financeira absurda: sozinha já passa de 100% com comissão+imposto+lucro
+    store.seedRecord(E.condicoes, { id: 'ABSURDA', version: 1, data: { nome: 'absurda', desp_financeira: 0.95 } })
+    const r = await svc(store).execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    // à vista e 30d gravam (2); 'absurda' estoura (0,95 + 0,10 + 0,0333 >= 1) e é pulada
+    expect(r.value.gravados).toBe(2)
+    expect(r.value.erros.some((e) => e.includes('absurda') || e.toLowerCase().includes('100'))).toBe(true)
+    const precos = await store.query(E.precos, [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    expect(precos.map((p) => String(p.data.condicao)).sort()).toEqual(['AVISTA', 'PRAZO30'])
+  })
 })
 
 describe('ConsultarPrecoService', () => {
