@@ -16,15 +16,21 @@ export class ConsultarPrecoService implements ConsultarPreco {
 
     // `precos_de_venda` grava canal/condição como ID de registro relacionado. Ler só o id faria
     // o assistente exibir o UUID cru no lugar do nome ("lojista", "À vista") — a mesma classe de
-    // bug que o smoke em produção pegou no estoque (depósito mostrando UUID). Resolve pra `nome`
-    // aqui, na leitura, com o id como fallback defensivo (registro sumiu ou sem `nome`). Cache
-    // por `execute()`: o mesmo canal/condição se repete em várias linhas do SKU.
+    // bug que o smoke em produção pegou no estoque (depósito mostrando UUID). Resolve o nome aqui,
+    // na leitura, com o id como fallback defensivo (registro sumiu / sem nome). Tenta `nome` E
+    // `descricao`: o canal nasce na AEX com `nome`, mas as condições de pagamento vêm do espelho
+    // do Bling e guardam o nome em `descricao` (os reais: "0", "30, 60, 90, 120"). Cache por
+    // `execute()`: o mesmo canal/condição se repete em várias linhas do SKU.
     const nomeCache = new Map<string, string>()
     const nomeDe = async (id: string): Promise<string> => {
       if (id === '') return id
       if (!nomeCache.has(id)) {
         const r = await this.store.get(id)
-        const nome = r && typeof r.data.nome === 'string' && r.data.nome.trim() !== '' ? r.data.nome : id
+        let nome = id
+        for (const chave of ['nome', 'descricao']) {
+          const v = r?.data[chave]
+          if (typeof v === 'string' && v.trim() !== '') { nome = v; break }
+        }
         nomeCache.set(id, nome)
       }
       return nomeCache.get(id)!

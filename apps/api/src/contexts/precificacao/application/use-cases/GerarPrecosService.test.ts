@@ -113,6 +113,24 @@ describe('GerarPrecosService', () => {
 })
 
 describe('ConsultarPrecoService', () => {
+  // As condições de pagamento vêm do Bling com o nome em `descricao`, não `nome` (mesmo caso do
+  // depósito). Sem o fallback, o consultar_preco mostraria o UUID da condição.
+  it('resolve o nome da condição por descricao quando não há nome (o caso do Bling)', async () => {
+    const { store, E } = testWorld()
+    // condição estilo Bling: só `descricao`
+    store.seedRecord(E.condicoes, { id: 'CBLING', version: 1, data: { descricao: '30, 60, 90, 120' } })
+    await new GerarPrecosService(store, store).execute({ skuId: 'SKU' })
+    // regrava uma linha de preço apontando para a condição do Bling
+    const precos = await store.query(E.precos, [{ field: 'sku', op: 'eq', value: 'SKU' }], 500)
+    const p0 = precos[0]!
+    await store.update(p0.id, { ...p0.data, condicao: 'CBLING' }, p0.version)
+    const r = await new ConsultarPrecoService(store, store).execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const linha = r.value.precos.find((x) => x.condicaoId === 'CBLING')!
+    expect(linha.condicao).toBe('30, 60, 90, 120')   // não o id
+  })
+
   it('devolve a tabela do SKU depois de gerar', async () => {
     const { store } = testWorld()
     await svc(store).execute({ skuId: 'SKU' })
