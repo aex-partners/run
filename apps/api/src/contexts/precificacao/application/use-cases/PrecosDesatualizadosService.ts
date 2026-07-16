@@ -43,7 +43,7 @@ export class PrecosDesatualizadosService implements PrecosDesatualizados {
   private async resolveEntities() {
     const slugs = ['modelos', 'produtos', 'snapshots_custo', 'precos_de_venda'] as const
     const out = {} as Record<'modelos'|'produtos'|'snapshots'|'precos', string>
-    const map: Record<string, keyof typeof out> = { modelos: 'modelos', produtos: 'produtos', snapshots_custo: 'snapshots', precos_de_venda: 'precos' }
+    const map: Record<typeof slugs[number], keyof typeof out> = { modelos: 'modelos', produtos: 'produtos', snapshots_custo: 'snapshots', precos_de_venda: 'precos' }
     for (const s of slugs) { const id = await this.registry.entityIdBySlug(s); if (!id) return null; out[map[s]] = id }
     return out
   }
