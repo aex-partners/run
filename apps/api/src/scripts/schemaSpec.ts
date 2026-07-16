@@ -4,12 +4,12 @@
 export interface FieldSpec {
   slug: string
   displayName: string
-  // text | long_text | number | decimal | boolean | date | datetime | duration | currency | select | relation
+  // text | long_text | number | decimal | percent | boolean | date | datetime | duration | currency | select | relation
   kind: string
   targetSlug?: string    // kind 'relation': target entity slug
   multiple?: boolean     // kind 'relation'
   options?: string[]     // kind 'select'
-  decimalPlaces?: number // kind 'currency' | 'decimal'
+  decimalPlaces?: number // kind 'currency' | 'decimal' | 'percent'
 }
 
 export interface EntitySpec {
@@ -31,6 +31,11 @@ export function fieldConfig(
       return spec.decimalPlaces == null
         ? { kind: 'decimal' }
         : { kind: 'decimal', decimalPlaces: spec.decimalPlaces }
+    // percent é FRAÇÃO (0,10 = 10%). Numérico como decimal/currency.
+    case 'percent':
+      return spec.decimalPlaces == null
+        ? { kind: 'percent' }
+        : { kind: 'percent', decimalPlaces: spec.decimalPlaces }
     case 'text': return { kind: 'text' }
     case 'long_text': return { kind: 'long_text' }
     case 'date': return { kind: 'date' }

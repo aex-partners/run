@@ -30,4 +30,10 @@ describe('fieldConfig', () => {
     expect(fieldConfig({ slug: 'qtd', displayName: 'Qtd', kind: 'decimal', decimalPlaces: 4 }, () => null))
       .toEqual({ kind: 'decimal', decimalPlaces: 4 })
   })
+  it('mapeia percent, com e sem decimalPlaces', () => {
+    expect(fieldConfig({ slug: 'lucro', displayName: 'Lucro', kind: 'percent' }, () => null))
+      .toEqual({ kind: 'percent' })
+    expect(fieldConfig({ slug: 'lucro', displayName: 'Lucro', kind: 'percent', decimalPlaces: 4 }, () => null))
+      .toEqual({ kind: 'percent', decimalPlaces: 4 })
+  })
 })
