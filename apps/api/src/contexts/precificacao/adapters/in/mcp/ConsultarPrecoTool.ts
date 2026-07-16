@@ -9,7 +9,8 @@ export const consultarPrecoTool = (uc: ConsultarPreco): ToolDefinition => ({
   readOnly: true,
   description:
     'Consulta o preço de venda vigente de um SKU em cada canal/condição financeira. Input: { skuId: string }. ' +
-    'Retorna { skuId, custoBase, precos: [{ canal, condicao, preco, lucroUsado }] }. Não altera nada; para atualizar, use gerar_precos.',
+    'Retorna { skuId, custoBase, precos: [{ canalId, canal, condicaoId, condicao, preco, lucroUsado }] } ' +
+    '(canal/condicao já vêm resolvidos pro nome). Não altera nada; para atualizar, use gerar_precos.',
   async execute(input: Json) {
     const obj = asObject('consultar_preco', input)
     if (!obj.ok) return fail(obj.error)
@@ -24,7 +25,9 @@ export const consultarPrecoTool = (uc: ConsultarPreco): ToolDefinition => ({
       skuId: r.value.skuId,
       custoBase: r.value.custoBase,
       precos: r.value.precos.map((p) => ({
+        canalId: p.canalId,
         canal: p.canal,
+        condicaoId: p.condicaoId,
         condicao: p.condicao,
         preco: p.preco,
         lucroUsado: p.lucroUsado,

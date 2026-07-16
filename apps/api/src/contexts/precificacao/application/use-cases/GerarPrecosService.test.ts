@@ -122,4 +122,45 @@ describe('ConsultarPrecoService', () => {
     expect(r.value.precos).toHaveLength(2)
     expect(r.value.custoBase).toBeCloseTo(64.6183, 3)
   })
+
+  // O achado do review final: `consultar_preco` devolvia o ID cru de canal/condição em vez do
+  // nome, o assistente exibia UUID em vez de "lojista" / "À vista" — a mesma classe de bug que
+  // o smoke em produção pegou no estoque (depósito mostrando UUID no lugar de "Fábrica
+  // Panambi"). O testWorld já semeia `nome: 'lojista'` em LOJISTA e `nome: 'À vista'` em AVISTA.
+  it('resolve canal e condição para o NOME (não o id)', async () => {
+    const { store } = testWorld()
+    await svc(store).execute({ skuId: 'SKU' })
+    const r = await new ConsultarPrecoService(store, store).execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const aVista = r.value.precos.find((p) => p.condicaoId === 'AVISTA')!
+    expect(aVista.canalId).toBe('LOJISTA')
+    expect(aVista.canal).toBe('lojista')        // não 'LOJISTA' (o id)
+    expect(aVista.condicaoId).toBe('AVISTA')
+    expect(aVista.condicao).toBe('À vista')     // não 'AVISTA' (o id)
+  })
+
+  it('cai para o id quando o canal não tem `nome`', async () => {
+    const { store, E } = testWorld()
+    // canal ativo, mas sem `nome` (defensivo: nem todo registro relacionado tem o campo)
+    store.seedRecord(E.canais, { id: 'SEMNOME', version: 1, data: { comissao: 0.10, frete: 0, ativo: true } })
+    await svc(store).execute({ skuId: 'SKU' })
+    const r = await new ConsultarPrecoService(store, store).execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    const linha = r.value.precos.find((p) => p.canalId === 'SEMNOME')
+    expect(linha).toBeTruthy()
+    expect(linha!.canal).toBe('SEMNOME')        // fallback pro id
+  })
+
+  it('cai para o id quando o registro do canal foi removido (não quebra)', async () => {
+    const { store } = testWorld()
+    await svc(store).execute({ skuId: 'SKU' })
+    await store.delete('LOJISTA')
+    const r = await new ConsultarPrecoService(store, store).execute({ skuId: 'SKU' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.value.precos.length).toBeGreaterThan(0)
+    expect(r.value.precos.every((p) => p.canal === 'LOJISTA' && p.canalId === 'LOJISTA')).toBe(true)
+  })
 })
