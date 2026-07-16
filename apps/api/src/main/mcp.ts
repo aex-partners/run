@@ -90,6 +90,21 @@ import { consultarPedidoCompraTool } from '@/contexts/compras/adapters/in/mcp/Co
 import { CustosDesatualizados } from '@/contexts/costing/application/ports/in/CustosDesatualizados'
 import { custosDesatualizadosTool } from '@/contexts/costing/adapters/in/mcp/CustosDesatualizadosTool'
 
+import { DefinirCanal } from '@/contexts/precificacao/application/ports/in/DefinirCanal'
+import { DefinirParametros } from '@/contexts/precificacao/application/ports/in/DefinirParametros'
+import { DefinirCondicaoFinanceira } from '@/contexts/precificacao/application/ports/in/DefinirCondicaoFinanceira'
+import { DefinirLucro } from '@/contexts/precificacao/application/ports/in/DefinirLucro'
+import { GerarPrecos } from '@/contexts/precificacao/application/ports/in/GerarPrecos'
+import { ConsultarPreco } from '@/contexts/precificacao/application/ports/in/ConsultarPreco'
+import { PrecosDesatualizados } from '@/contexts/precificacao/application/ports/in/PrecosDesatualizados'
+import { definirCanalTool } from '@/contexts/precificacao/adapters/in/mcp/DefinirCanalTool'
+import { definirParametrosTool } from '@/contexts/precificacao/adapters/in/mcp/DefinirParametrosTool'
+import { definirCondicaoFinanceiraTool } from '@/contexts/precificacao/adapters/in/mcp/DefinirCondicaoFinanceiraTool'
+import { definirLucroTool } from '@/contexts/precificacao/adapters/in/mcp/DefinirLucroTool'
+import { gerarPrecosTool } from '@/contexts/precificacao/adapters/in/mcp/GerarPrecosTool'
+import { consultarPrecoTool } from '@/contexts/precificacao/adapters/in/mcp/ConsultarPrecoTool'
+import { precosDesatualizadosTool } from '@/contexts/precificacao/adapters/in/mcp/PrecosDesatualizadosTool'
+
 export interface McpToolDeps {
   // data in-ports
   createEntity: CreateEntity
@@ -139,6 +154,14 @@ export interface McpToolDeps {
   criarPedidoCompra: CriarPedidoCompra
   lancarNotaEntrada: LancarNotaEntrada
   consultarPedidoCompra: ConsultarPedidoCompra
+  // precificacao in-ports (preço de venda = marcação sobre o custo)
+  definirCanal: DefinirCanal
+  definirParametros: DefinirParametros
+  definirCondicaoFinanceira: DefinirCondicaoFinanceira
+  definirLucro: DefinirLucro
+  gerarPrecos: GerarPrecos
+  consultarPreco: ConsultarPreco
+  precosDesatualizados: PrecosDesatualizados
 }
 
 export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
@@ -194,5 +217,13 @@ export function assembleMcpTools(deps: McpToolDeps): ToolDefinition[] {
     criarPedidoCompraTool(deps.criarPedidoCompra),
     lancarNotaEntradaTool(deps.lancarNotaEntrada),
     consultarPedidoCompraTool(deps.consultarPedidoCompra),
+    // precificacao (preço de venda = marcação sobre o custo)
+    definirCanalTool(deps.definirCanal),
+    definirParametrosTool(deps.definirParametros),
+    definirCondicaoFinanceiraTool(deps.definirCondicaoFinanceira),
+    definirLucroTool(deps.definirLucro),
+    gerarPrecosTool(deps.gerarPrecos),
+    consultarPrecoTool(deps.consultarPreco),
+    precosDesatualizadosTool(deps.precosDesatualizados),
   ]
 }

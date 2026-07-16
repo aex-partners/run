@@ -21,6 +21,7 @@ import { CostingWiring } from '@/main/wiring/costing'
 import { ManufacturingWiring } from '@/main/wiring/manufacturing'
 import { EstoqueWiring } from '@/main/wiring/estoque'
 import { ComprasWiring } from '@/main/wiring/compras'
+import { PrecificacaoWiring } from '@/main/wiring/precificacao'
 import { ConversationsWiring } from '@/main/wiring/conversations'
 import { AgentsWiring } from '@/main/wiring/agents'
 import { SkillsWiring } from '@/main/wiring/skills'
@@ -64,6 +65,7 @@ type AssistantDeps = Pick<AclProviders, 'getConversationAgent' | 'manageSession'
   >
   estoque: EstoqueWiring['ports']
   compras: ComprasWiring['ports']
+  precificacao: PrecificacaoWiring['ports']
   conversations: Pick<ConversationsWiring['ports'], 'appendMessage' | 'postSystemMessage' | 'listMessages'>
   resolveAgent: AgentsWiring['ports']['resolveAgent']
   resolveSkill: SkillsWiring['ports']['resolveSkill']
@@ -72,7 +74,7 @@ type AssistantDeps = Pick<AclProviders, 'getConversationAgent' | 'manageSession'
 
 export function wireAssistant(infra: Infra, deps: AssistantDeps) {
   const { redis, clock } = infra
-  const { getConversationAgent, manageSession, data, knowledge, payments, fiscal, bling, costing, manufacturing, estoque, compras, conversations, resolveAgent, resolveSkill, ai } = deps
+  const { getConversationAgent, manageSession, data, knowledge, payments, fiscal, bling, costing, manufacturing, estoque, compras, precificacao, conversations, resolveAgent, resolveSkill, ai } = deps
   const { createEntity, insertRecord, updateRecord, deleteRecord, describeEntity, listEntities, queryRecords } = data
   const { createKnowledge, queryKnowledge, deleteKnowledge } = knowledge
   const { createCharge, getCharge, createPaymentLink, createBoleto } = payments
@@ -82,10 +84,12 @@ export function wireAssistant(infra: Infra, deps: AssistantDeps) {
   const { obterRoteiro, definirCentro, listarCentros, definirOperacao, publicarRoteiro, abrirRevisaoRoteiro, descartarRascunhoRoteiro } = manufacturing
   const { registrarMovimento, consultarSaldo, historicoMovimentos } = estoque
   const { criarPedidoCompra, lancarNotaEntrada, consultarPedidoCompra } = compras
+  const { definirCanal, definirParametros, definirCondicaoFinanceira, definirLucro, gerarPrecos, consultarPreco, precosDesatualizados } = precificacao
   const { appendMessage, postSystemMessage, listMessages } = conversations
 
   // Assemble the AI ToolBox from every context's MCP tools (data + knowledge +
-  // payments + fiscal + bling + costing + manufacturing + estoque + compras).
+  // payments + fiscal + bling + costing + manufacturing + estoque + compras +
+  // precificacao).
   const mcpTools: ToolDefinition[] = assembleMcpTools({
     createEntity, insertRecord, updateRecord, deleteRecord, describeEntity, listEntities, queryRecords,
     createKnowledge, queryKnowledge, deleteKnowledge, knowledgeUserId: SYSTEM_TOOL_USER,
@@ -97,6 +101,7 @@ export function wireAssistant(infra: Infra, deps: AssistantDeps) {
     descartarRascunhoRoteiro,
     registrarMovimento, consultarSaldo, historicoMovimentos,
     criarPedidoCompra, lancarNotaEntrada, consultarPedidoCompra,
+    definirCanal, definirParametros, definirCondicaoFinanceira, definirLucro, gerarPrecos, consultarPreco, precosDesatualizados,
   })
   const toolIndex = new Map(mcpTools.map((t) => [t.name, t]))
   const toolBox: ToolBox = {

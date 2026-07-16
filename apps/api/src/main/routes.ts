@@ -85,6 +85,7 @@ export function appRouter(container: Container) {
     manufacturing: p.manufacturing,
     estoque: p.estoque,
     compras: p.compras,
+    precificacao: p.precificacao,
     // PublicFormController stays a plain public handler map.
     publicForms: wrapPlain(pub.publicForms, 'public'),
   })

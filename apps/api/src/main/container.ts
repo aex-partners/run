@@ -39,6 +39,7 @@ import { wireManufacturing } from '@/main/wiring/manufacturing'
 import { wireCosting } from '@/main/wiring/costing'
 import { wireEstoque } from '@/main/wiring/estoque'
 import { wireCompras } from '@/main/wiring/compras'
+import { wirePrecificacao } from '@/main/wiring/precificacao'
 
 export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth) {
   // Infra primitives (clock, events, queue connection) + raw platform handles.
@@ -130,6 +131,11 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
     estoque: estoqueWiring.ports,
   })
 
+  // precificacao (preço de venda = marcação sobre o custo). Sem dep cross-context: liga
+  // direto nas in-ports do data. Só LÊ produtos.custo_unitario_total e snapshots_custo; NÃO
+  // chama o costing e NÃO altera custo.
+  const precificacaoWiring = wirePrecificacao(infra, { data: dataWiring.ports })
+
   // ----- cross-context contexts, in dependency order. Each wireX takes the sibling
   // in-ports its ACL bridges resolve through (built above); container threads them.
   const conversationsWiring = wireConversations(infra, { getUsers, lookupAgents, grantFileAccess })
@@ -181,6 +187,7 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
     manufacturing: manufacturingWiring.ports,
     estoque: estoqueWiring.ports,
     compras: comprasWiring.ports,
+    precificacao: precificacaoWiring.ports,
     conversations: { appendMessage, postSystemMessage, listMessages },
     resolveAgent: agentsWiring.ports.resolveAgent,
     resolveSkill: skillsWiring.ports.resolveSkill,
@@ -231,6 +238,7 @@ export function buildContainer(db: Database, redis: Redis, env: Env, auth: Auth)
       manufacturing: manufacturingWiring.controller,
       estoque: estoqueWiring.controller,
       compras: comprasWiring.controller,
+      precificacao: precificacaoWiring.controller,
     },
     publicControllers: {
       publicForms: formsWiring.controllers.publicForms,
